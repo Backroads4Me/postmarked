@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tokens — Goodpath</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    h2.section { font-family: var(--display); font-size: 38px; font-variation-settings: "opsz" 144; margin: 0 0 8px; letter-spacing: -0.02em; }
+    .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 1px; background: var(--line); border: var(--hair); }
+    .swatch { background: var(--ink-1); padding: 90px 16px 16px; position: relative; }
+    .swatch .chip { position: absolute; left: 0; right: 0; top: 0; height: 70px; }
+    .swatch .name { font-family: var(--mono); font-size: 11px; color: var(--paper); }
+    .swatch .hex { font-family: var(--mono); font-size: 10px; color: var(--dim); margin-top: 2px; display: block; }
+    @media (max-width: 800px) { .swatches { grid-template-columns: repeat(3, 1fr); } }
+
+    .type-row { display: grid; grid-template-columns: 110px 1fr; gap: 24px; padding: 28px 0; border-bottom: var(--hair); align-items: baseline; }
+    .type-row .meta { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: .12em; text-transform: uppercase; }
+    .display-xl { font-family: var(--display); font-size: 96px; font-variation-settings: "opsz" 144, "SOFT" 30; line-height: 0.92; letter-spacing: -0.025em; font-weight: 360; }
+    .display-xl em { font-style: italic; color: var(--ember); font-variation-settings: "opsz" 144, "SOFT" 100; }
+    .display-l  { font-family: var(--display); font-size: 56px; font-variation-settings: "opsz" 144; line-height: 1; }
+    .display-m  { font-family: var(--display); font-size: 32px; font-variation-settings: "opsz" 60;  line-height: 1.05; }
+    .body-l     { font-family: var(--display); font-size: 21px; font-variation-settings: "opsz" 18; line-height: 1.5; color: var(--paper-2); max-width: 60ch; font-weight: 320; }
+    .body       { font-family: var(--sans); font-size: 16px; line-height: 1.6; max-width: 60ch; color: var(--paper-2); }
+    .ui         { font-family: var(--sans); font-size: 13px; letter-spacing: .01em; color: var(--paper); }
+    .mono-label { font-family: var(--mono); font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); }
+
+    .specimens { display: grid; grid-template-columns: 1.3fr 1fr; gap: 40px; }
+    @media (max-width: 800px) { .specimens { grid-template-columns: 1fr; } }
+    .specimen { border: var(--hair); padding: 32px; position: relative; }
+    .specimen::before { content: attr(data-label); position: absolute; top: -8px; left: 24px; background: var(--bg); padding: 0 10px; font-family: var(--mono); font-size: 9px; letter-spacing: .16em; text-transform: uppercase; color: var(--dim); }
+
+    .components { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1px; background: var(--line); border: var(--hair); }
+    .components > div { background: var(--ink-1); padding: 36px; }
+    @media (max-width: 800px) { .components { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <header class="topnav">
+    <div class="brand"><div class="mark">good<em>path</em></div><div class="meta">tokens · style tile</div></div>
+    <nav class="nav-links">
+      <a href="index.html">Index</a>
+      <a href="tokens.html" class="active">Tokens</a>
+      <a href="home.html">Home</a>
+      <a href="trip.html">Trip</a>
+      <a href="stop.html">Stop</a>
+      <a href="mapview.html">Map</a>
+    </nav>
+    <a class="nav-cta" href="index.html">← Back</a>
+  </header>
+
+  <main class="frame">
+    <div class="rule"><span class="label">00 — palette</span></div>
+    <h2 class="section">Alpine ink &amp; ember.</h2>
+    <p class="body" style="margin: 0 0 32px;">Eight ink steps, two paper steps, one accent. The accent is reserved for the live signal — it should never appear as decoration.</p>
+
+    <div class="swatches">
+      <div class="swatch"><span class="chip" style="background:#07090d"></span><span class="name">ink-0</span><span class="hex">#07090d</span></div>
+      <div class="swatch"><span class="chip" style="background:#0c1017"></span><span class="name">ink-1</span><span class="hex">#0c1017</span></div>
+      <div class="swatch"><span class="chip" style="background:#11161f"></span><span class="name">ink-2</span><span class="hex">#11161f</span></div>
+      <div class="swatch"><span class="chip" style="background:#181e2a"></span><span class="name">ink-3</span><span class="hex">#181e2a</span></div>
+      <div class="swatch"><span class="chip" style="background:#222a39"></span><span class="name">ink-4</span><span class="hex">#222a39</span></div>
+      <div class="swatch"><span class="chip" style="background:#2a3344"></span><span class="name">line</span><span class="hex">#2a3344</span></div>
+      <div class="swatch"><span class="chip" style="background:#ece9e0"></span><span class="name">paper</span><span class="hex">#ece9e0</span></div>
+      <div class="swatch"><span class="chip" style="background:#d9d4c5"></span><span class="name">paper-2</span><span class="hex">#d9d4c5</span></div>
+      <div class="swatch"><span class="chip" style="background:#8b8e98"></span><span class="name">muted</span><span class="hex">#8b8e98</span></div>
+      <div class="swatch"><span class="chip" style="background:#e8893f"></span><span class="name">ember</span><span class="hex">#e8893f</span></div>
+      <div class="swatch"><span class="chip" style="background:#f4a663"></span><span class="name">ember-2</span><span class="hex">#f4a663</span></div>
+      <div class="swatch"><span class="chip" style="background:#6fa3c4"></span><span class="name">sky · data</span><span class="hex">#6fa3c4</span></div>
+    </div>
+
+    <div class="rule"><span class="label">01 — typography</span></div>
+    <h2 class="section">Three voices.</h2>
+    <p class="body" style="margin: 0 0 16px;">Fraunces is the publisher’s voice — display, lede, callouts. IBM Plex Sans is the interface. JetBrains Mono is the data layer: coordinates, dates, labels, file metadata.</p>
+
+    <div>
+      <div class="type-row">
+        <span class="meta">Display XL<br>96 / 0.92<br>Fraunces</span>
+        <div class="display-xl">Yellowstone<br>in <em>shoulder</em>.</div>
+      </div>
+      <div class="type-row">
+        <span class="meta">Display L<br>56 / 1.0<br>Fraunces</span>
+        <div class="display-l">A loop through the Tetons</div>
+      </div>
+      <div class="type-row">
+        <span class="meta">Display M<br>32 / 1.05<br>Fraunces</span>
+        <div class="display-m">Lamar Valley · Day Six</div>
+      </div>
+      <div class="type-row">
+        <span class="meta">Lede / Body L<br>21 / 1.5<br>Fraunces 320</span>
+        <div class="body-l">A self-hosted, mobile-first travel journal for one publisher and a small invited audience. Photos and the map are the heroes.</div>
+      </div>
+      <div class="type-row">
+        <span class="meta">Body<br>16 / 1.6<br>Plex Sans</span>
+        <div class="body">We rolled into the campground at dusk after a longer-than-expected drive from West Thumb. The river was running cold and clear, and the bison were still working the meadow on the far side of the loop.</div>
+      </div>
+      <div class="type-row">
+        <span class="meta">UI<br>13 · Plex Sans</span>
+        <div class="ui">Comments · Likes · Share · Subscribe</div>
+      </div>
+      <div class="type-row">
+        <span class="meta">Mono label<br>11 · JB Mono</span>
+        <div class="mono-label">44.4280° N · 110.5885° W &nbsp;·&nbsp; 2026‑04‑05 17:42 MST &nbsp;·&nbsp; ƒ/5.6 · 1/250s · ISO 200</div>
+      </div>
+    </div>
+
+    <div class="rule"><span class="label">02 — specimens</span></div>
+
+    <div class="specimens">
+      <div class="specimen" data-label="Editorial pull-quote">
+        <div class="display-l" style="font-size: 44px;">There is no “off-season”<br>in the <em style="font-style:italic;color:var(--ember);">Lamar</em>.</div>
+        <p class="body" style="margin: 18px 0 0;">Cold mornings, hot coffee, and the wolves moving through the willows before sunrise. Nine days, four campgrounds, one flat tire.</p>
+        <div class="coord" style="margin-top: 22px;">— Day Four · Slough Creek</div>
+      </div>
+      <div class="specimen" data-label="Live signal callout">
+        <div class="eyebrow"><span class="dot">●</span> &nbsp;LIVE</div>
+        <div class="display-m" style="margin-top: 14px;">Where the rig is now</div>
+        <div class="coord" style="margin-top: 12px;">Madison Junction Campground</div>
+        <div class="coord">44.6452° N · 110.8597° W</div>
+        <div style="display:flex; gap: 18px; margin-top: 24px;">
+          <div><span class="label">Day</span><div class="display-m" style="font-size: 24px;">06 <span style="color:var(--dim); font-size: 14px;">/ 12</span></div></div>
+          <div><span class="label">Stops</span><div class="display-m" style="font-size: 24px;">14</div></div>
+          <div><span class="label">Photos</span><div class="display-m" style="font-size: 24px;">182</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="rule"><span class="label">03 — components</span></div>
+
+    <div class="components">
+      <div>
+        <div class="mono-label" style="margin-bottom: 18px;">Buttons</div>
+        <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+          <a class="btn" href="#">Read trip <span>→</span></a>
+          <a class="btn ghost" href="#">All stops</a>
+        </div>
+      </div>
+      <div>
+        <div class="mono-label" style="margin-bottom: 18px;">Live pill</div>
+        <a class="nav-cta" href="#"><span class="dot"></span>Live · Yellowstone</a>
+      </div>
+      <div>
+        <div class="mono-label" style="margin-bottom: 18px;">Coordinate label</div>
+        <div class="coord">44.4280° N · 110.5885° W</div>
+        <div class="coord">2026‑04‑05 · day six of twelve</div>
+      </div>
+      <div>
+        <div class="mono-label" style="margin-bottom: 18px;">Stat block</div>
+        <div style="display:flex; gap: 28px;">
+          <div><span class="label">Distance</span><div class="display-m" style="font-size: 26px;">412 <span style="color:var(--dim); font-size: 12px;">mi</span></div></div>
+          <div><span class="label">Stops</span><div class="display-m" style="font-size: 26px;">14</div></div>
+          <div><span class="label">Days</span><div class="display-m" style="font-size: 26px;">12</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="height: 100px;"></div>
+  </main>
+</body>
+</html>

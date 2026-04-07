@@ -1,0 +1,285 @@
+/* ============================================================
+   Goodpath — Field Journal · Alpine Night
+   Visual language prototype stylesheet
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+:root {
+  /* Ink — deep blue-blacks, warm-leaning */
+  --ink-0: #07090d;
+  --ink-1: #0c1017;
+  --ink-2: #11161f;
+  --ink-3: #181e2a;
+  --ink-4: #222a39;
+  --line:  #2a3344;
+  --line-soft: #1c2230;
+
+  /* Paper — warm off-white text */
+  --paper:    #ece9e0;
+  --paper-2:  #d9d4c5;
+  --muted:    #8b8e98;
+  --dim:      #585c68;
+  --faint:    #353a47;
+
+  /* Single accent — campfire amber */
+  --ember:    #e8893f;
+  --ember-2:  #f4a663;
+  --ember-glow: rgba(232,137,63,.18);
+
+  /* Cool data accent — used very sparingly for map/data */
+  --sky: #6fa3c4;
+
+  /* Semantic */
+  --bg:        var(--ink-0);
+  --surface:   var(--ink-1);
+  --surface-2: var(--ink-2);
+
+  /* Type */
+  --display: 'Fraunces', ui-serif, Georgia, serif;
+  --sans:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  /* Rhythm */
+  --hair: 1px solid var(--line);
+  --hair-soft: 1px solid var(--line-soft);
+  --r-sm: 4px;
+  --r-md: 8px;
+  --r-lg: 14px;
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,.03) inset, 0 24px 60px -30px rgba(0,0,0,.7);
+  --shadow-glow: 0 0 0 1px var(--ember-glow), 0 18px 60px -20px var(--ember-glow);
+}
+
+/* ---------- reset ---------- */
+*,*::before,*::after { box-sizing: border-box; }
+html,body { margin:0; padding:0; }
+body {
+  background: var(--bg);
+  color: var(--paper);
+  font-family: var(--sans);
+  font-size: 16px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings: "ss01","cv11";
+  min-height: 100vh;
+  background-image:
+    radial-gradient(1200px 600px at 80% -10%, rgba(232,137,63,.06), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(111,163,196,.05), transparent 60%);
+}
+img,svg { display:block; max-width:100%; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+
+/* ---------- typography utilities ---------- */
+.display {
+  font-family: var(--display);
+  font-weight: 360;
+  font-variation-settings: "opsz" 144, "SOFT" 30;
+  letter-spacing: -0.02em;
+  line-height: 0.95;
+  color: var(--paper);
+}
+.display em { font-style: italic; font-variation-settings: "opsz" 144, "SOFT" 100; color: var(--ember-2); font-weight: 320; }
+
+.eyebrow {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.eyebrow .dot { color: var(--ember); }
+
+.coord {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+}
+
+.lede {
+  font-family: var(--display);
+  font-weight: 320;
+  font-variation-settings: "opsz" 18;
+  font-size: clamp(17px, 1.6vw, 21px);
+  line-height: 1.5;
+  color: var(--paper-2);
+  max-width: 62ch;
+}
+
+.label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--dim);
+}
+
+/* ---------- top nav (desktop) ---------- */
+.topnav {
+  position: sticky; top: 0; z-index: 50;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 32px;
+  padding: 18px 40px;
+  background: linear-gradient(to bottom, rgba(7,9,13,.92), rgba(7,9,13,.7) 70%, transparent);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid transparent;
+}
+.topnav.scrolled { border-bottom-color: var(--line-soft); }
+.brand {
+  display: flex; align-items: baseline; gap: 12px;
+}
+.brand .mark {
+  font-family: var(--display);
+  font-weight: 380;
+  font-variation-settings: "opsz" 144, "SOFT" 50;
+  font-size: 28px;
+  letter-spacing: -0.025em;
+}
+.brand .mark em { font-style: italic; color: var(--ember); font-variation-settings: "opsz" 144, "SOFT" 100; }
+.brand .meta { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: .14em; text-transform: uppercase; }
+
+.nav-links { display: flex; gap: 4px; justify-self: center; }
+.nav-links a {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 10px 14px;
+  border-radius: var(--r-sm);
+  transition: color .2s ease, background .2s ease;
+}
+.nav-links a:hover { color: var(--paper); background: var(--ink-2); }
+.nav-links a.active { color: var(--ember); }
+.nav-links a.active::before {
+  content: "·"; color: var(--ember); margin-right: 6px;
+}
+
+.nav-cta {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 9px 14px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+  color: var(--paper-2);
+  transition: all .2s ease;
+}
+.nav-cta:hover { border-color: var(--ember); color: var(--ember); }
+.nav-cta .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 12px var(--ember); animation: pulse 2.4s ease-in-out infinite; }
+@keyframes pulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50% { opacity: .5; transform: scale(.8); }
+}
+
+/* ---------- bottom tab bar (mobile preview) ---------- */
+.tabbar {
+  display: none;
+}
+@media (max-width: 767px) {
+  .topnav .nav-links, .topnav .nav-cta { display: none; }
+  .tabbar {
+    display: grid;
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 60;
+    grid-template-columns: repeat(5, 1fr);
+    background: rgba(12,16,23,.92);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    border-top: var(--hair);
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 0));
+  }
+  .tabbar a {
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 8px 0;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .tabbar a.active { color: var(--ember); }
+  .tabbar svg { width: 20px; height: 20px; }
+  body { padding-bottom: 76px; }
+}
+
+/* ---------- containers ---------- */
+.frame {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 40px;
+}
+@media (max-width: 767px) {
+  .frame { padding: 0 20px; }
+}
+
+/* ---------- hairline rule with mono caption ---------- */
+.rule {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  margin: 60px 0 28px;
+}
+.rule::before, .rule::after { content: ""; height: 1px; background: var(--line); }
+.rule::before { width: 24px; }
+.rule .label { white-space: nowrap; }
+
+/* ---------- topographic decoration ---------- */
+.topo {
+  position: absolute; inset: 0;
+  pointer-events: none;
+  opacity: .25;
+  mix-blend-mode: screen;
+}
+
+/* ---------- buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 10px;
+  padding: 13px 22px;
+  background: var(--ember);
+  color: var(--ink-0);
+  border-radius: 999px;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  transition: all .2s ease;
+}
+.btn:hover { background: var(--ember-2); transform: translateY(-1px); }
+.btn.ghost {
+  background: transparent;
+  color: var(--paper);
+  border: 1px solid var(--line);
+}
+.btn.ghost:hover { border-color: var(--ember); color: var(--ember); }
+
+/* ---------- index page (style tile launcher) ---------- */
+.launcher {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1px;
+  background: var(--line);
+  border: var(--hair);
+  margin-top: 40px;
+}
+.launcher a {
+  background: var(--ink-1);
+  padding: 32px 28px;
+  display: block;
+  transition: background .25s ease;
+  position: relative;
+}
+.launcher a:hover { background: var(--ink-2); }
+.launcher a:hover .arrow { transform: translateX(4px); color: var(--ember); }
+.launcher .num { font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: .16em; }
+.launcher .name { font-family: var(--display); font-size: 28px; font-variation-settings: "opsz" 144; margin-top: 24px; line-height: 1; }
+.launcher .desc { color: var(--muted); font-size: 13px; margin-top: 10px; max-width: 30ch; }
+.launcher .arrow { position: absolute; top: 28px; right: 28px; color: var(--dim); transition: all .25s ease; }
