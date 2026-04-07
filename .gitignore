@@ -32,3 +32,9 @@ tiles/
 .idea/
 .vscode/
 *.swp
+
+# Agents
+.codex
+CLAUDE.md
+GEMINI.md
+AGENTS.md
