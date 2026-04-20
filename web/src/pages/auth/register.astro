@@ -1,0 +1,57 @@
+---
+import Layout from '../../layouts/Layout.astro';
+---
+
+<Layout title="Register">
+  <div class="frame min-h-screen flex items-center justify-center py-20">
+    <div class="w-full max-w-sm bg-surface p-8 rounded-lg border border-line shadow-1">
+      <div class="mb-8 text-center">
+        <h1 class="display text-3xl mb-2">Join Goodpath</h1>
+        <p class="text-sm text-muted">Create a new account</p>
+      </div>
+      
+      <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); register();">
+        <div class="flex flex-col gap-1">
+          <label class="label" for="email">Email address</label>
+          <input type="email" id="email" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+        </div>
+        
+        <div class="flex flex-col gap-1">
+          <label class="label" for="password">Password</label>
+          <input type="password" id="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+        </div>
+        
+        <button type="submit" class="btn justify-center mt-4">Register</button>
+      </form>
+      
+      <div class="mt-6 text-center">
+        <a href="/auth/login" class="text-xs text-muted hover:text-ember transition-colors">Already have an account? Sign in</a>
+      </div>
+    </div>
+  </div>
+</Layout>
+
+<script is:inline>
+  async function register() {
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    
+    try {
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      
+      if (res.ok) {
+        alert('Registration successful. Your account is pending approval.');
+        window.location.href = '/auth/login';
+      } else {
+        const error = await res.json();
+        alert('Registration failed: ' + (error.detail || 'Unknown error'));
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }
+</script>

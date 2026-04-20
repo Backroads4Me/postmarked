@@ -1,0 +1,148 @@
+@import "tailwindcss";
+
+/* ============================================================
+   Goodpath — Field Journal · Alpine Night
+   Visual language prototype stylesheet (adapted)
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+@theme {
+  --color-ink-0: #07090d;
+  --color-ink-1: #0c1017;
+  --color-ink-2: #11161f;
+  --color-ink-3: #181e2a;
+  --color-ink-4: #222a39;
+  --color-line:  #2a3344;
+  --color-line-soft: #1c2230;
+
+  --color-paper:    #ece9e0;
+  --color-paper-2:  #d9d4c5;
+  --color-muted:    #8b8e98;
+  --color-dim:      #585c68;
+  --color-faint:    #353a47;
+
+  --color-ember:    #e8893f;
+  --color-ember-2:  #f4a663;
+  --color-ember-glow: rgba(232,137,63,.18);
+
+  --color-sky: #6fa3c4;
+
+  --color-bg:        var(--color-ink-0);
+  --color-surface:   var(--color-ink-1);
+  --color-surface-2: var(--color-ink-2);
+
+  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 14px;
+}
+
+:root {
+  /* Retain CSS variables for explicit use when strict theme values aren't convenient */
+  --ink-0: var(--color-ink-0);
+  --ink-1: var(--color-ink-1);
+  --ink-2: var(--color-ink-2);
+  --ink-3: var(--color-ink-3);
+  --ink-4: var(--color-ink-4);
+  --line:  var(--color-line);
+  --line-soft: var(--color-line-soft);
+
+  --paper:    var(--color-paper);
+  --paper-2:  var(--color-paper-2);
+  --muted:    var(--color-muted);
+  --dim:      var(--color-dim);
+  --faint:    var(--color-faint);
+
+  --ember:    var(--color-ember);
+  --ember-2:  var(--color-ember-2);
+  --ember-glow: var(--color-ember-glow);
+  --sky:      var(--color-sky);
+
+  --bg:        var(--ink-0);
+  --surface:   var(--ink-1);
+  --surface-2: var(--ink-2);
+
+  --display: var(--font-display);
+  --sans:    var(--font-sans);
+  --mono:    var(--font-mono);
+
+  --hair: 1px solid var(--line);
+  --hair-soft: 1px solid var(--line-soft);
+  --r-sm: var(--radius-sm);
+  --r-md: var(--radius-md);
+  --r-lg: var(--radius-lg);
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,.03) inset, 0 24px 60px -30px rgba(0,0,0,.7);
+  --shadow-glow: 0 0 0 1px var(--ember-glow), 0 18px 60px -20px var(--ember-glow);
+}
+
+/* ---------- reset ---------- */
+@layer base {
+  body {
+    background: var(--bg);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    font-feature-settings: "ss01","cv11";
+    min-height: 100vh;
+    background-image:
+      radial-gradient(1200px 600px at 80% -10%, rgba(232,137,63,.06), transparent 60%),
+      radial-gradient(900px 600px at -10% 110%, rgba(111,163,196,.05), transparent 60%);
+  }
+}
+
+/* ---------- typography utilities ---------- */
+@layer utilities {
+  .display {
+    font-family: var(--display);
+    font-weight: 360;
+    font-variation-settings: "opsz" 144, "SOFT" 30;
+    letter-spacing: -0.02em;
+    line-height: 0.95;
+    color: var(--paper);
+  }
+  .display em { font-style: italic; font-variation-settings: "opsz" 144, "SOFT" 100; color: var(--ember-2); font-weight: 320; }
+
+  .eyebrow {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .eyebrow .dot { color: var(--ember); }
+
+  .coord {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+  }
+
+  .lede {
+    font-family: var(--display);
+    font-weight: 320;
+    font-variation-settings: "opsz" 18;
+    font-size: clamp(17px, 1.6vw, 21px);
+    line-height: 1.5;
+    color: var(--paper-2);
+    max-width: 62ch;
+  }
+
+  .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+}
+
+/* We will migrate components like topnav, buttons, etc. over time. 
+   Keeping them in components or base as needed. */

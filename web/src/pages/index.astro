@@ -1,0 +1,81 @@
+---
+import Layout from '../layouts/Layout.astro';
+
+// Fetch initial data
+let trips = [];
+let profiles = null;
+try {
+  const tripRes = await fetch('http://api:8000/trips');
+  if (tripRes.ok) trips = await tripRes.json();
+  
+  const profRes = await fetch('http://api:8000/profiles');
+  if (profRes.ok) profiles = await profRes.json();
+} catch (e) {
+  console.error("API connection error:", e);
+}
+
+const activeTrip = trips.find(t => t.status === "active") || trips[0];
+const title = profiles?.traveler?.title || "Goodpath";
+const intro = profiles?.traveler?.intro || "A small road journal";
+---
+
+<Layout title="Home — Goodpath">
+  <main>
+    <!-- HERO -->
+    <section class="hero">
+      <div class="hero-art"></div>
+      <div class="hero-grain"></div>
+      <div class="hero-vignette"></div>
+
+      <div class="frame hero-content">
+        {activeTrip ? (
+          <div class="eyebrow"><span class="dot">●</span>&nbsp; LIVE &nbsp;·&nbsp; {activeTrip.title.toUpperCase()}</div>
+        ) : (
+          <div class="eyebrow"><span class="dot">●</span>&nbsp; OFFLINE</div>
+        )}
+        <h1>{title.split(' ')[0]}<br><em>{title.split(' ').slice(1).join(' ')}</em></h1>
+        <div class="hero-foot">
+          <p class="lede" style="color: var(--paper-2); margin: 0; max-width: 48ch;">
+            {intro}
+          </p>
+          <span class="coord">44.6452° N · 110.8597° W</span>
+          <a class="btn" href="/trips">Follow the rig <span>→</span></a>
+        </div>
+      </div>
+    </section>
+
+    <div class="frame">
+      <!-- RECENT UPDATES -->
+      <section class="recent">
+        <div class="recent-head">
+          <div class="label">01 — recent updates</div>
+          <h2>From the<br>last <em>fortnight</em>.</h2>
+          <p>Newest first. Tap any update to read the full stop or browse its media.</p>
+        </div>
+        <div class="recent-list">
+          {trips.slice(0, 4).map(trip => (
+            <a class="update" href={`/trips/${trip.slug}`}>
+              <span class="update-date">{new Date(trip.start_date || Date.now()).toISOString().split('T')[0]}</span>
+              <div class="update-thumb">
+                <svg viewBox="0 0 220 138" preserveAspectRatio="xMidYMid slice">
+                  <rect width="220" height="138" fill="#1d2a3a"/>
+                </svg>
+              </div>
+              <div>
+                <div class="update-title">{trip.title}</div>
+                <div class="update-meta"><span>TRIP</span><span>{trip.status}</span></div>
+              </div>
+              <svg class="update-arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+            </a>
+          ))}
+        </div>
+      </section>
+
+      <!-- ENTRIES -->
+      <section class="entry">
+        <a href="/trips"><div class="num">→ TRIPS</div><div class="display-m">All journeys</div><div class="desc">{trips.length} trips since 2024.</div></a>
+        <a href="/auth/login"><div class="num">→ ADMIN</div><div class="display-m">Login</div><div class="desc">Sign into your dashboard.</div></a>
+      </section>
+    </div>
+  </main>
+</Layout>

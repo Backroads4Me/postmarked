@@ -1,0 +1,38 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+let trips = [];
+try {
+  const res = await fetch('http://api:8000/trips');
+  if (res.ok) trips = await res.json();
+} catch (e) {
+  console.error(e);
+}
+---
+
+<Layout title="Trips — Goodpath">
+  <div class="frame py-20">
+    <div class="mb-12">
+      <div class="label">JOURNEYS</div>
+      <h1 class="display text-4xl mt-4">All Trips</h1>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      {trips.map(trip => (
+        <a href={`/trips/${trip.slug}`} class="block group">
+          <div class="aspect-video bg-surface-2 rounded-lg mb-4 overflow-hidden border border-line">
+            <!-- Placeholder for cover media -->
+          </div>
+          <div>
+            <h2 class="display text-2xl group-hover:text-ember transition-colors">{trip.title}</h2>
+            <p class="text-sm text-muted mt-2">{trip.summary}</p>
+            <div class="flex gap-4 mt-4 text-xs font-mono text-dim tracking-wider uppercase">
+              <span>{trip.status}</span>
+              <span>{trip.start_date ? new Date(trip.start_date).toLocaleDateString() : 'TBD'}</span>
+            </div>
+          </div>
+        </a>
+      ))}
+    </div>
+  </div>
+</Layout>

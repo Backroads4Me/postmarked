@@ -1,0 +1,41 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Media Intake">
+  <div class="mb-12">
+    <h1 class="display text-4xl">Media Intake</h1>
+    <p class="text-muted mt-2">Upload raw files using TUS resumable uploads.</p>
+  </div>
+  
+  <div id="uppy-dashboard" class="mb-12"></div>
+  
+  <link href="https://releases.transloadit.com/uppy/v3.23.0/uppy.min.css" rel="stylesheet">
+  <script type="module" hoist>
+    import { Uppy, Dashboard, Tus } from "https://releases.transloadit.com/uppy/v3.23.0/uppy.min.mjs"
+
+    const uppy = new Uppy({
+      restrictions: {
+        maxNumberOfFiles: 50
+      }
+    })
+    .use(Dashboard, {
+      inline: true,
+      target: '#uppy-dashboard',
+      theme: 'dark'
+    })
+    .use(Tus, {
+      endpoint: '/api/admin/media/tus', // Reaches out to FastAPI Router
+      limit: 3,
+      retryDelays: [0, 1000, 3000, 5000],
+      chunkSize: 5 * 1024 * 1024 // 5MB chunks
+    });
+
+    uppy.on('complete', (result) => {
+      console.log('Uploads complete:', result.successful);
+      if(result.successful.length > 0) {
+        alert("Upload finished. Assets pushed to processing queue!");
+      }
+    });
+  </script>
+</AdminLayout>

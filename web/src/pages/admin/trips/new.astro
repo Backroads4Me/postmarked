@@ -1,0 +1,91 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+const cookie = Astro.request.headers.get('cookie');
+// Basic authorization check
+try {
+  const check = await fetch('http://api:8000/admin/trips', { headers: cookie ? { cookie } : {} });
+  if (check.status === 401 || check.status === 403) return Astro.redirect('/auth/login');
+} catch(e) {}
+---
+
+<AdminLayout title="New Trip">
+  <div class="max-w-2xl">
+    <div class="mb-8">
+      <a href="/admin/trips" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-4 inline-block">← Back</a>
+      <h1 class="display text-4xl">Create Trip</h1>
+    </div>
+    
+    <form id="trip-form" class="flex flex-col gap-6">
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold">Title</label>
+        <input type="text" name="title" required class="bg-surface-2 border border-line p-3 focus:outline-none focus:border-ember" placeholder="Summer Rockies Loop">
+      </div>
+      
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold">Slug</label>
+        <input type="text" name="slug" required class="bg-surface-2 border border-line p-3" placeholder="summer-rockies-loop">
+        <span class="text-xs text-dim">URL identifier. Must be unique.</span>
+      </div>
+      
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold">Summary</label>
+        <textarea name="summary" rows="3" class="bg-surface-2 border border-line p-3 focus:outline-none focus:border-ember"></textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold">Status</label>
+          <select name="status" class="bg-surface-2 border border-line p-3">
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="published">Published</option>
+            <option value="archived">Archived</option>
+            <option value="planned">Planned</option>
+          </select>
+        </div>
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold">Visibility</label>
+          <select name="visibility" class="bg-surface-2 border border-line p-3">
+            <option value="public">Public</option>
+            <option value="private">Private</option>
+          </select>
+        </div>
+      </div>
+      
+      <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
+      
+      <button type="submit" class="btn mt-4">Save Trip</button>
+    </form>
+  </div>
+
+  <script>
+    document.getElementById('trip-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const errorDiv = document.getElementById('form-error');
+      const data = Object.fromEntries(new FormData(form).entries());
+      
+      try {
+        const res = await fetch('/api/admin/trips', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          const trip = await res.json();
+          window.location.href = '/admin/trips';
+        } else {
+          const err = await res.json();
+          errorDiv.textContent = err.detail || 'Validation error';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Network error saving trip';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  </script>
+</AdminLayout>

@@ -1,0 +1,112 @@
+services:
+  proxy:
+    image: caddy:2
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../caddy/Caddyfile:/etc/caddy/Caddyfile
+      - pmtiles:/pmtiles:ro
+    depends_on:
+      - web
+      - api
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    environment:
+      - PUBLIC_BASE_URL=http://localhost
+    restart: always
+
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - REDIS_URL=redis://redis:6379/0
+      - ORIGINALS_PATH=/originals
+      - DERIVATIVES_PATH=/derivatives
+      - INGEST_PATH=/ingest
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - originals:/originals
+      - derivatives:/derivatives
+      - ingest:/ingest
+
+  worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - REDIS_URL=redis://redis:6379/0
+      - ORIGINALS_PATH=/originals
+      - DERIVATIVES_PATH=/derivatives
+      - INGEST_PATH=/ingest
+    depends_on:
+      - redis
+      - db
+    volumes:
+      - originals:/originals
+      - derivatives:/derivatives
+      - ingest:/ingest
+
+  beat:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - REDIS_URL=redis://redis:6379/0
+    depends_on:
+      - redis
+      - db
+
+  flower:
+    image: mher/flower
+    command: ["celery", "-A", "app.tasks", "flower"]
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - FLOWER_PORT=5555
+    depends_on:
+      - redis
+    ports:
+      - "5555:5555"
+
+  db:
+    image: postgis/postgis:16-3.4-alpine
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=goodpath
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  db_data:
+  originals:
+  derivatives:
+  pmtiles:
+  backups:
+  ingest:

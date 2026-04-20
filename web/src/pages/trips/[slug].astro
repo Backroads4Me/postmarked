@@ -1,0 +1,65 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import MapIsland from '../../components/MapIsland.jsx';
+import TimelineIsland from '../../components/TimelineIsland.jsx';
+import LightboxIsland from '../../components/LightboxIsland.jsx';
+import SearchIsland from '../../components/SearchIsland.jsx';
+import CommentsIsland from '../../components/CommentsIsland.jsx';
+
+const { slug } = Astro.params;
+
+let trip = null;
+try {
+  const res = await fetch(`http://api:8000/trips/${slug}`);
+  if (res.ok) {
+    trip = await res.json();
+  } else if (res.status === 404) {
+    return Astro.redirect('/404');
+  }
+} catch (e) {
+  console.error(e);
+}
+
+if (!trip) {
+  return Astro.redirect('/404');
+}
+---
+
+<Layout title={`${trip.title} — Goodpath`}>
+  <link rel="stylesheet" href="/styles.css">
+  
+  <div class="fixed inset-0 w-full h-full flex flex-col bg-bg text-fg">
+    
+    <!-- Top Nav Overlay -->
+    <div class="absolute top-0 left-0 right-0 z-10 flex justify-between p-4 pointer-events-none">
+      <div class="flex items-center gap-4 pointer-events-auto">
+        <a href="/" class="btn ghost btn-sm hidden md:inline-flex">← Home</a>
+        <div class="bg-surface-1/90 backdrop-blur border border-line rounded px-4 py-2 flex items-center shadow-lg">
+          <span class="font-bold mr-2">{trip.title}</span>
+          <span class="text-xs font-mono tracking-widest text-dim ml-2 border-l border-line pl-2">{trip.status}</span>
+        </div>
+      </div>
+      <div class="pointer-events-auto">
+        <button class="btn btn-sm">Follow Trip</button>
+      </div>
+    </div>
+    
+    <!-- Map Container -->
+    <div class="flex-1 w-full relative z-0">
+      <MapIsland client:load stops={trip.stops} />
+    </div>
+
+    <!-- Timeline Strip Container -->
+    <div class="h-[200px] w-full z-10 flex-shrink-0 relative">
+      <TimelineIsland client:load stops={trip.stops} />
+    </div>
+    
+    <!-- Dynamic Lightbox Modal -->
+    <LightboxIsland client:load stops={trip.stops} />
+    
+    <!-- Social Modules -->
+    <SearchIsland client:load />
+    <CommentsIsland client:load />
+
+  </div>
+</Layout>

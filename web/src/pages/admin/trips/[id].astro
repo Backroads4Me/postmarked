@@ -1,0 +1,144 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+
+const { id } = Astro.params;
+const cookie = Astro.request.headers.get('cookie');
+
+let trip = null;
+try {
+  // First verify authorization via trips list or detail endpoint
+  const authRes = await fetch('http://api:8000/admin/trips', { headers: cookie ? { cookie } : {} });
+  if (authRes.status === 401 || authRes.status === 403) return Astro.redirect('/auth/login');
+
+  // Then fetch trip via standard public/private mixed auth endpoint
+  const res = await fetch(`http://api:8000/trips/${trip?.slug || id}`); // Hack to use ID directly
+  // Actually trips/[slug] takes a slug. Let's lookup all admin trips to find by ID
+  const allTrips = await authRes.json();
+  trip = allTrips.find(t => t.id === id);
+  
+  if (trip) {
+    // Fetch detail using the slug we just resolved
+    const dRes = await fetch(`http://api:8000/trips/${trip.slug}`, { headers: cookie ? { cookie } : {} });
+    if (dRes.ok) trip = await dRes.json();
+  }
+} catch(e) {}
+
+if (!trip) return Astro.redirect('/admin/trips');
+---
+
+<AdminLayout title={`Edit ${trip.title}`}>
+  <div class="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-12">
+    <div>
+      <div class="mb-8">
+        <a href="/admin/trips" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-4 inline-block">← Back</a>
+        <h1 class="display text-4xl">Edit Trip</h1>
+      </div>
+      
+      <form id="trip-update-form" class="flex flex-col gap-6">
+        <input type="hidden" name="id" value={trip.id} />
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold">Title</label>
+          <input type="text" name="title" value={trip.title} required class="bg-surface-2 border border-line p-3 focus:border-ember">
+        </div>
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold">Slug</label>
+          <input type="text" name="slug" value={trip.slug} required class="bg-surface-2 border border-line p-3">
+        </div>
+        
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold">Summary</label>
+          <textarea name="summary" rows="3" class="bg-surface-2 border border-line p-3">{trip.summary}</textarea>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold">Status</label>
+            <select name="status" class="bg-surface-2 border border-line p-3">
+              <option value="draft" selected={trip.status === "draft"}>Draft</option>
+              <option value="active" selected={trip.status === "active"}>Active</option>
+              <option value="published" selected={trip.status === "published"}>Published</option>
+              <option value="archived" selected={trip.status === "archived"}>Archived</option>
+            </select>
+          </div>
+          
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold">Visibility</label>
+            <select name="visibility" class="bg-surface-2 border border-line p-3">
+              <option value="public" selected={trip.visibility === "public"}>Public</option>
+              <option value="private" selected={trip.visibility === "private"}>Private</option>
+            </select>
+          </div>
+        </div>
+        
+        <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
+        <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2">Saved!</div>
+        
+        <button type="submit" class="btn mt-4">Save Trip</button>
+      </form>
+    </div>
+    
+    <div>
+      <div class="mb-8 flex justify-between items-center">
+        <h2 class="display text-3xl">Stops</h2>
+      </div>
+      
+      <div class="bg-surface-2 border border-line rounded">
+        {trip.stops && trip.stops.length > 0 ? (
+          <div class="divide-y divide-line">
+            {trip.stops.map(stop => (
+              <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
+                <div>
+                  <div class="font-bold text-lg">{stop.title}</div>
+                  <div class="text-xs text-dim font-mono tracking-widest">{stop.stop_type} · {new Date(stop.start_date).toLocaleDateString()}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div class="p-8 text-center text-muted">
+            No stops recorded.
+          </div>
+        )}
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.getElementById('trip-update-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const form = e.target;
+      const errorDiv = document.getElementById('form-error');
+      const successDiv = document.getElementById('form-success');
+      
+      const formData = new FormData(form);
+      const id = formData.get('id');
+      formData.delete('id');
+      const data = Object.fromEntries(formData.entries());
+      
+      errorDiv.classList.add('hidden');
+      successDiv.classList.add('hidden');
+      
+      try {
+        const res = await fetch(`/api/admin/trips/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data)
+        });
+        
+        if (res.ok) {
+          successDiv.classList.remove('hidden');
+          setTimeout(() => successDiv.classList.add('hidden'), 3000);
+        } else {
+          const err = await res.json();
+          errorDiv.textContent = err.detail || 'Validation error';
+          errorDiv.classList.remove('hidden');
+        }
+      } catch (err) {
+        errorDiv.textContent = 'Network error saving trip';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  </script>
+</AdminLayout>

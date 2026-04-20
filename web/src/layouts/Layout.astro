@@ -1,0 +1,37 @@
+---
+const { title = "Goodpath" } = Astro.props;
+---
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width" />
+		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+		<link rel="icon" href="/favicon.ico" />
+		<meta name="generator" content={Astro.generator} />
+		<link rel="manifest" href="/manifest.json" />
+		<meta name="theme-color" content="#111111" />
+		<title>{title}</title>
+	</head>
+	<body>
+		<slot />
+		<script>
+			if ('serviceWorker' in navigator) {
+				window.addEventListener('load', () => {
+					navigator.serviceWorker.register('/sw.js').catch(err => {
+						console.error("SW Registration failed: ", err);
+					});
+				});
+			}
+		</script>
+	</body>
+</html>
+
+<style>
+	html,
+	body {
+		margin: 0;
+		width: 100%;
+		height: 100%;
+	}
+</style>

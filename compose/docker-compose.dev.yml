@@ -1,0 +1,32 @@
+services:
+  web:
+    # Use volume mount for hot reloading
+    volumes:
+      - ../web:/app
+      - /app/node_modules
+    command: npm run dev -- --host 0.0.0.0
+    ports:
+      - "4321:4321"
+
+  api:
+    volumes:
+      - ../api:/app
+    command: fastapi dev app/main.py --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+
+  worker:
+    volumes:
+      - ../api:/app
+    # Use watchmedo or similar for autoreload on worker if needed, or just default workers
+    command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery -A app.tasks worker -l info
+
+  beat:
+    volumes:
+      - ../api:/app
+
+  # Caddy proxy doesn't need to be run in dev mode if we directly access 4321 or 8000,
+  # but keeping it is useful for exact host matching
+  proxy:
+    ports:
+      - "8080:80"
