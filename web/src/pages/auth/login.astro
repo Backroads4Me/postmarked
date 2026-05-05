@@ -34,6 +34,8 @@ import Layout from '../../layouts/Layout.astro';
 </Layout>
 
 <script is:inline>
+  const nextPath = new URLSearchParams(window.location.search).get('next') || '/';
+
   async function login(form) {
     const btn = document.getElementById('submit-btn');
     const banner = document.getElementById('error-banner');
@@ -54,7 +56,7 @@ import Layout from '../../layouts/Layout.astro';
       });
 
       if (res.ok) {
-        window.location.href = '/';
+        window.location.href = nextPath.startsWith('/') ? nextPath : '/';
       } else {
         const data = await res.json().catch(() => ({}));
         showError(data.detail || 'Invalid email or password.');

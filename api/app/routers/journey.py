@@ -100,6 +100,8 @@ def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]]
     return PublicStopSummary(
         id=stop.id,
         trip_id=stop.trip_id,
+        trip_slug=stop.trip.slug if stop.trip else None,
+        trip_title=stop.trip.title if stop.trip else None,
         slug=stop.slug,
         title=stop.title,
         summary=stop.summary,
@@ -139,7 +141,7 @@ def _journey_out(journey: Optional[Journey]) -> Optional[PublicJourneySummary]:
 def _trip_summary_out(trip: Optional[Trip], stops: list[Stop]) -> Optional[PublicTripSegmentSummary]:
     if not trip:
         return None
-    completed_statuses = {StopStatus.PUBLISHED, StopStatus.ARCHIVED}
+    completed_statuses = {StopStatus.ACTIVE, StopStatus.PUBLISHED, StopStatus.ARCHIVED}
     return PublicTripSegmentSummary(
         id=trip.id,
         slug=trip.slug,
@@ -221,7 +223,12 @@ async def get_home(
     if not journey:
         return HomeOut()
 
-    stops_query = select(Stop).where(Stop.journey_id == journey.id).options(selectinload(Stop.cover_media)).order_by(Stop.start_date.asc())
+    stops_query = (
+        select(Stop)
+        .where(Stop.journey_id == journey.id)
+        .options(selectinload(Stop.cover_media), selectinload(Stop.trip))
+        .order_by(Stop.start_date.asc())
+    )
     stops_query = _public_only(stops_query, Stop, user)
     stops = list((await session.execute(stops_query)).scalars().all())
     coords = await _coordinates_for_stops(session, stops)
@@ -429,7 +436,14 @@ async def get_trip_segment(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip segment not found")
 
-    stops = list(trip.stops)
+    stops = sorted(
+        list(trip.stops),
+        key=lambda stop: (
+            stop.start_date,
+            stop.sort_order if stop.sort_order is not None else 999999,
+            stop.title,
+        ),
+    )
     if not _is_admin(user):
         stops = [stop for stop in stops if stop.visibility == Visibility.PUBLIC]
     coords = await _coordinates_for_stops(session, stops)

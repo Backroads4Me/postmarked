@@ -12,6 +12,8 @@ from app.schemas.media import MediaAssetOut
 class PublicStopSummary(BaseResponse):
     id: uuid.UUID
     trip_id: uuid.UUID
+    trip_slug: Optional[str] = None
+    trip_title: Optional[str] = None
     slug: str
     title: str
     summary: Optional[str] = None
@@ -155,4 +157,3 @@ class TimelineOut(BaseModel):
     limit: int
     offset: int
     has_more: bool = False
-

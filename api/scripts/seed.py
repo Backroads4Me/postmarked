@@ -2,7 +2,7 @@ import asyncio
 from datetime import datetime, timezone, timedelta
 
 from fastapi_users.password import PasswordHelper
-from sqlalchemy import select
+from sqlalchemy import select, update
 
 from app.db import async_session_maker
 from app.models.content import Journey, Post, Stop, Trip
@@ -155,6 +155,27 @@ async def seed():
             start_delta=timedelta(days=-5),
         )
 
+        # Make the demo data deterministic even after manual testing/imports.
+        # Only one stop should be "current", and the active demo trip should
+        # have one active stop followed by future planned stops.
+        await session.execute(update(Stop).values(is_current=False))
+        all_stops = (await session.execute(select(Stop))).scalars().all()
+        trip_by_id = {
+            trip.id: trip
+            for trip in (await session.execute(select(Trip))).scalars().all()
+        }
+        now = datetime.now(timezone.utc)
+        for stop in all_stops:
+            trip = trip_by_id.get(stop.trip_id)
+            if trip and stop.journey_id != trip.journey_id:
+                stop.journey_id = trip.journey_id
+            if stop.status == StopStatus.ACTIVE:
+                stop.status = (
+                    StopStatus.PLANNED
+                    if stop.start_date and stop.start_date > now
+                    else StopStatus.PUBLISHED
+                )
+
         stops = [
             await get_or_create_stop(
                 session,
@@ -219,9 +240,10 @@ async def seed():
         ]
         await session.flush()
 
-        current_stop = next((stop for stop in stops if stop.is_current), None)
+        current_stop = next((stop for stop in stops if stop.slug == "charlestown-state-park"), None)
         if current_stop:
             journey.current_stop_id = current_stop.id
+            current_stop.is_current = True
 
         await get_or_create_post(
             session,

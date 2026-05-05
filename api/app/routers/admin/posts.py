@@ -173,7 +173,14 @@ async def set_current_stop(
         raise HTTPException(status_code=404, detail="Stop not found")
 
     await session.execute(
-        update(Stop).where(Stop.is_current == True).values(is_current=False)
+        update(Stop)
+        .where(Stop.is_current == True)
+        .values(is_current=False)
+    )
+    await session.execute(
+        update(Stop)
+        .where(Stop.status == StopStatus.ACTIVE)
+        .values(status=StopStatus.PUBLISHED)
     )
     stop.is_current = True
     stop.status = StopStatus.ACTIVE

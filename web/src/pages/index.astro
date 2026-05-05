@@ -168,7 +168,7 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
                 title={item.title}
                 body={item.body}
                 date={item.posted_at}
-                tripTitle={item.stop?.title}
+                tripTitle={item.stop?.trip_title}
                 placeName={item.stop?.place_name}
                 media={item.media}
               />
@@ -176,10 +176,10 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
               <StopCard
                 title={item.title}
                 slug={item.slug}
-                tripSlug={activeTrip?.slug}
+                tripSlug={item.trip_slug}
                 summary={item.summary}
                 date={item.start_date}
-                tripTitle={activeTrip?.title}
+                tripTitle={item.trip_title}
                 placeName={item.place_name}
                 stopType={item.stop_type}
               />
