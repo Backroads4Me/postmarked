@@ -10,7 +10,6 @@ self.addEventListener('install', event => {
         '/',
         '/manifest.json',
         '/favicon.svg',
-        '/styles.css'
       ]);
     })
   );

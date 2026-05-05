@@ -5,53 +5,93 @@ import Layout from '../../layouts/Layout.astro';
 <Layout title="Register">
   <div class="frame min-h-screen flex items-center justify-center py-20">
     <div class="w-full max-w-sm bg-surface p-8 rounded-lg border border-line shadow-1">
-      <div class="mb-8 text-center">
-        <h1 class="display text-3xl mb-2">Join Goodpath</h1>
-        <p class="text-sm text-muted">Create a new account</p>
+
+      <!-- Success state: shown after registration -->
+      <div id="success-panel" class="hidden text-center">
+        <div class="text-3xl mb-4">&#10003;</div>
+        <h2 class="display text-2xl mb-2">Request received!</h2>
+        <p class="text-sm text-muted mb-6">Your account is pending approval. The owner will review and activate your access shortly.</p>
+        <a href="/auth/login" class="btn justify-center">Back to Sign In</a>
       </div>
-      
-      <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); register();">
-        <div class="flex flex-col gap-1">
-          <label class="label" for="email">Email address</label>
-          <input type="email" id="email" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+
+      <!-- Registration form -->
+      <div id="form-panel">
+        <div class="mb-8 text-center">
+          <h1 class="display text-3xl mb-2">Join Goodpath</h1>
+          <p class="text-sm text-muted">Create a new account</p>
         </div>
-        
-        <div class="flex flex-col gap-1">
-          <label class="label" for="password">Password</label>
-          <input type="password" id="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+
+        <div id="error-banner" class="hidden mb-4 p-3 rounded border text-sm" style="color: var(--ember); border-color: var(--ember); background: var(--ember-glow);"></div>
+
+        <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); register(this);">
+          <div class="flex flex-col gap-1">
+            <label class="label" for="display_name">Display name</label>
+            <input type="text" id="display_name" name="display_name" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" placeholder="How you'll appear to others" required>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="label" for="email">Email address</label>
+            <input type="email" id="email" name="email" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+          </div>
+
+          <div class="flex flex-col gap-1">
+            <label class="label" for="password">Password</label>
+            <input type="password" id="password" name="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required minlength="8">
+          </div>
+
+          <button type="submit" id="submit-btn" class="btn justify-center mt-4">Create account</button>
+        </form>
+
+        <div class="mt-6 text-center">
+          <a href="/auth/login" class="text-xs text-muted hover:text-ember transition-colors">Already have an account? Sign in</a>
         </div>
-        
-        <button type="submit" class="btn justify-center mt-4">Register</button>
-      </form>
-      
-      <div class="mt-6 text-center">
-        <a href="/auth/login" class="text-xs text-muted hover:text-ember transition-colors">Already have an account? Sign in</a>
       </div>
+
     </div>
   </div>
 </Layout>
 
 <script is:inline>
-  async function register() {
-    const email = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    
+  async function register(form) {
+    const btn = document.getElementById('submit-btn');
+    const banner = document.getElementById('error-banner');
+    banner.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Creating account…';
+
     try {
       const res = await fetch('/api/auth/register', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
+        body: JSON.stringify({
+          email: form.email.value,
+          password: form.password.value,
+          display_name: form.display_name.value.trim() || null,
+        }),
       });
-      
+
       if (res.ok) {
-        alert('Registration successful. Your account is pending approval.');
-        window.location.href = '/auth/login';
+        document.getElementById('form-panel').classList.add('hidden');
+        document.getElementById('success-panel').classList.remove('hidden');
       } else {
-        const error = await res.json();
-        alert('Registration failed: ' + (error.detail || 'Unknown error'));
+        const data = await res.json().catch(() => ({}));
+        const detail = data.detail;
+        let msg = 'Registration failed. Please try again.';
+        if (typeof detail === 'string') msg = detail;
+        else if (Array.isArray(detail)) msg = detail.map(d => d.msg).join(' ');
+        showError(msg);
       }
     } catch (err) {
-      console.error(err);
+      showError('Could not reach the server. Try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Create account';
+    }
+
+    function showError(msg) {
+      banner.textContent = msg;
+      banner.classList.remove('hidden');
     }
   }
 </script>

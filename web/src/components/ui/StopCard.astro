@@ -1,0 +1,50 @@
+---
+/**
+ * StopCard — Compact stop summary for feeds and lists.
+ */
+interface Props {
+  title: string;
+  slug?: string;
+  tripSlug?: string;
+  summary?: string;
+  date?: string;
+  tripTitle?: string;
+  placeName?: string;
+  stopType?: string;
+}
+
+const { title, slug, tripSlug, summary, date, tripTitle, placeName, stopType } = Astro.props;
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+---
+
+<div class="card group cursor-pointer" id={slug ? `stop-${slug}` : undefined}>
+  <div class="flex items-start justify-between gap-4">
+    <div class="flex-1 min-w-0">
+      <div class="flex items-center gap-2 mb-2">
+        <span class="text-lg">📍</span>
+        {stopType && <span class="badge text-[10px] py-0.5">{stopType}</span>}
+        {date && <span class="label">{formatDate(date)}</span>}
+      </div>
+
+      <h3 class="display text-xl group-hover:text-ember-2 transition-colors truncate">
+        {title}
+      </h3>
+
+      {placeName && <p class="coord mt-1">{placeName}</p>}
+      {summary && <p class="text-muted text-sm mt-2 line-clamp-2">{summary}</p>}
+
+      {tripTitle && (
+        <div class="flex items-center gap-2 mt-3">
+          <span class="label">Trip</span>
+          <span class="text-xs text-dim">{tripTitle}</span>
+        </div>
+      )}
+    </div>
+  </div>
+</div>

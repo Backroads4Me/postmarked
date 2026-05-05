@@ -1,17 +1,49 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
+import CurrentStopPickerIsland from '../../components/admin/CurrentStopPickerIsland.jsx';
 ---
 
 <AdminLayout title="Dashboard">
-  <div class="mb-12">
+  <div class="mb-8">
     <h1 class="display text-4xl">Admin Dashboard</h1>
-    <p class="text-muted mt-2">Manage the journal's content and settings.</p>
+    <p class="text-muted mt-2">Where the rig is now, and quick links to publish.</p>
   </div>
-  
-  <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-    <a href="/admin/trips" class="block p-6 border border-line rounded bg-surface-2 hover:border-ember transition-colors">
-      <h2 class="display text-2xl mb-2">Manage Trips</h2>
-      <p class="text-sm text-dim">Create new journeys and attach stops to them.</p>
+
+  {/* Hero: current location picker — the most-used admin action from the road */}
+  <section class="mb-10" id="current-stop-hero">
+    <CurrentStopPickerIsland client:load />
+  </section>
+
+  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <a href="/admin/posts/new" class="card-flat hover:border-ember transition-colors block">
+      <div class="label mb-1">Quick Post</div>
+      <h2 class="display text-xl">New Update</h2>
+      <p class="text-sm text-dim mt-2">Write a short note + attach a photo from the road.</p>
+    </a>
+    <a href="/admin/stops" class="card-flat hover:border-ember transition-colors block">
+      <div class="label mb-1">Stops</div>
+      <h2 class="display text-xl">Manage Stops</h2>
+      <p class="text-sm text-dim mt-2">Create stops, mark current, edit details.</p>
+    </a>
+    <a href="/admin/trips" class="card-flat hover:border-ember transition-colors block">
+      <div class="label mb-1">Trips</div>
+      <h2 class="display text-xl">Manage Trips</h2>
+      <p class="text-sm text-dim mt-2">Create trip segments and group stops.</p>
+    </a>
+    <a href="/admin/imports/rv-trip-wizard" class="card-flat hover:border-ember transition-colors block">
+      <div class="label mb-1">Import</div>
+      <h2 class="display text-xl">RV Trip Wizard</h2>
+      <p class="text-sm text-dim mt-2">Upload an Excel export to plan upcoming stops.</p>
+    </a>
+    <a href="/admin/posts" class="card-flat hover:border-ember transition-colors block">
+      <div class="label mb-1">Content</div>
+      <h2 class="display text-xl">All Posts</h2>
+      <p class="text-sm text-dim mt-2">Edit or delete past updates.</p>
+    </a>
+    <a href="/admin/media" class="card-flat hover:border-ember transition-colors block">
+      <div class="label mb-1">Library</div>
+      <h2 class="display text-xl">Media</h2>
+      <p class="text-sm text-dim mt-2">Upload, assign, and review photos.</p>
     </a>
   </div>
 </AdminLayout>

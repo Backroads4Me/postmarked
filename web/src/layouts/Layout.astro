@@ -1,37 +1,53 @@
 ---
-const { title = "Goodpath" } = Astro.props;
+import '../styles/global.css';
+import NavBar from '../components/ui/NavBar.astro';
+
+interface Props {
+  title?: string;
+  description?: string;
+  hideNav?: boolean;
+}
+
+const {
+  title = "Goodpath — RV Travel Journal",
+  description = "Follow our full-time RV adventure across America. See where we are, where we've been, and where we're headed.",
+  hideNav = false,
+} = Astro.props;
 ---
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="generator" content={Astro.generator} />
-		<link rel="manifest" href="/manifest.json" />
-		<meta name="theme-color" content="#111111" />
-		<title>{title}</title>
-	</head>
-	<body>
-		<slot />
-		<script>
-			if ('serviceWorker' in navigator) {
-				window.addEventListener('load', () => {
-					navigator.serviceWorker.register('/sw.js').catch(err => {
-						console.error("SW Registration failed: ", err);
-					});
-				});
-			}
-		</script>
-	</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" href="/favicon.ico" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="description" content={description} />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#0a0d11" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <title>{title}</title>
+  </head>
+  <body>
+    {!hideNav && <NavBar />}
+    <slot />
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(err => {
+            console.error("SW Registration failed: ", err);
+          });
+        });
+      }
+    </script>
+  </body>
 </html>
 
 <style>
-	html,
-	body {
-		margin: 0;
-		width: 100%;
-		height: 100%;
-	}
+  html, body {
+    margin: 0;
+    width: 100%;
+    min-height: 100%;
+  }
 </style>

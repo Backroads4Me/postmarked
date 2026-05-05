@@ -1,7 +1,7 @@
 import uuid
 from typing import Optional, List
 from datetime import datetime
-from pydantic import Field
+from pydantic import BaseModel
 
 from app.schemas.common import BaseResponse, GeoJsonPolygon, GeoJsonLineString
 from app.schemas.media import MediaAssetOut
@@ -36,7 +36,7 @@ class TripCreate(BaseModel):
     summary: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    status: TripStatus = TripStatus.DRAFT
+    status: TripStatus = TripStatus.PLANNED
     visibility: Visibility = Visibility.PUBLIC
 
 class TripUpdate(BaseModel):

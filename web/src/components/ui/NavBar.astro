@@ -1,0 +1,51 @@
+---
+/**
+ * NavBar — Responsive navigation.
+ * Desktop: top horizontal bar. Mobile: bottom tab bar.
+ */
+
+const { pathname } = Astro.url;
+
+const navItems = [
+  { href: '/', label: 'Home', icon: '🏠' },
+  { href: '/timeline', label: 'Timeline', icon: '📅' },
+  { href: '/trips', label: 'Trips', icon: '🗺️' },
+];
+
+function isActive(href: string) {
+  if (href === '/') return pathname === '/';
+  return pathname.startsWith(href);
+}
+---
+
+<!-- Desktop Top Nav -->
+<nav class="top-nav" id="desktop-nav">
+  <a href="/" class="flex items-center gap-3">
+    <span class="text-ember font-bold text-lg font-display">Goodpath</span>
+  </a>
+  <div class="flex items-center gap-1">
+    {navItems.map(item => (
+      <a
+        href={item.href}
+        class:list={['nav-link', { active: isActive(item.href) }]}
+        style="flex-direction: row; gap: 6px; padding: 8px 16px; font-size: 12px;"
+      >
+        <span>{item.icon}</span>
+        <span>{item.label}</span>
+      </a>
+    ))}
+  </div>
+</nav>
+
+<!-- Mobile Bottom Nav -->
+<nav class="bottom-nav" id="mobile-nav">
+  {navItems.map(item => (
+    <a
+      href={item.href}
+      class:list={['nav-link', { active: isActive(item.href) }]}
+    >
+      <span class="text-lg">{item.icon}</span>
+      <span>{item.label}</span>
+    </a>
+  ))}
+</nav>

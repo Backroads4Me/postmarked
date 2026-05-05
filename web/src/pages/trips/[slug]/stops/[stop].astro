@@ -1,0 +1,188 @@
+---
+import Layout from '../../../../layouts/Layout.astro';
+import { apiUrl } from '../../../../lib/api.js';
+import CommentsIsland from '../../../../components/CommentsIsland.jsx';
+
+const { slug, stop } = Astro.params;
+
+let detail = null;
+let loadError = null;
+try {
+  const res = await fetch(apiUrl(`/api/trips/${slug}/stops/${stop}`));
+  if (res.ok) {
+    detail = await res.json();
+  } else if (res.status === 404) {
+    return Astro.redirect('/404');
+  } else {
+    loadError = `API ${res.status}`;
+  }
+} catch (e) {
+  loadError = e?.message || 'Failed to connect';
+}
+
+if (!detail) {
+  return Astro.redirect('/404');
+}
+
+const allMedia = [
+  ...(detail.media || []),
+  ...((detail.posts || []).flatMap(p => p.media || [])),
+];
+// dedupe by id
+const seen = new Set();
+const gallery = allMedia.filter(m => {
+  if (seen.has(m.id)) return false;
+  seen.add(m.id);
+  return true;
+});
+
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtRange(start, end) {
+  if (!start) return '';
+  if (!end) return fmtDate(start);
+  const s = new Date(start);
+  const e = new Date(end);
+  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
+    return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${e.getFullYear()}`;
+  }
+  return `${fmtDate(start)} – ${fmtDate(end)}`;
+}
+---
+
+<Layout title={`${detail.title} — ${detail.trip_title}`}>
+  <main class="frame py-8 md:py-12">
+    {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
+
+    {/* ── Breadcrumb ───────────────────────────────────────── */}
+    <nav class="label mb-3">
+      <a href="/trips">Trips</a>
+      <span style="margin: 0 6px;">/</span>
+      <a href={`/trips/${detail.trip_slug}`}>{detail.trip_title}</a>
+    </nav>
+
+    {/* ── Hero ─────────────────────────────────────────────── */}
+    <section class="mb-8">
+      <div class="flex items-center gap-2 mb-3 flex-wrap">
+        {detail.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
+        {detail.stop_type && <span class="badge text-[10px]">{detail.stop_type}</span>}
+        {detail.start_date && <span class="label">{fmtRange(detail.start_date, detail.end_date)}</span>}
+        {detail.nights && <span class="label">{detail.nights} night{detail.nights !== 1 ? 's' : ''}</span>}
+      </div>
+      <h1 class="display text-3xl md:text-5xl">{detail.title}</h1>
+      {detail.place_name && <p class="coord mt-2">{detail.place_name}</p>}
+      {detail.summary && (
+        <p class="lede mt-4 text-base" style="font-family: var(--sans);">{detail.summary}</p>
+      )}
+    </section>
+
+    {/* ── Gallery ──────────────────────────────────────────── */}
+    {gallery.length > 0 && (
+      <section class="mb-10">
+        <div
+          class="grid gap-2"
+          style={`grid-template-columns: repeat(${gallery.length === 1 ? 1 : gallery.length === 2 ? 2 : 3}, 1fr);`}
+        >
+          {gallery.map(m => (
+            <a
+              href={`/media/${m.id}/webp`}
+              class="block aspect-square rounded-md overflow-hidden border border-line-soft"
+              style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
+            >
+              <img
+                src={`/media/${m.id}/webp`}
+                alt={m.alt_text || m.caption || ''}
+                loading="lazy"
+                decoding="async"
+                width={m.width || undefined}
+                height={m.height || undefined}
+                class="w-full h-full object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* ── Body ─────────────────────────────────────────────── */}
+    {detail.body && (
+      <section class="mb-10">
+        <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.7;">{detail.body}</p>
+      </section>
+    )}
+
+    {detail.public_note && (
+      <section class="mb-10">
+        <div class="card-flat">
+          <div class="label mb-2">Note from the road</div>
+          <p style="font-family: var(--sans); white-space: pre-wrap;">"{detail.public_note}"</p>
+        </div>
+      </section>
+    )}
+
+    {/* ── Posts attached to this stop ─────────────────────── */}
+    {detail.posts && detail.posts.length > 0 && (
+      <section class="mb-10">
+        <h2 class="display text-2xl mb-3">Updates from here</h2>
+        <div class="grid gap-3">
+          {detail.posts.map(p => (
+            <article class="card-flat">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-base font-medium" style="color: var(--paper);">{p.title}</h3>
+                <span class="label">{fmtDate(p.posted_at)}</span>
+              </div>
+              {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
+            </article>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* ── Coordinates ─────────────────────────────────────── */}
+    {detail.latitude != null && detail.longitude != null && (
+      <section class="mb-10">
+        <div class="card-flat">
+          <div class="label mb-1">Coordinates</div>
+          <p class="coord">{detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}</p>
+          <a
+            href={`https://www.google.com/maps?q=${detail.latitude},${detail.longitude}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="text-xs"
+            style="color: var(--ember); text-decoration: none;"
+          >
+            Open in Google Maps ↗
+          </a>
+        </div>
+      </section>
+    )}
+
+    {/* ── Comments ────────────────────────────────────────── */}
+    <section class="mb-10">
+      <CommentsIsland client:load targetKind="stop" targetId={detail.id} />
+    </section>
+
+    {/* ── Prev / Next ─────────────────────────────────────── */}
+    <nav class="grid grid-cols-2 gap-3 mt-12 pt-6 border-t border-line-soft">
+      <div>
+        {detail.prev && (
+          <a href={`/trips/${detail.trip_slug}/stops/${detail.prev.slug}`} class="card-flat block">
+            <div class="label mb-1">← Previous</div>
+            <div style="color: var(--paper);">{detail.prev.title}</div>
+          </a>
+        )}
+      </div>
+      <div style="text-align: right;">
+        {detail.next && (
+          <a href={`/trips/${detail.trip_slug}/stops/${detail.next.slug}`} class="card-flat block">
+            <div class="label mb-1">Next →</div>
+            <div style="color: var(--paper);">{detail.next.title}</div>
+          </a>
+        )}
+      </div>
+    </nav>
+  </main>
+</Layout>

@@ -1,5 +1,6 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
 
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
@@ -7,18 +8,15 @@ const cookie = Astro.request.headers.get('cookie');
 let trip = null;
 try {
   // First verify authorization via trips list or detail endpoint
-  const authRes = await fetch('http://api:8000/admin/trips', { headers: cookie ? { cookie } : {} });
+  const authRes = await fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} });
   if (authRes.status === 401 || authRes.status === 403) return Astro.redirect('/auth/login');
 
-  // Then fetch trip via standard public/private mixed auth endpoint
-  const res = await fetch(`http://api:8000/trips/${trip?.slug || id}`); // Hack to use ID directly
-  // Actually trips/[slug] takes a slug. Let's lookup all admin trips to find by ID
+  // Lookup all admin trips to find by ID, then fetch detail through the regular reader endpoint.
   const allTrips = await authRes.json();
   trip = allTrips.find(t => t.id === id);
   
   if (trip) {
-    // Fetch detail using the slug we just resolved
-    const dRes = await fetch(`http://api:8000/trips/${trip.slug}`, { headers: cookie ? { cookie } : {} });
+    const dRes = await fetch(apiUrl(`/api/trips/${trip.slug}`), { headers: cookie ? { cookie } : {} });
     if (dRes.ok) trip = await dRes.json();
   }
 } catch(e) {}
@@ -56,8 +54,9 @@ if (!trip) return Astro.redirect('/admin/trips');
           <div class="flex flex-col gap-2">
             <label class="text-sm font-bold">Status</label>
             <select name="status" class="bg-surface-2 border border-line p-3">
-              <option value="draft" selected={trip.status === "draft"}>Draft</option>
+              <option value="planned" selected={trip.status === "planned"}>Planned</option>
               <option value="active" selected={trip.status === "active"}>Active</option>
+              <option value="completed" selected={trip.status === "completed"}>Completed</option>
               <option value="published" selected={trip.status === "published"}>Published</option>
               <option value="archived" selected={trip.status === "archived"}>Archived</option>
             </select>

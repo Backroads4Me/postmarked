@@ -1,46 +1,51 @@
-# Astro Starter Kit: Basics
+# Goodpath Web
 
-```sh
-npm create astro@latest -- --template basics
+Astro frontend for Goodpath. The app is server-rendered with React islands for interactive pieces such as maps, comments, quick posting, imports, and admin controls.
+
+## Stack
+
+- Astro 6
+- React 19 islands
+- Tailwind 4
+- MapLibre GL JS
+- PMTiles vector tiles through Caddy
+
+## Development
+
+From the repo root, Docker is the preferred path:
+
+```bash
+docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml up --build
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+The web dev server is available at:
 
-## 🚀 Project Structure
+- Direct Astro dev server: http://localhost:4321
+- Caddy dev proxy: http://localhost:8080
 
-Inside of your Astro project, you'll see the following folders and files:
+For direct frontend work:
 
-```text
-/
-├── public/
-│   └── favicon.svg
-├── src
-│   ├── assets
-│   │   └── astro.svg
-│   ├── components
-│   │   └── Welcome.astro
-│   ├── layouts
-│   │   └── Layout.astro
-│   └── pages
-│       └── index.astro
-└── package.json
+```bash
+cd web
+npm install
+API_BASE_URL=http://localhost:8000 npm run dev
 ```
 
-To learn more about the folder structure of an Astro project, refer to [our guide on project structure](https://docs.astro.build/en/basics/project-structure/).
+## API Calls
 
-## 🧞 Commands
+Use `src/lib/api.js`:
 
-All commands are run from the root of the project, from a terminal:
+- `apiUrl(path)` for Astro server-side fetches. In Docker it resolves to `http://api:8000`.
+- `clientApiUrl(path)` for browser-side fetches. It always returns root-relative `/api/...` paths that work through Caddy.
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+Browser code should never call `http://api:8000` directly.
 
-## 👀 Want to learn more?
+## Useful Commands
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+```bash
+npm run dev
+npm run build
+npm run preview
+```
+
+`npm run build` is the main frontend verification command used before local testing.

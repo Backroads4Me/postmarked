@@ -1,13 +1,17 @@
-FROM node:22-alpine AS runtime
+FROM node:22-alpine
+
+RUN addgroup -S appuser && adduser -S appuser -G appuser
 
 WORKDIR /app
 
-# For dev, we just mount the code. For prod this would build and serve.
-# Since Phase 0 is foundation, we'll install deps and start dev server if command is not overridden.
 COPY package.json package-lock.json ./
-RUN npm install
+RUN npm ci && npm cache clean --force
 
 COPY . .
+RUN npm run build
+
+RUN chown -R appuser:appuser /app
+USER appuser
 
 EXPOSE 4321
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["node", "./dist/server/entry.mjs"]

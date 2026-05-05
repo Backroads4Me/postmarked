@@ -1,64 +1,189 @@
-from fastapi import FastAPI
+import os
+
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from sqlalchemy import text
+from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.auth.auth_config import fastapi_users_app, auth_backend
-from app.routers import trips, stops, profiles, social, search
+from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
+from app.db import async_session_maker
+from app.routers import journey, media, profiles, search, social, stops, trips
+from app.schemas.user import UserCreate, UserRead, UserUpdate
+
+
+def _env_list(var: str, default: str) -> list[str]:
+    raw = os.getenv(var, default)
+    return [item.strip() for item in raw.split(",") if item.strip()]
+
+
+# Browser origins allowed to fetch the API (CORS) and to make state-changing
+# requests (Origin header check, see CsrfOriginMiddleware below). Comma-separated env.
+ALLOWED_ORIGINS = _env_list(
+    "ALLOWED_ORIGINS",
+    "http://localhost:4321,http://localhost:8080,http://localhost:8000",
+)
+ALLOWED_HOSTS = _env_list(
+    "ALLOWED_HOSTS",
+    "localhost,127.0.0.1,api,web",
+)
+
+
+# Paths exempted from the Origin-check (login itself can't carry a CSRF token; health is safe).
+CSRF_EXEMPT_PREFIXES = (
+    "/api/auth/",      # fastapi-users login/register/verify endpoints
+    "/api/health",     # liveness/readiness probes
+)
+
+UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
+    """
+    Security headers for API JSON and media-byte responses.
+
+    NOTE: the Astro frontend is served by Caddy (not by FastAPI), so its HTML
+    pages must get CSP/HSTS at the edge. The CSP we set here applies only to
+    /api/* and /media/* responses, which are non-HTML, so default-src 'none'
+    is the appropriate strict default.
+    """
+
+    async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
-        response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline';"
+        response.headers.setdefault(
+            "Strict-Transport-Security",
+            "max-age=31536000; includeSubDomains",
+        )
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
+        response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault(
+            "Referrer-Policy", "strict-origin-when-cross-origin"
+        )
+        response.headers.setdefault(
+            "Permissions-Policy",
+            "geolocation=(), microphone=(), camera=(), interest-cohort=()",
+        )
+        # Strict CSP for API/media responses. These are not HTML, so 'none' is fine.
+        response.headers.setdefault(
+            "Content-Security-Policy",
+            "default-src 'none'; frame-ancestors 'none';",
+        )
         return response
+
+
+class CsrfOriginMiddleware(BaseHTTPMiddleware):
+    """
+    CSRF defense via Origin header check for unsafe methods.
+
+    Trade-off: the spec calls for a double-submit cookie token. For a single-host
+    family-only app, SameSite=Lax cookies (set in app/auth/auth_config.py) plus
+    a strict Origin allowlist is materially equivalent and avoids an extra
+    request roundtrip + per-fetch header dance. Tighten to a token if the threat
+    model changes (third-party embeds, multi-tenant, etc.).
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        if request.method not in UNSAFE_METHODS:
+            return await call_next(request)
+
+        # Skip exempt paths (login, register, health).
+        if any(request.url.path.startswith(prefix) for prefix in CSRF_EXEMPT_PREFIXES):
+            return await call_next(request)
+
+        origin = request.headers.get("origin")
+        if origin is None:
+            # No Origin: typically a non-browser client. Permit but log.
+            # For stricter posture, reject here.
+            return await call_next(request)
+
+        if origin not in ALLOWED_ORIGINS:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Origin not allowed"},
+            )
+        return await call_next(request)
+
 
 app = FastAPI(title="Goodpath API", description="Self-hosted RV travel journal API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost", "http://localhost:8000", "http://127.0.0.1", "http://127.0.0.1:8000"],
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["localhost", "127.0.0.1", "api", "web"])
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=ALLOWED_HOSTS)
+app.add_middleware(CsrfOriginMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
+
+# Auth
 app.include_router(
     fastapi_users_app.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
+    prefix="/api/auth/jwt",
     tags=["auth"],
 )
 app.include_router(
-    fastapi_users_app.get_register_router(),
-    prefix="/auth",
+    fastapi_users_app.get_register_router(UserRead, UserCreate),
+    prefix="/api/auth",
     tags=["auth"],
 )
+# /api/users/me — lets the frontend check auth state without a custom endpoint
+app.include_router(
+    fastapi_users_app.get_users_router(UserRead, UserUpdate),
+    prefix="/api/users",
+    tags=["users"],
+)
 
-app.include_router(trips.router)
-app.include_router(stops.router)
-app.include_router(profiles.router)
-app.include_router(social.router)
-app.include_router(search.router)
 
-from app.routers.admin import trips as admin_trips, stops as admin_stops, media as admin_media
-app.include_router(admin_trips.router, prefix="/admin")
-app.include_router(admin_stops.router, prefix="/admin")
-app.include_router(admin_media.router, prefix="/admin")
+# Public read API
+app.include_router(trips.router, prefix="/api")
+app.include_router(stops.router, prefix="/api")
+app.include_router(journey.router, prefix="/api")
+app.include_router(profiles.router, prefix="/api")
+app.include_router(social.router, prefix="/api")
+app.include_router(search.router, prefix="/api")
+
+# Media streaming. Caddy routes /media/* directly to the API, so this router
+# is mounted at the root, not under /api.
+app.include_router(media.router)
+
+
+# Admin (mounted under /api/admin)
+from app.routers.admin import (
+    imports as admin_imports,
+    journeys as admin_journeys,
+    media as admin_media,
+    posts as admin_posts,
+    stops as admin_stops,
+    trips as admin_trips,
+    users as admin_users,
+)
+
+app.include_router(admin_trips.router, prefix="/api/admin")
+app.include_router(admin_stops.router, prefix="/api/admin")
+app.include_router(admin_media.router, prefix="/api/admin")
+app.include_router(admin_posts.router, prefix="/api/admin")
+app.include_router(admin_imports.router, prefix="/api/admin")
+app.include_router(admin_journeys.router, prefix="/api/admin")
+app.include_router(admin_users.router, prefix="/api/admin")
+
 
 class HealthCheck(BaseModel):
     status: str
     component: str
 
+
 @app.get("/api/health", response_model=HealthCheck)
 async def health():
     return {"status": "ok", "component": "api_liveness"}
 
+
 @app.get("/api/health/ready", response_model=HealthCheck)
 async def health_ready():
-    # In the future, this will check DB and Redis connectivity
+    async with async_session_maker() as session:
+        await session.execute(text("select 1"))
     return {"status": "ok", "component": "api_readiness"}

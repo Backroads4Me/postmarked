@@ -6,10 +6,13 @@ services:
       - "443:443"
     volumes:
       - ../caddy/Caddyfile:/etc/caddy/Caddyfile
-      - pmtiles:/pmtiles:ro
+      - ../pmtiles:/pmtiles:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       - web
       - api
+    restart: unless-stopped
 
   web:
     build:
@@ -17,7 +20,27 @@ services:
       dockerfile: Dockerfile
     environment:
       - PUBLIC_BASE_URL=http://localhost
-    restart: always
+      - API_BASE_URL=http://api:8000
+      - HOST=0.0.0.0
+      - PORT=4321
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  api-migrate:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
+      - APP_ENV=${APP_ENV:-dev}
+      - PYTHONPATH=/app
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: on-failure
 
   api:
     build:
@@ -26,6 +49,10 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
       - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
+      - APP_ENV=${APP_ENV:-dev}
+      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:8080,http://localhost:4321}
+      - PYTHONPATH=/app
       - ORIGINALS_PATH=/originals
       - DERIVATIVES_PATH=/derivatives
       - INGEST_PATH=/ingest
@@ -34,10 +61,13 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      api-migrate:
+        condition: service_completed_successfully
     volumes:
       - originals:/originals
       - derivatives:/derivatives
       - ingest:/ingest
+    restart: unless-stopped
 
   worker:
     build:
@@ -47,16 +77,20 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
       - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
+      - PYTHONPATH=/app
       - ORIGINALS_PATH=/originals
       - DERIVATIVES_PATH=/derivatives
       - INGEST_PATH=/ingest
     depends_on:
       - redis
       - db
+      - api-migrate
     volumes:
       - originals:/originals
       - derivatives:/derivatives
       - ingest:/ingest
+    restart: unless-stopped
 
   beat:
     build:
@@ -66,9 +100,11 @@ services:
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
       - REDIS_URL=redis://redis:6379/0
+      - PYTHONPATH=/app
     depends_on:
       - redis
       - db
+    restart: unless-stopped
 
   flower:
     image: mher/flower
@@ -76,17 +112,19 @@ services:
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - FLOWER_PORT=5555
+      - FLOWER_BASIC_AUTH=${FLOWER_BASIC_AUTH:-admin:changeme}
     depends_on:
       - redis
     ports:
       - "5555:5555"
+    restart: unless-stopped
 
   db:
     image: postgis/postgis:16-3.4-alpine
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=goodpath
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-goodpath}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
@@ -94,6 +132,7 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine
@@ -102,11 +141,13 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
 
 volumes:
   db_data:
   originals:
   derivatives:
-  pmtiles:
   backups:
   ingest:
+  caddy_data:
+  caddy_config:

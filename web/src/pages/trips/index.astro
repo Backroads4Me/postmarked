@@ -1,38 +1,75 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import EmptyState from '../../components/ui/EmptyState.astro';
+import { apiUrl } from '../../lib/api.js';
 
 let trips = [];
 try {
-  const res = await fetch('http://api:8000/trips');
+  const res = await fetch(apiUrl('/api/trip-segments'));
   if (res.ok) trips = await res.json();
 } catch (e) {
   console.error(e);
 }
+
+function formatDate(dateStr) {
+  if (!dateStr) return 'TBD';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function getStatusBadge(status) {
+  const map = {
+    active: 'badge-active',
+    published: 'badge-published',
+    planned: 'badge-planned',
+    archived: '',
+  };
+  return map[status] || '';
+}
 ---
 
 <Layout title="Trips — Goodpath">
-  <div class="frame py-20">
-    <div class="mb-12">
-      <div class="label">JOURNEYS</div>
-      <h1 class="display text-4xl mt-4">All Trips</h1>
-    </div>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-      {trips.map(trip => (
-        <a href={`/trips/${trip.slug}`} class="block group">
-          <div class="aspect-video bg-surface-2 rounded-lg mb-4 overflow-hidden border border-line">
-            <!-- Placeholder for cover media -->
-          </div>
-          <div>
-            <h2 class="display text-2xl group-hover:text-ember transition-colors">{trip.title}</h2>
-            <p class="text-sm text-muted mt-2">{trip.summary}</p>
-            <div class="flex gap-4 mt-4 text-xs font-mono text-dim tracking-wider uppercase">
-              <span>{trip.status}</span>
-              <span>{trip.start_date ? new Date(trip.start_date).toLocaleDateString() : 'TBD'}</span>
+  <main class="frame py-8 md:py-12">
+    <section class="mb-8">
+      <div class="label mb-2">Journeys</div>
+      <h1 class="display text-3xl md:text-4xl">All Trips</h1>
+      <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+        Each trip is a chapter in our RV story — from coast to coast.
+      </p>
+    </section>
+
+    {trips.length > 0 ? (
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {trips.map(trip => (
+          <a href={`/trips/${trip.slug}`} class="card group" id={`trip-${trip.slug}`}>
+            <div class="aspect-video bg-surface-2 rounded-lg mb-4 overflow-hidden border border-line-soft relative">
+              <div class="absolute inset-0 flex items-center justify-center">
+                <span class="text-4xl opacity-30">🗺️</span>
+              </div>
+              {trip.stops_total > 0 && (
+                <div class="absolute bottom-2 right-2">
+                  <span class="badge text-[9px]">{trip.stops_completed}/{trip.stops_total} stops</span>
+                </div>
+              )}
             </div>
-          </div>
-        </a>
-      ))}
-    </div>
-  </div>
+            <div>
+              <div class="flex items-center gap-2 mb-2">
+                <span class={`badge text-[10px] ${getStatusBadge(trip.status)}`}>{trip.status}</span>
+                <span class="label">{formatDate(trip.start_date)}</span>
+              </div>
+              <h2 class="display text-2xl group-hover:text-ember-2 transition-colors">{trip.title}</h2>
+              {trip.summary && (
+                <p class="text-sm text-muted mt-2 line-clamp-2">{trip.summary}</p>
+              )}
+            </div>
+          </a>
+        ))}
+      </div>
+    ) : (
+      <EmptyState
+        icon="🚐"
+        title="No trips yet"
+        message="Import a trip from RV Trip Wizard or create one manually."
+      />
+    )}
+  </main>
 </Layout>

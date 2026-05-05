@@ -1,11 +1,12 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
 
 let trips = [];
 const cookie = Astro.request.headers.get('cookie');
 
 try {
-  const res = await fetch('http://api:8000/admin/trips', {
+  const res = await fetch(apiUrl('/api/admin/trips'), {
     headers: cookie ? { cookie } : {}
   });
   

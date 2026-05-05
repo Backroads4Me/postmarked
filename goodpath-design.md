@@ -1,6 +1,6 @@
 # Goodpath — Design Spec
 
-**Status:** Approved for implementation planning
+**Status:** Long-term product/design direction; current MVP status lives in `README.md` and `docs/path-to-testing.md`
 **Date:** 2026-04-06
 
 This document is the single, self-contained source of truth for what Goodpath V1 is. It is the only product specification — there is no companion requirements document, and no prior document is binding.
@@ -11,7 +11,7 @@ This document is the single, self-contained source of truth for what Goodpath V1
 
 Goodpath is a self-hosted, media-rich, RV-specific travel journal for one publisher and a small invited audience. It exists to let an RV traveler publish trips, stops, photos, videos, an RV profile, and an about-the-travelers profile, and to let friends and family follow along on a polished mobile-first reader with a synchronized map / timeline / media experience.
 
-The center of the product is `Trip → Stop → Media`, with `Timeline`, `Places`, and `Collections` as alternate browsing layers over the same content.
+The center of the product is a continuous full-time RV `Journey`, with trip segments, stops, posts, media, timeline, places, and collections as browsing layers over the same life log.
 
 V1 explicitly excludes: multi-author publishing, native mobile apps, cloud object storage requirements, real-time chat, social-graph following, AI captioning, facial recognition, third-party API, and collaborative trip editing.
 
@@ -51,7 +51,7 @@ V1 explicitly excludes: multi-author publishing, native mobile apps, cloud objec
 - **Database:** PostgreSQL 16 with PostGIS 3.
 - **Background jobs:** Celery 5 with Redis broker. Celery Beat for scheduled jobs. Flower for admin-only job inspection.
 - **Cache / broker:** Redis 7.
-- **Frontend:** Astro 4 with React islands, Tailwind CSS, shadcn/ui component primitives, Framer Motion, View Transitions API. PWA via `@vite-pwa/astro`.
+- **Frontend:** Astro 6 with React islands, Tailwind CSS, MapLibre, and PMTiles. PWA support is planned, with the current MVP using a minimal service worker.
 - **Map:** MapLibre GL JS in the browser; self-hosted vector tiles via Protomaps PMTiles served by Caddy as static range-request files. Outbound POI links use Google Maps URL schemes (no API key required).
 - **Auth:** `fastapi-users` for sessions, password reset, and email verification; Authlib for Google OAuth. HTTP-only secure cookies on the shared domain.
 - **Reverse proxy:** Caddy 2 with automatic HTTPS.
@@ -308,8 +308,9 @@ class POIType(str, Enum):
 
 ### 3.3 Cardinality rules
 
-- A trip has many stops; a stop belongs to exactly one trip.
-- A media asset belongs to at most one stop in V1. It may be unassigned (intake) or attached to a singleton profile.
+- A journey has many trip segments and stops; the MVP assumes one active journey.
+- A trip segment has many stops; a stop belongs to exactly one trip segment.
+- A media asset may be unassigned, attached to a trip segment, attached to a stop, or attached to a post. Public visibility is still resolved through the parent context.
 - A comment targets a stop or a media asset.
 - A like targets a stop or a media asset.
 - The RV profile and traveler profile are singletons; multi-rig history is out of scope for V1.

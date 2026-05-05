@@ -1,123 +1,183 @@
-import React, { useState, useEffect } from 'react';
-import { useStore } from '@nanostores/react';
-import { urlState } from '../stores/urlState';
+import { useEffect, useState } from "react";
 
-// A dynamic sliding drawer for comments based on the selected stop_id
-export default function CommentsIsland() {
-  const state = useStore(urlState);
-  const [isOpen, setIsOpen] = useState(false);
+/**
+ * Inline comments section for a target (Stop, Post, or Media).
+ *
+ * Mounts directly on the target page (no slide-out drawer). The owner gets
+ * post-as-admin; anonymous viewers see comments but can't post.
+ *
+ * Props:
+ *   targetKind   "stop" | "post" | "media"
+ *   targetId     uuid string
+ */
+export default function CommentsIsland({ targetKind, targetId }) {
   const [comments, setComments] = useState([]);
-  const [newComment, setNewComment] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [draft, setDraft] = useState("");
+  const [posting, setPosting] = useState(false);
+  const [postError, setPostError] = useState(null);
 
-  const stopId = state.stop_id;
-
-  // Auto-close if no stop is selected
-  useEffect(() => {
-    if (!stopId) setIsOpen(false);
-  }, [stopId]);
-
-  useEffect(() => {
-    if (isOpen && stopId) {
-      fetchComments();
-    }
-  }, [isOpen, stopId]);
-
-  const fetchComments = async () => {
-    try {
-      const res = await fetch(`/api/social/comments/stop/${stopId}`);
-      if (res.ok) {
-        setComments(await res.json());
-      }
-    } catch (e) {
-      console.error("Failed to load comments", e);
-    }
-  };
-
-  const handlePost = async () => {
-    if (!newComment.trim()) return;
+  async function load() {
     setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/social/comments', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          entity_type: 'stop',
-          entity_id: stopId,
-          body_markdown: newComment
-        })
-      });
-      if (res.ok) {
-        setNewComment('');
-        await fetchComments();
-      } else {
-        alert("Must be an approved user to comment.");
+      const res = await fetch(
+        `/api/social/comments/${encodeURIComponent(targetKind)}/${encodeURIComponent(targetId)}`,
+        { credentials: "include" }
+      );
+      if (res.status === 404) {
+        setComments([]);
+        return;
       }
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const body = await res.json();
+      setComments(Array.isArray(body) ? body : []);
     } catch (e) {
-      console.error(e);
+      setError(e.message || "Failed to load comments");
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  if (!stopId) return null;
+  useEffect(() => {
+    if (targetId) load();
+  }, [targetId, targetKind]);
+
+  async function submit(ev) {
+    ev.preventDefault();
+    if (!draft.trim()) return;
+    setPosting(true);
+    setPostError(null);
+    try {
+      const res = await fetch("/api/social/comments", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          target_kind: targetKind,
+          target_id: targetId,
+          body: draft.trim(),
+        }),
+      });
+      if (res.status === 401 || res.status === 403) {
+        throw new Error("Sign in (or get approved) to comment.");
+      }
+      if (!res.ok) {
+        const detail = await res.text();
+        throw new Error(`HTTP ${res.status}: ${detail.slice(0, 120)}`);
+      }
+      setDraft("");
+      await load();
+    } catch (e) {
+      setPostError(e.message || "Failed to post");
+    } finally {
+      setPosting(false);
+    }
+  }
+
+  function fmt(d) {
+    try {
+      return new Date(d).toLocaleString("en-US", {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+    } catch {
+      return d || "";
+    }
+  }
 
   return (
-    <>
-      {/* Floating Toggle Button */}
-      <button 
-        onClick={() => setIsOpen(!isOpen)}
-        className="fixed right-6 bottom-48 z-40 bg-surface-1 border border-line shadow-2xl rounded-full p-4 hover:border-ember hover:text-ember transition-colors"
-      >
-        <span className="font-mono text-xs uppercase tracking-widest flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path></svg>
-          Discuss
+    <section
+      style={{ display: "flex", flexDirection: "column", gap: 16 }}
+      aria-label="Comments"
+    >
+      <header style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <h2 className="display" style={{ fontSize: 22, margin: 0 }}>
+          Comments
+        </h2>
+        <span className="label">
+          {comments.length} {comments.length === 1 ? "comment" : "comments"}
         </span>
-      </button>
+      </header>
 
-      {/* Drawer */}
-      <div className={`fixed top-0 right-0 bottom-0 w-full md:w-96 bg-surface-1 border-l border-line shadow-2xl z-50 transform transition-transform duration-300 flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        
-        <div className="flex justify-between items-center p-4 border-b border-line">
-          <h3 className="font-bold text-lg">Sector Discussion</h3>
-          <button onClick={() => setIsOpen(false)} className="text-dim hover:text-fg px-2 py-1 rounded">✕</button>
+      {loading && <div className="label">Loading…</div>}
+      {error && (
+        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--ember)" }}>
+          {error}
         </div>
+      )}
 
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6">
-          {comments.length === 0 ? (
-            <div className="text-center text-muted italic mt-10">No comments yet. Start the conversation!</div>
-          ) : (
-            comments.map(c => (
-              <div key={c.id} className="text-sm">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-6 h-6 bg-surface-2 rounded-full border border-line"></div>
-                  <span className="font-bold text-fg text-xs">{c.user_id.split('-')[0]}</span>
-                  <span className="text-[10px] font-mono tracking-widest text-dim">{new Date(c.created_at).toLocaleDateString()}</span>
-                </div>
-                <div className="pl-8 text-muted">{c.body_markdown}</div>
-              </div>
-            ))
-          )}
+      {!loading && !error && comments.length === 0 && (
+        <div className="card-flat" style={{ padding: 14, color: "var(--muted)", fontSize: 13 }}>
+          No comments yet. Be the first to share.
         </div>
+      )}
 
-        <div className="p-4 border-t border-line bg-surface-2">
-          <textarea 
-            className="w-full bg-surface-1 border border-line p-3 text-sm rounded outline-none focus:border-ember min-h-24 resize-none mb-3"
-            placeholder="Share an insight or observation..."
-            value={newComment}
-            onChange={e => setNewComment(e.target.value)}
-          ></textarea>
-          <div className="flex justify-end">
-            <button 
-              className="btn btn-sm" 
-              onClick={handlePost} 
-              disabled={loading || !newComment.trim()}
+      {comments.length > 0 && (
+        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          {comments.map((c) => (
+            <li
+              key={c.id}
+              className="card-flat"
+              style={{ padding: 12, display: "flex", flexDirection: "column", gap: 6 }}
             >
-              {loading ? 'Posting...' : 'Post Reply'}
-            </button>
-          </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
+                <span style={{ color: "var(--paper)", fontWeight: 500 }}>
+                  {c.author_display_name || "anon"}
+                </span>
+                <span className="label" style={{ whiteSpace: "nowrap" }}>
+                  {fmt(c.created_at)}
+                </span>
+              </div>
+              <p style={{ margin: 0, color: "var(--paper-2)", whiteSpace: "pre-wrap", fontSize: 14 }}>
+                {c.body}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <label htmlFor={`comment-${targetId}`} className="label">
+          Add a comment
+        </label>
+        <textarea
+          id={`comment-${targetId}`}
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={3}
+          maxLength={2000}
+          placeholder="Sign in to leave a comment"
+          style={{
+            width: "100%",
+            padding: "10px 12px",
+            background: "var(--surface-2)",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            color: "var(--paper)",
+            fontSize: 14,
+            fontFamily: "var(--sans)",
+            resize: "vertical",
+          }}
+        />
+        {postError && (
+          <div style={{ fontSize: 12, color: "var(--ember)" }}>{postError}</div>
+        )}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span className="label">{draft.length}/2000</span>
+          <button
+            type="submit"
+            className="btn"
+            disabled={posting || !draft.trim()}
+            style={{ minHeight: 36 }}
+          >
+            {posting ? "Posting…" : "Post comment"}
+          </button>
         </div>
-      </div>
-    </>
+      </form>
+    </section>
   );
 }

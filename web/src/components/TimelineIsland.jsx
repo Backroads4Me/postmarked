@@ -1,81 +1,118 @@
-import React, { useRef, useEffect } from 'react';
-import { useStore } from '@nanostores/react';
-import { urlState } from '../stores/urlState';
+import React, { useRef, useState } from 'react';
 
-export default function TimelineIsland({ stops }) {
-  const state = useStore(urlState);
+export default function TimelineIsland({ stops, activeStopId, onStopClick }) {
   const scrollRef = useRef(null);
 
-  // Group media globally into flat array mapping back to stop
-  // Assuming stops eventually contain a .media array from backend
-  const flatItems = [];
-  stops?.forEach(stop => {
-    // Add Stop header
-    flatItems.push({ type: 'stop', stop });
-    // Add media if present
-    if (stop.media) {
-      stop.media.forEach(m => flatItems.push({ type: 'media', item: m, stop }));
-    }
-  });
-
-  const handleMediaClick = (media_id) => {
-    urlState.set({ ...urlState.get(), media_id });
+  const handleStopClick = (stopId) => {
+    if (onStopClick) onStopClick(stopId);
   };
 
-  const handleStopClick = (stop_id) => {
-    // We could pan the map explicitly here, but URL state will trigger it anyway if we persist stop's coords
-    urlState.set({ ...urlState.get(), stop_id, media_id: null });
-  };
+  function formatDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+      return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+    } catch { return ''; }
+  }
+
+  function getStopTypeIcon(type) {
+    const icons = {
+      campground: '⛺',
+      boondocking: '🏕️',
+      harvest_host: '🍇',
+      service: '🔧',
+      attraction: '🎡',
+      family: '👨‍👩‍👧‍👦',
+      overnight: '🌙',
+      fuel: '⛽',
+      restaurant: '🍽️',
+    };
+    return icons[type] || '📍';
+  }
 
   return (
-    <div className="w-full h-full flex flex-col bg-surface-1 border-t border-line overflow-hidden">
-      <div className="px-4 py-3 text-xs font-mono tracking-widest text-dim border-b border-line flex justify-between">
-        <span>TIMELINE</span>
-        <span>{flatItems.filter(i => i.type === 'media').length} ASSETS</span>
+    <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: 'var(--surface)', borderTop: '1px solid var(--line)' }}>
+      <div className="px-4 py-2 flex justify-between items-center" style={{ borderBottom: '1px solid var(--line-soft)' }}>
+        <span className="eyebrow">Route Timeline</span>
+        <span className="label">{stops?.length || 0} stops</span>
       </div>
-      
-      <div 
+
+      <div
         ref={scrollRef}
-        className="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-4 gap-4"
+        className="flex-1 overflow-x-auto overflow-y-hidden flex items-center px-3 gap-1"
         style={{ scrollBehavior: 'smooth' }}
       >
-        {flatItems.length === 0 && (
-          <div className="text-muted text-sm italic">No stops recorded</div>
+        {(!stops || stops.length === 0) && (
+          <div className="text-sm italic" style={{ color: 'var(--muted)' }}>No stops recorded</div>
         )}
-        
-        {flatItems.map((entry, idx) => {
-          if (entry.type === 'stop') {
-            const isActive = state.stop_id === entry.stop.id;
-            return (
-              <div 
-                key={`stop-${entry.stop.id}`} 
-                onClick={() => handleStopClick(entry.stop.id)}
-                className={`flex-shrink-0 h-32 w-12 flex items-center justify-center border-l-2 cursor-pointer transition-colors ${isActive ? 'border-ember text-ember' : 'border-line text-dim hover:text-fg hover:border-fg'}`}
+
+        {stops?.map((stop, idx) => {
+          const isActive = activeStopId === stop.id;
+          const isCurrent = stop.is_current;
+
+          return (
+            <div key={stop.id} className="flex items-center gap-1 flex-shrink-0">
+              {/* Connector line */}
+              {idx > 0 && (
+                <div className="w-6 h-px flex-shrink-0" style={{ background: 'var(--line)' }} />
+              )}
+
+              {/* Stop node */}
+              <button
+                onClick={() => handleStopClick(stop.id)}
+                className="flex-shrink-0 flex flex-col items-center gap-1 px-2 py-2 rounded-lg transition-all duration-200"
+                style={{
+                  background: isActive ? 'var(--ember-glow)' : 'transparent',
+                  border: isActive ? '1px solid rgba(232,137,63,.3)' : '1px solid transparent',
+                  minWidth: '72px',
+                  cursor: 'pointer',
+                }}
+                title={stop.title}
               >
-                <div className="rotate-180" style={{ writingMode: 'vertical-rl' }}>
-                  <span className="font-mono text-xs uppercase tracking-widest">{new Date(entry.stop.start_date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}</span>
-                </div>
-              </div>
-            )
-          } else {
-            const m = entry.item;
-            const isActive = state.media_id === m.id;
-            return (
-              <div 
-                key={`media-${m.id}`}
-                onClick={() => handleMediaClick(m.id)}
-                className={`flex-shrink-0 h-40 aspect-[4/3] bg-surface-2 rounded overflow-hidden cursor-pointer border-2 transition-colors ${isActive ? 'border-ember' : 'border-transparent hover:border-line'}`}
-              >
-                {m.derivative_paths?.webp || m.derivative_paths?.poster ? (
-                 <img src={m.derivative_paths.webp || m.derivative_paths.poster} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="flex items-center justify-center w-full h-full text-xs text-dim uppercase">
-                    {m.processing_state}
-                  </div>
-                )}
-              </div>
-            )
-          }
+                {/* Dot */}
+                <div
+                  className="rounded-full transition-all duration-200"
+                  style={{
+                    width: isActive || isCurrent ? '14px' : '10px',
+                    height: isActive || isCurrent ? '14px' : '10px',
+                    background: isCurrent ? 'var(--forest)' : isActive ? 'var(--ember)' : 'var(--sky)',
+                    border: isCurrent ? '2px solid white' : isActive ? '2px solid white' : '2px solid rgba(255,255,255,.3)',
+                    boxShadow: isCurrent || isActive ? '0 2px 8px rgba(0,0,0,.3)' : 'none',
+                  }}
+                />
+
+                {/* Icon */}
+                <span className="text-sm">{getStopTypeIcon(stop.stop_type)}</span>
+
+                {/* Label */}
+                <span
+                  className="text-center leading-tight"
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: '9px',
+                    letterSpacing: '0.04em',
+                    color: isActive ? 'var(--ember)' : 'var(--muted)',
+                    maxWidth: '64px',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {stop.title?.length > 12 ? stop.title.slice(0, 12) + '…' : stop.title}
+                </span>
+
+                {/* Date */}
+                <span
+                  style={{
+                    fontFamily: 'var(--mono)',
+                    fontSize: '8px',
+                    color: 'var(--dim)',
+                  }}
+                >
+                  {formatDate(stop.start_date)}
+                </span>
+              </button>
+            </div>
+          );
         })}
       </div>
     </div>

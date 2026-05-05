@@ -1,10 +1,11 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
 
 const cookie = Astro.request.headers.get('cookie');
 // Basic authorization check
 try {
-  const check = await fetch('http://api:8000/admin/trips', { headers: cookie ? { cookie } : {} });
+  const check = await fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} });
   if (check.status === 401 || check.status === 403) return Astro.redirect('/auth/login');
 } catch(e) {}
 ---
@@ -37,11 +38,11 @@ try {
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold">Status</label>
           <select name="status" class="bg-surface-2 border border-line p-3">
-            <option value="draft">Draft</option>
+            <option value="planned">Planned</option>
             <option value="active">Active</option>
+            <option value="completed">Completed</option>
             <option value="published">Published</option>
             <option value="archived">Archived</option>
-            <option value="planned">Planned</option>
           </select>
         </div>
         

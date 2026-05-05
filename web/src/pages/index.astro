@@ -1,81 +1,207 @@
 ---
 import Layout from '../layouts/Layout.astro';
+import CurrentLocationCard from '../components/ui/CurrentLocationCard.astro';
+import StopCard from '../components/ui/StopCard.astro';
+import PostCard from '../components/ui/PostCard.astro';
+import EmptyState from '../components/ui/EmptyState.astro';
+import { apiUrl } from '../lib/api.js';
 
-// Fetch initial data
-let trips = [];
-let profiles = null;
+// Fetch home data
+let homeData = null;
+let error = null;
 try {
-  const tripRes = await fetch('http://api:8000/trips');
-  if (tripRes.ok) trips = await tripRes.json();
-  
-  const profRes = await fetch('http://api:8000/profiles');
-  if (profRes.ok) profiles = await profRes.json();
+  const res = await fetch(apiUrl('/api/home'));
+  if (res.ok) {
+    homeData = await res.json();
+  } else {
+    error = `API returned ${res.status}`;
+  }
 } catch (e) {
-  console.error("API connection error:", e);
+  error = e?.message || 'Failed to connect to API';
 }
 
-const activeTrip = trips.find(t => t.status === "active") || trips[0];
-const title = profiles?.traveler?.title || "Goodpath";
-const intro = profiles?.traveler?.intro || "A small road journal";
+const current = homeData?.current_stop;
+const activeTrip = homeData?.active_trip_segment;
+const updates = [
+  ...(homeData?.recent_posts || []).map((post) => ({ kind: 'post', ...post })),
+  ...(homeData?.recent_stops || []).map((stop) => ({ kind: 'stop', ...stop })),
+].sort((a, b) => {
+  const dateA = new Date(a.posted_at || a.start_date || 0).getTime();
+  const dateB = new Date(b.posted_at || b.start_date || 0).getTime();
+  return dateB - dateA;
+});
+const nextStop = homeData?.next_stop;
+const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
 ---
 
-<Layout title="Home — Goodpath">
-  <main>
-    <!-- HERO -->
-    <section class="hero">
-      <div class="hero-art"></div>
-      <div class="hero-grain"></div>
-      <div class="hero-vignette"></div>
+<Layout title="Goodpath — Where Are We Now?">
+  <main class="frame py-8 md:py-12">
 
-      <div class="frame hero-content">
-        {activeTrip ? (
-          <div class="eyebrow"><span class="dot">●</span>&nbsp; LIVE &nbsp;·&nbsp; {activeTrip.title.toUpperCase()}</div>
-        ) : (
-          <div class="eyebrow"><span class="dot">●</span>&nbsp; OFFLINE</div>
-        )}
-        <h1>{title.split(' ')[0]}<br><em>{title.split(' ').slice(1).join(' ')}</em></h1>
-        <div class="hero-foot">
-          <p class="lede" style="color: var(--paper-2); margin: 0; max-width: 48ch;">
-            {intro}
+    {/* ── Hero: Current Location ─────────────────────────────── */}
+    <section class="mb-10" id="current-location-section">
+      {current ? (
+        <CurrentLocationCard
+          stopTitle={current.title}
+          stopSlug={current.slug}
+          tripTitle={activeTrip?.title || 'Current Trip'}
+          tripSlug={activeTrip?.slug || ''}
+          placeName={current.place_name}
+          arrivalDate={current.start_date}
+          nights={current.nights}
+          note={current.public_note}
+          stopType={current.stop_type}
+        />
+      ) : (
+        <div class="card-hero">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="text-2xl">🚐</span>
+            <span class="eyebrow">Welcome to Goodpath</span>
+          </div>
+          <h2 class="display text-3xl md:text-4xl mb-3">
+            Our RV Adventure
+          </h2>
+          <p class="lede text-sm">
+            {homeData?.journey?.title
+              ? `Following: ${homeData.journey.title}`
+              : "A family travel journal — where we are, where we've been, and where we're headed."}
           </p>
-          <span class="coord">44.6452° N · 110.8597° W</span>
-          <a class="btn" href="/trips">Follow the rig <span>→</span></a>
         </div>
-      </div>
+      )}
     </section>
 
-    <div class="frame">
-      <!-- RECENT UPDATES -->
-      <section class="recent">
-        <div class="recent-head">
-          <div class="label">01 — recent updates</div>
-          <h2>From the<br>last <em>fortnight</em>.</h2>
-          <p>Newest first. Tap any update to read the full stop or browse its media.</p>
+    {/* ── Stats Bar ──────────────────────────────────────────── */}
+    {homeData && (
+      <section class="flex gap-4 md:gap-8 mb-10 overflow-x-auto" id="stats-bar">
+        <div class="card-flat flex flex-col items-center min-w-[100px] text-center">
+          <span class="text-2xl font-bold text-ember">{activeTrip?.stops_completed ?? 0}</span>
+          <span class="label mt-1">Done</span>
         </div>
-        <div class="recent-list">
-          {trips.slice(0, 4).map(trip => (
-            <a class="update" href={`/trips/${trip.slug}`}>
-              <span class="update-date">{new Date(trip.start_date || Date.now()).toISOString().split('T')[0]}</span>
-              <div class="update-thumb">
-                <svg viewBox="0 0 220 138" preserveAspectRatio="xMidYMid slice">
-                  <rect width="220" height="138" fill="#1d2a3a"/>
-                </svg>
+        <div class="card-flat flex flex-col items-center min-w-[100px] text-center">
+          <span class="text-2xl font-bold text-ember">{activeTrip?.stops_total ?? homeData.recent_stops?.length ?? 0}</span>
+          <span class="label mt-1">Stops</span>
+        </div>
+        {activeTrip && (
+          <a href={`/trips/${activeTrip.slug}`} class="card-flat flex flex-col items-center min-w-[100px] text-center hover:border-ember transition-colors">
+            <span class="badge badge-active text-[10px] mb-1">Active</span>
+            <span class="text-xs text-paper-2 truncate max-w-[120px]">{activeTrip.title}</span>
+          </a>
+        )}
+        {nextStop && (
+          <div class="card-flat flex flex-col items-center min-w-[100px] text-center">
+            <span class="badge badge-planned text-[10px] mb-1">Next</span>
+            <span class="text-xs text-paper-2 truncate max-w-[120px]">{nextStop.title}</span>
+          </div>
+        )}
+      </section>
+    )}
+
+    {/* ── Next Stop ──────────────────────────────────────────── */}
+    {nextStop && (
+      <section class="mb-10" id="next-stop-section">
+        <div class="card">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="text-lg">🧭</span>
+            <span class="eyebrow">Next Up</span>
+          </div>
+          <h3 class="display text-xl mb-1">{nextStop.title}</h3>
+          {nextStop.place_name && <p class="coord">{nextStop.place_name}</p>}
+          {nextStop.start_date && (
+            <p class="text-sm text-muted mt-2">
+              Arriving {new Date(nextStop.start_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+            </p>
+          )}
+        </div>
+      </section>
+    )}
+
+    {/* ── Up Next: Planned Itinerary ─────────────────────────── */}
+    {upcomingPlanned.length > 0 && (
+      <section class="mb-10" id="upcoming-planned">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <div class="label mb-1">From the trip plan</div>
+            <h2 class="display text-2xl">Up Next</h2>
+          </div>
+        </div>
+        <div class="grid gap-3">
+          {upcomingPlanned.map(p => (
+            <div class="card-flat">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="badge badge-planned text-[10px]">Planned</span>
+                {p.arrival_date && (
+                  <span class="label">
+                    {new Date(p.arrival_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
+                {p.nights && p.nights > 0 && (
+                  <span class="label">{p.nights} night{p.nights !== 1 ? 's' : ''}</span>
+                )}
               </div>
-              <div>
-                <div class="update-title">{trip.title}</div>
-                <div class="update-meta"><span>TRIP</span><span>{trip.status}</span></div>
-              </div>
-              <svg class="update-arrow" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-            </a>
+              <h3 class="display text-lg">{p.name}</h3>
+              {p.address && <p class="coord text-xs mt-1">{p.address}</p>}
+              {p.miles_from_previous && (
+                <p class="text-xs text-dim mt-1">
+                  ~{Math.round(p.miles_from_previous)} mi from previous
+                </p>
+              )}
+            </div>
           ))}
         </div>
       </section>
+    )}
 
-      <!-- ENTRIES -->
-      <section class="entry">
-        <a href="/trips"><div class="num">→ TRIPS</div><div class="display-m">All journeys</div><div class="desc">{trips.length} trips since 2024.</div></a>
-        <a href="/auth/login"><div class="num">→ ADMIN</div><div class="display-m">Login</div><div class="desc">Sign into your dashboard.</div></a>
-      </section>
-    </div>
+    {/* ── Recent Updates Feed ────────────────────────────────── */}
+    <section id="recent-updates">
+      <div class="flex items-center justify-between mb-6">
+        <div>
+          <div class="label mb-1">Recent</div>
+          <h2 class="display text-2xl">Latest Updates</h2>
+        </div>
+        <a href="/timeline" class="btn btn-sm btn-ghost">View All →</a>
+      </div>
+
+      {updates.length > 0 ? (
+        <div class="grid gap-4">
+          {updates.map(item => (
+            item.kind === 'post' ? (
+              <PostCard
+                title={item.title}
+                body={item.body}
+                date={item.posted_at}
+                tripTitle={item.stop?.title}
+                placeName={item.stop?.place_name}
+                media={item.media}
+              />
+            ) : (
+              <StopCard
+                title={item.title}
+                slug={item.slug}
+                tripSlug={activeTrip?.slug}
+                summary={item.summary}
+                date={item.start_date}
+                tripTitle={activeTrip?.title}
+                placeName={item.place_name}
+                stopType={item.stop_type}
+              />
+            )
+          ))}
+        </div>
+      ) : (
+        <EmptyState
+          icon="📸"
+          title="No updates yet"
+          message="Check back soon for travel stories and photos."
+        />
+      )}
+    </section>
+
+    {/* ── Footer ─────────────────────────────────────────────── */}
+    <footer class="mt-16 mb-8 text-center">
+      <div class="divider"></div>
+      <p class="text-dim text-xs mt-6">
+        <span class="text-ember">Goodpath</span> — A self-hosted RV travel journal
+      </p>
+    </footer>
+
   </main>
 </Layout>

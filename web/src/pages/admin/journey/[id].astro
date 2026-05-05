@@ -1,0 +1,127 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
+
+const { id } = Astro.params;
+
+let journey = null;
+let loadError = null;
+try {
+  const res = await fetch(apiUrl(`/api/admin/journeys/${id}`), {
+    headers: { 'Cookie': Astro.request.headers.get('cookie') || '' },
+  });
+  if (res.ok) journey = await res.json();
+  else loadError = `API ${res.status}`;
+} catch (e) {
+  loadError = e?.message || 'Failed to connect';
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  return new Date(d).toISOString().slice(0, 10);
+}
+---
+
+<AdminLayout title={journey ? `Edit · ${journey.title}` : 'Journey'}>
+  <div class="mb-6">
+    <a href="/admin/journey" class="label">← All journeys</a>
+    <h1 class="display text-3xl mt-2">{journey?.title ?? 'Journey'}</h1>
+    {journey && <span class="coord block mt-1">{journey.slug}</span>}
+  </div>
+
+  {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
+
+  {journey && (
+    <form id="edit-form" class="card-flat" style="display: flex; flex-direction: column; gap: 12px;">
+      <input type="hidden" id="ej-id" value={journey.id} />
+      <div>
+        <label class="label" for="ej-title">Title</label>
+        <input id="ej-title" name="title" maxlength="200" required value={journey.title}
+          style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;" />
+      </div>
+      <div>
+        <label class="label" for="ej-summary">Summary</label>
+        <textarea id="ej-summary" name="summary" rows="4" maxlength="10000"
+          style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;font-family:var(--sans);"
+        >{journey.summary || ''}</textarea>
+      </div>
+      <div>
+        <label class="label" for="ej-note">Current location note</label>
+        <input id="ej-note" name="current_location_note" value={journey.current_location_note || ''}
+          style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;" />
+        <p class="text-xs text-dim mt-1">Free-form note shown on the home page near the current stop.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="label" for="ej-starts">Starts on</label>
+          <input id="ej-starts" name="starts_on" type="date" value={fmtDate(journey.starts_on)}
+            style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;" />
+        </div>
+        <div>
+          <label class="label" for="ej-ends">Ends on</label>
+          <input id="ej-ends" name="ends_on" type="date" value={fmtDate(journey.ends_on)}
+            style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;" />
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label class="label" for="ej-status">Status</label>
+          <select id="ej-status" name="status"
+            style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;">
+            <option value="ACTIVE" selected={journey.status === 'active'}>Active</option>
+            <option value="PAUSED" selected={journey.status === 'paused'}>Paused</option>
+            <option value="ARCHIVED" selected={journey.status === 'archived'}>Archived</option>
+          </select>
+        </div>
+        <div>
+          <label class="label" for="ej-vis">Visibility</label>
+          <select id="ej-vis" name="visibility"
+            style="width:100%;padding:10px 12px;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;color:var(--paper);margin-top:6px;">
+            <option value="PUBLIC" selected={journey.visibility === 'public'}>Public</option>
+            <option value="PRIVATE" selected={journey.visibility === 'private'}>Private</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <button type="submit" class="btn btn-primary" style="min-height:44px;">Save changes</button>
+        <span class="label" id="ej-msg" style="margin-left:12px;"></span>
+      </div>
+    </form>
+  )}
+</AdminLayout>
+
+<script>
+  const form = document.getElementById('edit-form') as HTMLFormElement | null;
+  const msg = document.getElementById('ej-msg');
+  const idEl = document.getElementById('ej-id') as HTMLInputElement | null;
+  form?.addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    if (!idEl) return;
+    const data = new FormData(form);
+    if (msg) msg.textContent = 'Saving…';
+    const payload: Record<string, unknown> = {
+      title: String(data.get('title') || '').trim(),
+      summary: String(data.get('summary') || '').trim() || null,
+      current_location_note: String(data.get('current_location_note') || '').trim() || null,
+      status: String(data.get('status')),
+      visibility: String(data.get('visibility')),
+    };
+    const starts = String(data.get('starts_on') || '');
+    const ends = String(data.get('ends_on') || '');
+    payload.starts_on = starts || null;
+    payload.ends_on = ends || null;
+
+    try {
+      const res = await fetch(`/api/admin/journeys/${idEl.value}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (msg) msg.textContent = 'Saved.';
+    } catch (e) {
+      if (msg) msg.textContent = 'Failed: ' + (e instanceof Error ? e.message : String(e));
+    }
+  });
+</script>

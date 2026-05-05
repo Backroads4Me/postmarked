@@ -1,3 +1,4 @@
+import os
 import uuid
 from typing import Optional
 from fastapi import Depends, Request
@@ -12,7 +13,28 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from app.db import get_async_session
 from app.models.user import User
 
-SECRET = "super-secret-change-this-in-production"
+APP_ENV = os.getenv("APP_ENV", "dev").lower()
+_DEV_SECRET_FALLBACK = "dev-only-change-me-not-for-production-use"
+
+_secret = os.getenv("SECRET_KEY")
+if not _secret:
+    if APP_ENV == "dev":
+        print(
+            "[auth] WARNING: SECRET_KEY not set; using insecure dev fallback. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+        )
+        _secret = _DEV_SECRET_FALLBACK
+    else:
+        raise RuntimeError(
+            "SECRET_KEY environment variable is required when APP_ENV is not 'dev'. "
+            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+        )
+
+SECRET = _secret
+
+# Cookie security flags. Secure=True requires HTTPS; in local dev we serve HTTP so we relax it.
+_COOKIE_SECURE = APP_ENV != "dev"
+
 
 class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
@@ -37,10 +59,16 @@ async def get_user_db(session=Depends(get_async_session)):
 async def get_user_manager(user_db=Depends(get_user_db)):
     yield UserManager(user_db)
 
-cookie_transport = CookieTransport(cookie_name="goodpath_session", cookie_max_age=3600)
+cookie_transport = CookieTransport(
+    cookie_name="goodpath_session",
+    cookie_max_age=60 * 60 * 24 * 7,  # 7 days
+    cookie_secure=_COOKIE_SECURE,
+    cookie_httponly=True,
+    cookie_samesite="lax",
+)
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=3600)
+    return JWTStrategy(secret=SECRET, lifetime_seconds=60 * 60 * 24 * 7)
 
 auth_backend = AuthenticationBackend(
     name="jwt",

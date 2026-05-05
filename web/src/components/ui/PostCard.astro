@@ -1,0 +1,91 @@
+---
+/**
+ * PostCard — Quick update card for timeline feeds.
+ *
+ * Photos attached to a post are surfaced inline (up to 3 in a small grid) and
+ * link out to the full media via /media/{id}/webp from the authenticated
+ * streaming endpoint. Visibility is enforced server-side; the absence of a
+ * media entry here means the caller can't see it.
+ */
+interface MediaSummary {
+  id: string;
+  width?: number | null;
+  height?: number | null;
+  blurhash?: string | null;
+  dominant_color?: string | null;
+  alt_text?: string | null;
+  caption?: string | null;
+}
+
+interface Props {
+  title: string;
+  body?: string;
+  date?: string;
+  tripTitle?: string;
+  placeName?: string;
+  media?: MediaSummary[];
+}
+
+const { title, body, date, tripTitle, placeName, media = [] } = Astro.props;
+const photos = (media || []).slice(0, 3);
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+
+function timeAgo(dateStr?: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Yesterday';
+  if (diff < 7) return `${diff} days ago`;
+  return formatDate(dateStr);
+}
+---
+
+<div class="card-flat" id={`post-${title?.toLowerCase().replace(/\s+/g, '-')}`}>
+  <div class="flex items-center gap-2 mb-3">
+    <span class="text-lg">✏️</span>
+    <span class="eyebrow">Update</span>
+    {date && <span class="label ml-auto">{timeAgo(date)}</span>}
+  </div>
+
+  <h3 class="text-lg font-medium text-paper mb-1">{title}</h3>
+  {body && <p class="text-muted text-sm leading-relaxed line-clamp-3">{body}</p>}
+
+  {photos.length > 0 && (
+    <div
+      class:list={[
+        'mt-3 grid gap-1 rounded-md overflow-hidden',
+        photos.length === 1 ? 'grid-cols-1' : photos.length === 2 ? 'grid-cols-2' : 'grid-cols-3',
+      ]}
+    >
+      {photos.map((m) => (
+        <a
+          href={`/media/${m.id}/webp`}
+          class="block aspect-square bg-line-soft overflow-hidden"
+          style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
+        >
+          <img
+            src={`/media/${m.id}/webp`}
+            alt={m.alt_text || m.caption || ''}
+            loading="lazy"
+            decoding="async"
+            width={m.width || undefined}
+            height={m.height || undefined}
+            class="w-full h-full object-cover"
+          />
+        </a>
+      ))}
+    </div>
+  )}
+
+  <div class="flex items-center gap-3 mt-3 text-xs">
+    {placeName && <span class="coord">{placeName}</span>}
+    {tripTitle && <span class="text-dim">• {tripTitle}</span>}
+  </div>
+</div>

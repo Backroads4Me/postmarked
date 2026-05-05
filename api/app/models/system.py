@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 from typing import Optional, Any
-from sqlalchemy import String, DateTime, ForeignKey, Integer, Boolean
+from sqlalchemy import String, DateTime, ForeignKey, Integer, Boolean, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.sql import func
@@ -24,12 +24,15 @@ class Comment(Base):
 
 class Like(Base):
     __tablename__ = "like"
+    __table_args__ = (
+        UniqueConstraint("author_id", "target_kind", "target_id", name="uq_like_author_target"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     author_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("user.id", ondelete="CASCADE"), nullable=False)
-    target_kind: Mapped[str] = mapped_column(String, nullable=False) # 'stop' or 'media'
+    target_kind: Mapped[str] = mapped_column(String, nullable=False) # 'stop', 'media', or 'post'
     target_id: Mapped[uuid.UUID] = mapped_column(nullable=False)
-    
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 class Collection(Base):

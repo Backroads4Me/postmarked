@@ -1,0 +1,103 @@
+---
+import Layout from '../layouts/Layout.astro';
+import StopCard from '../components/ui/StopCard.astro';
+import PostCard from '../components/ui/PostCard.astro';
+import EmptyState from '../components/ui/EmptyState.astro';
+import { apiUrl } from '../lib/api.js';
+
+let timelineData = null;
+let error = null;
+try {
+  const res = await fetch(apiUrl('/api/timeline?limit=50'));
+  if (res.ok) {
+    timelineData = await res.json();
+  } else {
+    error = `API returned ${res.status}`;
+  }
+} catch (e) {
+  error = e?.message || 'Failed to connect';
+}
+
+const updates = timelineData?.updates ?? [];
+
+function groupByMonth(items) {
+  const groups = {};
+  for (const item of items) {
+    const d = new Date(item.posted_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (!groups[key]) {
+      groups[key] = { label, items: [] };
+    }
+    groups[key].items.push(item);
+  }
+  return Object.values(groups);
+}
+
+const grouped = groupByMonth(updates);
+---
+
+<Layout title="Timeline — Goodpath">
+  <main class="frame py-8 md:py-12">
+    <section class="mb-8">
+      <div class="label mb-2">Continuous</div>
+      <h1 class="display text-3xl md:text-4xl">Timeline</h1>
+      <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+        A chronological journey through our RV life — stops, stories, and moments.
+      </p>
+      {error && (
+        <div class="mt-4 card-flat text-sm text-ember">
+          Couldn't load the timeline ({error}).
+        </div>
+      )}
+    </section>
+
+    {grouped.length > 0 ? (
+      <div class="space-y-8">
+        {grouped.map(group => (
+          <section>
+            <div class="flex items-center gap-3 mb-4 sticky top-14 z-10 py-2" style="background: var(--bg);">
+              <div class="w-2 h-2 rounded-full bg-ember"></div>
+              <h2 class="eyebrow text-ember">{group.label}</h2>
+              <div class="flex-1 h-px bg-line-soft"></div>
+              <span class="label">{group.items.length} items</span>
+            </div>
+
+            <div class="grid gap-4 pl-4 border-l border-line-soft ml-1">
+              {group.items.map(item => (
+                item.kind === 'post' ? (
+                  <PostCard
+                    title={item.title}
+                    body={item.body || item.summary}
+                    date={item.posted_at}
+                    tripTitle={item.trip_title}
+                    placeName={item.place_name}
+                    media={item.media}
+                  />
+                ) : (
+                  <StopCard
+                    title={item.title}
+                    slug={item.stop_slug || item.slug}
+                    tripSlug={item.trip_slug}
+                    summary={item.summary}
+                    date={item.posted_at}
+                    tripTitle={item.trip_title}
+                    placeName={item.place_name}
+                    stopType={item.stop_type}
+                    coverMedia={item.cover_media}
+                  />
+                )
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    ) : (
+      <EmptyState
+        icon="📅"
+        title="No timeline entries yet"
+        message="Start by adding stops and posts to see them here."
+      />
+    )}
+  </main>
+</Layout>

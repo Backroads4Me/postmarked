@@ -1,34 +1,115 @@
 ---
-const { title } = Astro.props;
+import '../styles/global.css';
 
-// Very basic admin layout. 
-// Uses styling matching the `design/styles.css` token ecosystem.
+interface Props {
+  title?: string;
+}
+
+const { title = 'Admin' } = Astro.props;
+const { pathname } = Astro.url;
+
+const navItems = [
+  { href: '/admin', label: 'Dashboard' },
+  { href: '/admin/journey', label: 'Journey' },
+  { href: '/admin/trips', label: 'Trips' },
+  { href: '/admin/stops', label: 'Stops' },
+  { href: '/admin/posts', label: 'Posts' },
+  { href: '/admin/media', label: 'Media' },
+  { href: '/admin/imports/rv-trip-wizard', label: 'Import' },
+  { href: '/admin/users', label: 'Users' },
+];
+
+function isActive(href: string) {
+  if (href === '/admin') return pathname === '/admin' || pathname === '/admin/';
+  return pathname.startsWith(href);
+}
 ---
 <!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title} — Admin</title>
-  <link rel="stylesheet" href="/styles.css">
+  <title>{title} — Goodpath Admin</title>
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#111111" />
-  <style>
-    body { background: var(--bg); color: var(--fg); font-family: var(--sans); }
-    .admin-nav { padding: 1rem 2rem; border-bottom: 1px solid var(--line); display: flex; gap: 2rem; align-items: center; background: var(--surface-1); }
-    .admin-nav a { font-family: var(--mono); text-transform: uppercase; letter-spacing: 0.1em; font-size: 11px; }
-    .admin-nav a:hover { color: var(--ember); }
-  </style>
+  <meta name="theme-color" content="#0a0d11" />
+  <meta name="robots" content="noindex, nofollow" />
 </head>
-<body>
-  <nav class="admin-nav">
-    <div style="font-weight: 700;">GOODPATH ADMIN</div>
-    <a href="/admin">Dashboard</a>
-    <a href="/admin/trips">Trips</a>
-    <a href="/" target="_blank" style="margin-left: auto;">View Site ↗</a>
+<body style="padding-bottom: 0;">
+  <nav class="admin-top-nav">
+    <div class="admin-brand">
+      <span class="text-ember font-bold">GOODPATH</span>
+      <span class="admin-separator">ADMIN</span>
+    </div>
+    <div class="admin-links">
+      {navItems.map(item => (
+        <a
+          href={item.href}
+          class:list={['admin-link', { active: isActive(item.href) }]}
+        >
+          {item.label}
+        </a>
+      ))}
+    </div>
+    <a href="/" target="_blank" class="admin-link" style="margin-left: auto;">View Site ↗</a>
   </nav>
   <main class="frame" style="padding-top: 40px; padding-bottom: 80px;">
     <slot />
   </main>
 </body>
 </html>
+
+<style>
+  .admin-top-nav {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 24px;
+    height: 48px;
+    background: rgba(16,20,25,.95);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--line);
+    overflow-x: auto;
+  }
+  .admin-brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 700;
+    font-family: var(--mono);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+    margin-right: 16px;
+  }
+  .admin-separator {
+    color: var(--dim);
+    font-weight: 400;
+  }
+  .admin-links {
+    display: flex;
+    gap: 2px;
+  }
+  .admin-link {
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    color: var(--muted);
+    transition: all 0.2s;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .admin-link:hover {
+    color: var(--paper);
+    background: rgba(255,255,255,.06);
+  }
+  .admin-link.active {
+    color: var(--ember);
+    background: var(--ember-glow);
+  }
+</style>

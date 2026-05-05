@@ -9,12 +9,10 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 
 from app.models.content import MediaAsset
-from app.models.enums import MediaProcessingState
+from app.models.enums import MediaKind, MediaProcessingState, Visibility
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-DATABASE_URL_SYNC = os.getenv("DATABASE_URL", "").replace("postgresql+psycopg", "postgresql+psycopg2") # celery uses synchronous engine!
-if DATABASE_URL_SYNC == "":
-     DATABASE_URL_SYNC = "postgresql+psycopg2://postgres:postgres@db:5432/goodpath"
+DATABASE_URL_SYNC = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/goodpath")
 
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
@@ -44,7 +42,7 @@ def process_media_asset(asset_id: str):
         os.makedirs(DERIVATIVES_PATH, exist_ok=True)
         
         # Image processing
-        if asset.kind.value == "image":
+        if asset.kind == MediaKind.PHOTO:
             try:
                 with Image.open(file_path) as img:
                     # Fix orientation based on EXIF
@@ -155,7 +153,7 @@ def scan_filesystem():
                 fhash = hash_file(filepath)
                 
                 # Check DB mapping
-                query = select(MediaAsset).where(MediaAsset.file_hash == fhash)
+                query = select(MediaAsset).where(MediaAsset.original_sha256 == fhash)
                 existing = db.execute(query).scalar_one_or_none()
                 if existing:
                     continue # Skip deduplicated
@@ -166,14 +164,19 @@ def scan_filesystem():
                 shutil.copy2(filepath, dest_path)
                 
                 # Write to DB
-                kind = MediaKind.VIDEO if file_ext in ['.mp4', '.mov'] else MediaKind.IMAGE
+                kind = MediaKind.VIDEO if file_ext in ['.mp4', '.mov'] else MediaKind.PHOTO
                 asset = MediaAsset(
                     id=new_id,
                     kind=kind,
-                    file_hash=fhash,
-                    scan_source=filepath,
+                    original_path=dest_path,
+                    original_sha256=fhash,
+                    original_filename=file,
+                    original_size_bytes=os.path.getsize(dest_path),
+                    mime_type="video/mp4" if kind == MediaKind.VIDEO else "image/jpeg",
                     visibility=Visibility.PRIVATE, # Private until manually assigned by admin
-                    processing_state=MediaProcessingState.PENDING
+                    processing_state=MediaProcessingState.PENDING,
+                    featured=False,
+                    sort_order=0,
                 )
                 db.add(asset)
                 db.commit()
@@ -203,10 +206,9 @@ def dispatch_weekly_digest():
         for user in users:
             log_entry = NotificationLog(
                 user_id=user.id,
-                channel="EMAIL",
-                event_type="WEEKLY_DIGEST",
+                kind="WEEKLY_DIGEST",
                 payload={"mocked": True, "note": "Email dispatch disabled for local deployment."},
-                status="SENT"
+                delivery_status="SENT",
             )
             db.add(log_entry)
             print(f"[DIGEST MOCK] Would have sent digest email to {user.email}")
@@ -214,4 +216,3 @@ def dispatch_weekly_digest():
         db.commit()
     finally:
         db.close()
-

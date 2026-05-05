@@ -9,21 +9,23 @@ import Layout from '../../layouts/Layout.astro';
         <h1 class="display text-3xl mb-2">Welcome Back</h1>
         <p class="text-sm text-muted">Sign in to your account</p>
       </div>
-      
-      <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); login();">
+
+      <div id="error-banner" class="hidden mb-4 p-3 rounded border text-sm" style="color: var(--ember); border-color: var(--ember); background: var(--ember-glow);"></div>
+
+      <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); login(this);">
         <div class="flex flex-col gap-1">
           <label class="label" for="email">Email address</label>
-          <input type="email" id="email" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+          <input type="email" id="email" name="email" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
         </div>
-        
+
         <div class="flex flex-col gap-1">
           <label class="label" for="password">Password</label>
-          <input type="password" id="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+          <input type="password" id="password" name="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
         </div>
-        
-        <button type="submit" class="btn justify-center mt-4">Sign In</button>
+
+        <button type="submit" id="submit-btn" class="btn justify-center mt-4">Sign In</button>
       </form>
-      
+
       <div class="mt-6 text-center">
         <a href="/auth/register" class="text-xs text-muted hover:text-ember transition-colors">Create an account</a>
       </div>
@@ -32,28 +34,41 @@ import Layout from '../../layouts/Layout.astro';
 </Layout>
 
 <script is:inline>
-  async function login() {
-    const username = document.getElementById('email').value;
-    const password = document.getElementById('password').value;
-    
+  async function login(form) {
+    const btn = document.getElementById('submit-btn');
+    const banner = document.getElementById('error-banner');
+    banner.classList.add('hidden');
+    btn.disabled = true;
+    btn.textContent = 'Signing in…';
+
+    const formData = new URLSearchParams();
+    formData.append('username', form.email.value);
+    formData.append('password', form.password.value);
+
     try {
-      const formData = new URLSearchParams();
-      formData.append('username', username);
-      formData.append('password', password);
-      
       const res = await fetch('/api/auth/jwt/login', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: formData.toString()
+        body: formData.toString(),
       });
-      
+
       if (res.ok) {
         window.location.href = '/';
       } else {
-        alert('Invalid credentials');
+        const data = await res.json().catch(() => ({}));
+        showError(data.detail || 'Invalid email or password.');
       }
     } catch (err) {
-      console.error(err);
+      showError('Could not reach the server. Try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Sign In';
+    }
+
+    function showError(msg) {
+      banner.textContent = msg;
+      banner.classList.remove('hidden');
     }
   }
 </script>

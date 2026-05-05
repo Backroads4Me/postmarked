@@ -11,11 +11,27 @@ class TripStatus(str, enum.Enum):
     PUBLISHED = "published"
     ARCHIVED = "archived"
 
+class JourneyStatus(str, enum.Enum):
+    ACTIVE = "active"
+    PAUSED = "paused"
+    ARCHIVED = "archived"
+
 class StopStatus(str, enum.Enum):
     PLANNED = "planned"
     ACTIVE = "active"
     PUBLISHED = "published"
     ARCHIVED = "archived"
+
+class PlannedStopImportState(str, enum.Enum):
+    PLANNED = "planned"
+    CHANGED = "changed"
+    REMOVED_FROM_LATEST_IMPORT = "removed_from_latest_import"
+    CONVERTED_TO_STOP = "converted_to_stop"
+
+class ImportRunStatus(str, enum.Enum):
+    PARSED = "parsed"
+    APPLIED = "applied"
+    FAILED = "failed"
 
 class StopType(str, enum.Enum):
     CAMPGROUND = "campground"

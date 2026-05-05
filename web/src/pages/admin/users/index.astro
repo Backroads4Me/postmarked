@@ -1,0 +1,159 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
+
+const cookie = Astro.request.headers.get('cookie');
+let users = [];
+let loadError = null;
+
+try {
+  const res = await fetch(apiUrl('/api/admin/users'), {
+    headers: cookie ? { cookie } : {},
+  });
+  if (res.status === 401 || res.status === 403) {
+    return Astro.redirect('/auth/login');
+  }
+  if (res.ok) {
+    users = await res.json();
+  } else {
+    loadError = `API ${res.status}`;
+  }
+} catch (e) {
+  loadError = e?.message || 'Failed to connect';
+}
+
+const pending = users.filter(u => u.approval_state === 'pending');
+const approved = users.filter(u => u.approval_state === 'approved');
+const rejected = users.filter(u => u.approval_state === 'rejected');
+---
+
+<AdminLayout title="Users">
+  <div class="mb-8">
+    <h1 class="display text-4xl">Users</h1>
+    <p class="text-muted mt-2">Approve or reject family member access requests.</p>
+  </div>
+
+  {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
+
+  {pending.length > 0 && (
+    <section class="mb-10">
+      <h2 class="display text-2xl mb-4">Pending Approval ({pending.length})</h2>
+      <div class="grid gap-3">
+        {pending.map(u => (
+          <div class="card-flat flex items-center justify-between gap-4">
+            <div>
+              <div style="color: var(--paper); font-weight: 500;">{u.display_name || '(no name)'}</div>
+              <div class="label">{u.email}</div>
+            </div>
+            <div class="flex gap-2">
+              <button
+                class="btn"
+                style="min-height:36px; font-size:13px;"
+                onclick={`approveUser('${u.id}', this)`}
+              >
+                Approve
+              </button>
+              <button
+                class="btn"
+                style="min-height:36px; font-size:13px; color:var(--sunset);"
+                onclick={`rejectUser('${u.id}', this)`}
+              >
+                Reject
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {pending.length === 0 && (
+    <div class="card-flat mb-8 text-sm text-muted">No pending requests.</div>
+  )}
+
+  {approved.length > 0 && (
+    <section class="mb-10">
+      <h2 class="display text-xl mb-3">Approved ({approved.length})</h2>
+      <div class="grid gap-2">
+        {approved.map(u => (
+          <div class="card-flat flex items-center justify-between gap-4">
+            <div>
+              <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
+              <div class="label">{u.email} · {u.role}</div>
+            </div>
+            <span class="badge badge-active text-[10px]">approved</span>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {rejected.length > 0 && (
+    <section class="mb-10">
+      <h2 class="display text-xl mb-3">Rejected ({rejected.length})</h2>
+      <div class="grid gap-2">
+        {rejected.map(u => (
+          <div class="card-flat flex items-center justify-between gap-4" style="opacity:0.6;">
+            <div>
+              <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
+              <div class="label">{u.email}</div>
+            </div>
+            <button
+              class="btn"
+              style="min-height:36px; font-size:13px;"
+              onclick={`approveUser('${u.id}', this)`}
+            >
+              Re-approve
+            </button>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+</AdminLayout>
+
+<script is:inline>
+  async function approveUser(userId, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/approve`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        btn.disabled = false;
+        btn.textContent = 'Approve';
+        alert(d.detail || 'Failed');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Approve';
+    }
+  }
+
+  async function rejectUser(userId, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/reject`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        btn.disabled = false;
+        btn.textContent = 'Reject';
+        alert(d.detail || 'Failed');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Reject';
+    }
+  }
+</script>

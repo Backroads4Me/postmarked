@@ -11,10 +11,10 @@ async def log_audit_event(
     details: dict = None
 ):
     audit = AuditLog(
-        user_id=user_id,
+        actor_id=user_id,
         action=action,
-        entity_type=entity_type,
-        entity_id=entity_id,
-        details=details or {}
+        target_kind=entity_type,
+        target_id=str(entity_id),
+        payload=details or {}
     )
     session.add(audit)

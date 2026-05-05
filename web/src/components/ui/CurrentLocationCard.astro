@@ -1,0 +1,79 @@
+---
+/**
+ * CurrentLocationCard — Hero card showing where the RV is right now.
+ */
+interface Props {
+  stopTitle: string;
+  stopSlug: string;
+  tripTitle: string;
+  tripSlug: string;
+  placeName?: string;
+  arrivalDate?: string;
+  nights?: number;
+  note?: string;
+  stopType?: string;
+}
+
+const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, arrivalDate, nights, note, stopType } = Astro.props;
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  } catch { return dateStr; }
+}
+
+function daysAgo(dateStr?: string) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return '1 day ago';
+  return `${diff} days ago`;
+}
+---
+
+<div class="card-hero" id="current-location">
+  <div class="flex items-center gap-3 mb-4">
+    <span class="pulse-dot"></span>
+    <span class="eyebrow">Currently At</span>
+    {stopType && <span class="badge badge-active ml-auto">{stopType}</span>}
+  </div>
+
+  <h2 class="display text-3xl md:text-4xl mb-2">
+    <a href={`/trips/${tripSlug}`} class="hover:text-ember-2 transition-colors">
+      {stopTitle}
+    </a>
+  </h2>
+
+  {placeName && (
+    <p class="coord mb-4">{placeName}</p>
+  )}
+
+  <div class="flex flex-wrap gap-4 text-sm">
+    {arrivalDate && (
+      <div class="flex flex-col">
+        <span class="label mb-1">Arrived</span>
+        <span class="text-paper-2">{formatDate(arrivalDate)}</span>
+      </div>
+    )}
+    {nights && nights > 0 && (
+      <div class="flex flex-col">
+        <span class="label mb-1">Staying</span>
+        <span class="text-paper-2">{nights} night{nights !== 1 ? 's' : ''}</span>
+      </div>
+    )}
+    <div class="flex flex-col">
+      <span class="label mb-1">Trip</span>
+      <a href={`/trips/${tripSlug}`} class="text-ember hover:text-ember-2 transition-colors">
+        {tripTitle}
+      </a>
+    </div>
+  </div>
+
+  {note && (
+    <p class="lede mt-4 text-sm" style="font-family: var(--sans); font-size: 14px;">
+      "{note}"
+    </p>
+  )}
+</div>
