@@ -7,12 +7,29 @@ import { urlState } from '../stores/urlState';
 
 let protocolRegistered = false;
 
+// Used only when both local PMTiles and remote tiles are unavailable.
 const DARK_FALLBACK_STYLE = {
   version: 8,
   sources: {},
   layers: [
     { id: "bg", type: "background", paint: { "background-color": "#101419" } },
   ],
+};
+
+// CartoDB Dark Matter — free, no key, dark theme matching the app palette.
+// Used when local basemap.pmtiles hasn't been provisioned yet.
+const REMOTE_FALLBACK_STYLE = {
+  version: 8,
+  sources: {
+    carto: {
+      type: "raster",
+      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
+      tileSize: 256,
+      attribution: "© CARTO © OpenStreetMap contributors",
+      maxzoom: 20,
+    },
+  },
+  layers: [{ id: "carto-dark", type: "raster", source: "carto" }],
 };
 
 // Dark basemap using PMTiles (served by Caddy at /tiles/*.pmtiles).
@@ -79,12 +96,12 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
     if (!mapRef.current) {
       let cancelled = false;
       const createMap = async () => {
-        let style = DARK_FALLBACK_STYLE;
+        let style = REMOTE_FALLBACK_STYLE;
         try {
           const res = await fetch('/tiles/basemap.pmtiles', { method: 'HEAD' });
           if (res.ok) style = PMTILES_STYLE;
         } catch {
-          style = DARK_FALLBACK_STYLE;
+          // local tiles unavailable — use remote
         }
         if (cancelled || mapRef.current || !mapContainer.current) return;
         setUsingFallbackStyle(style === DARK_FALLBACK_STYLE);
@@ -99,7 +116,10 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
 
       map.addControl(new maplibregl.NavigationControl(), 'top-right');
       mapRef.current = map;
-      setMapReady(true);
+
+      map.once('load', () => {
+        setMapReady(true);
+      });
 
       map.on('moveend', () => {
         const center = map.getCenter();

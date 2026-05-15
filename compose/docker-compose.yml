@@ -108,7 +108,7 @@ services:
 
   flower:
     image: mher/flower
-    command: ["celery", "-A", "app.tasks", "flower"]
+    command: ["celery", "--broker", "redis://redis:6379/0", "flower", "--port=5555"]
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - FLOWER_PORT=5555
