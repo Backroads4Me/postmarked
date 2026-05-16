@@ -3,6 +3,11 @@ import { apiUrl } from './lib/api.js';
 
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
+
+  if (pathname.startsWith('/api/') || pathname.startsWith('/media/')) {
+    return proxyApiRequest(context);
+  }
+
   if (!pathname.startsWith('/admin')) {
     return next();
   }
@@ -33,3 +38,32 @@ export const onRequest = defineMiddleware(async (context, next) => {
 
   return next();
 });
+
+async function proxyApiRequest(context) {
+  const upstream = new URL(context.url.pathname + context.url.search, apiUrl('/'));
+  const headers = new Headers(context.request.headers);
+  headers.delete('host');
+  headers.delete('content-length');
+
+  const init = {
+    method: context.request.method,
+    headers,
+    redirect: 'manual',
+  };
+
+  if (context.request.method !== 'GET' && context.request.method !== 'HEAD') {
+    init.body = context.request.body;
+    init.duplex = 'half';
+  }
+
+  const response = await fetch(upstream, init);
+  const responseHeaders = new Headers(response.headers);
+  responseHeaders.delete('content-encoding');
+  responseHeaders.delete('content-length');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: responseHeaders,
+  });
+}

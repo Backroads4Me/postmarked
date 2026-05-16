@@ -5,62 +5,76 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useStore } from '@nanostores/react';
 import { urlState } from '../stores/urlState';
 
+const MAP_PROVIDER = (import.meta.env.PUBLIC_MAP_PROVIDER || 'google').toLowerCase();
+const GOOGLE_MAPS_API_KEY = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || '';
+const GOOGLE_MAPS_MAP_ID = import.meta.env.PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
+
 let protocolRegistered = false;
+let googleMapsPromise = null;
 
-// Used only when both local PMTiles and remote tiles are unavailable.
-const DARK_FALLBACK_STYLE = {
-  version: 8,
-  sources: {},
-  layers: [
-    { id: "bg", type: "background", paint: { "background-color": "#101419" } },
-  ],
-};
+const GOOGLE_DARK_STYLE = [
+  { elementType: 'geometry', stylers: [{ color: '#161b22' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#101419' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#dcd5c6' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2e3848' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#141c26' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1d232c' }] },
+  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#173124' }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#242e40' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#101419' }] },
+  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#35516a' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1016' }] },
+];
 
-// CartoDB Dark Matter — free, no key, dark theme matching the app palette.
-// Used when local basemap.pmtiles hasn't been provisioned yet.
+// CartoDB Dark Matter: no-key fallback when MapLibre is selected and PMTiles are absent.
 const REMOTE_FALLBACK_STYLE = {
   version: 8,
   sources: {
     carto: {
-      type: "raster",
-      tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
+      type: 'raster',
+      tiles: ['https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png'],
       tileSize: 256,
-      attribution: "© CARTO © OpenStreetMap contributors",
+      attribution: '© CARTO © OpenStreetMap contributors',
       maxzoom: 20,
     },
   },
-  layers: [{ id: "carto-dark", type: "raster", source: "carto" }],
+  layers: [{ id: 'carto-dark', type: 'raster', source: 'carto' }],
 };
 
-// Dark basemap using PMTiles (served by Caddy at /tiles/*.pmtiles).
+// Dark basemap using PMTiles mounted under Astro public assets at /tiles/*.pmtiles.
 const PMTILES_STYLE = {
   version: 8,
   sources: {
     protomaps: {
-      type: "vector",
-      url: "pmtiles:///tiles/basemap.pmtiles",
-      attribution: "&copy; OpenStreetMap &copy; Protomaps",
+      type: 'vector',
+      url: 'pmtiles:///tiles/basemap.pmtiles',
+      attribution: '&copy; OpenStreetMap &copy; Protomaps',
     },
   },
   layers: [
-    { id: "bg", type: "background", paint: { "background-color": "#101419" } },
-    { id: "water", type: "fill", source: "protomaps", "source-layer": "water", paint: { "fill-color": "#0a1016" } },
-    { id: "earth", type: "fill", source: "protomaps", "source-layer": "earth", paint: { "fill-color": "#131a23" } },
-    { id: "landcover", type: "fill", source: "protomaps", "source-layer": "landcover", paint: { "fill-color": "#141c26" } },
-    { id: "roads-minor", type: "line", source: "protomaps", "source-layer": "roads", filter: ["<=", ["get", "kind_detail"], 3], paint: { "line-color": "#1d2535", "line-width": 1 } },
-    { id: "roads-major", type: "line", source: "protomaps", "source-layer": "roads", filter: [">", ["get", "kind_detail"], 3], paint: { "line-color": "#242e40", "line-width": 2 } },
-    { id: "buildings", type: "fill", source: "protomaps", "source-layer": "buildings", paint: { "fill-color": "#181f2b", "fill-opacity": 0.6 } },
-    { id: "boundaries", type: "line", source: "protomaps", "source-layer": "boundaries", paint: { "line-color": "#253044", "line-width": 1, "line-dasharray": [4, 2] } },
+    { id: 'bg', type: 'background', paint: { 'background-color': '#101419' } },
+    { id: 'water', type: 'fill', source: 'protomaps', 'source-layer': 'water', paint: { 'fill-color': '#0a1016' } },
+    { id: 'earth', type: 'fill', source: 'protomaps', 'source-layer': 'earth', paint: { 'fill-color': '#131a23' } },
+    { id: 'landcover', type: 'fill', source: 'protomaps', 'source-layer': 'landcover', paint: { 'fill-color': '#141c26' } },
+    { id: 'roads-minor', type: 'line', source: 'protomaps', 'source-layer': 'roads', filter: ['<=', ['get', 'kind_detail'], 3], paint: { 'line-color': '#1d2535', 'line-width': 1 } },
+    { id: 'roads-major', type: 'line', source: 'protomaps', 'source-layer': 'roads', filter: ['>', ['get', 'kind_detail'], 3], paint: { 'line-color': '#242e40', 'line-width': 2 } },
+    { id: 'buildings', type: 'fill', source: 'protomaps', 'source-layer': 'buildings', paint: { 'fill-color': '#181f2b', 'fill-opacity': 0.6 } },
+    { id: 'boundaries', type: 'line', source: 'protomaps', 'source-layer': 'boundaries', paint: { 'line-color': '#253044', 'line-width': 1, 'line-dasharray': [4, 2] } },
   ],
 };
 
 export default function MapIsland({ stops, activeStopId, onStopClick }) {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
+  const providerRef = useRef(null);
   const markersRef = useRef([]);
+  const routeRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
-  const [usingFallbackStyle, setUsingFallbackStyle] = useState(false);
+  const [fallbackReason, setFallbackReason] = useState('');
   const state = useStore(urlState);
+
+  const useGoogle = MAP_PROVIDER === 'google';
+  const useMapLibre = MAP_PROVIDER === 'maplibre';
 
   const stopPoints = useMemo(() => {
     const coords = (stops || [])
@@ -87,9 +101,62 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
   }, [stops]);
 
   useEffect(() => {
+    if (useGoogle) {
+      let cancelled = false;
+
+      if (!GOOGLE_MAPS_API_KEY) {
+        setFallbackReason('Google Maps key missing');
+        return;
+      }
+
+      loadGoogleMaps(GOOGLE_MAPS_API_KEY)
+        .then(({ Map }) => {
+          if (cancelled || mapRef.current || !mapContainer.current) return;
+
+          const map = new Map(mapContainer.current, {
+            center: { lat: 39, lng: -98 },
+            zoom: 4,
+            mapId: GOOGLE_MAPS_MAP_ID,
+            mapTypeControl: false,
+            streetViewControl: false,
+            fullscreenControl: false,
+            backgroundColor: '#101419',
+            ...(GOOGLE_MAPS_MAP_ID === 'DEMO_MAP_ID' ? {} : { styles: GOOGLE_DARK_STYLE }),
+          });
+
+          providerRef.current = 'google';
+          mapRef.current = map;
+          setMapReady(true);
+
+          map.addListener('idle', () => {
+            const center = map.getCenter();
+            if (!center) return;
+            urlState.set({
+              ...urlState.get(),
+              lat: center.lat().toFixed(4),
+              lon: center.lng().toFixed(4),
+              z: map.getZoom().toFixed(2),
+            });
+          });
+        })
+        .catch((err) => {
+          console.error('[MapIsland] Google Maps load failed:', err);
+          if (!cancelled) setFallbackReason('Google Maps unavailable');
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    if (!useMapLibre) {
+      setFallbackReason(`Unknown map provider: ${MAP_PROVIDER}`);
+      return;
+    }
+
     if (!protocolRegistered) {
       const protocol = new Protocol();
-      maplibregl.addProtocol("pmtiles", protocol.tile.bind(protocol));
+      maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
       protocolRegistered = true;
     }
 
@@ -97,63 +164,75 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
       let cancelled = false;
       const createMap = async () => {
         let style = REMOTE_FALLBACK_STYLE;
+        let fallbackOnly = false;
         try {
           const res = await fetch('/tiles/basemap.pmtiles', { method: 'HEAD' });
           if (res.ok) style = PMTILES_STYLE;
         } catch {
-          // local tiles unavailable — use remote
+          // local tiles unavailable, use remote
         }
         if (cancelled || mapRef.current || !mapContainer.current) return;
-        setUsingFallbackStyle(style === DARK_FALLBACK_STYLE);
 
-      const map = new maplibregl.Map({
-        container: mapContainer.current,
-        style,
-        center: [-98, 39],
-        zoom: 4,
-        attributionControl: false,
-      });
-
-      map.addControl(new maplibregl.NavigationControl(), 'top-right');
-      mapRef.current = map;
-
-      map.once('load', () => {
-        setMapReady(true);
-      });
-
-      map.on('moveend', () => {
-        const center = map.getCenter();
-        const zoom = map.getZoom();
-        urlState.set({
-          ...urlState.get(),
-          lat: center.lat.toFixed(4),
-          lon: center.lng.toFixed(4),
-          z: zoom.toFixed(2)
+        const map = new maplibregl.Map({
+          container: mapContainer.current,
+          style,
+          center: [-98, 39],
+          zoom: 4,
+          attributionControl: false,
         });
-      });
+
+        map.addControl(new maplibregl.NavigationControl(), 'top-right');
+        providerRef.current = 'maplibre';
+        mapRef.current = map;
+
+        map.once('load', () => {
+          setMapReady(true);
+        });
+
+        map.once('error', () => {
+          if (fallbackOnly || !mapRef.current) return;
+          fallbackOnly = true;
+          setFallbackReason('Map tiles unavailable');
+        });
+
+        map.on('moveend', () => {
+          const center = map.getCenter();
+          const zoom = map.getZoom();
+          urlState.set({
+            ...urlState.get(),
+            lat: center.lat.toFixed(4),
+            lon: center.lng.toFixed(4),
+            z: zoom.toFixed(2),
+          });
+        });
       };
       createMap();
       return () => {
         cancelled = true;
       };
     }
-  }, []);
+  }, [useGoogle, useMapLibre]);
 
-  // Add/update markers when stops change
   useEffect(() => {
     const map = mapRef.current;
+    const provider = providerRef.current;
     if (!map || !stops || stops.length === 0) return;
 
-    // Wait for map load
+    if (provider === 'google') {
+      addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, routeRef);
+      return;
+    }
+
+    if (provider !== 'maplibre') return;
+
     const addMarkers = () => {
-      // Clear old markers
       markersRef.current.forEach(m => m.remove());
       markersRef.current = [];
 
       const bounds = new maplibregl.LngLatBounds();
       let hasValidCoords = false;
 
-      stops.forEach((stop, idx) => {
+      stops.forEach((stop) => {
         const coords = readStopCoords(stop);
         const lat = coords?.lat;
         const lon = coords?.lon;
@@ -166,7 +245,6 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
         const isActive = activeStopId && stop.id === activeStopId;
         const isCurrent = stop.is_current;
 
-        // Create marker element
         const el = document.createElement('div');
         el.className = 'gp-marker';
         el.style.cssText = `
@@ -205,10 +283,10 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
           closeButton: false,
           className: 'gp-popup',
         }).setHTML(`
-          <div style="font-family: 'IBM Plex Sans', sans-serif; padding: 8px;">
-            <div style="font-size: 13px; font-weight: 600; color: #f0ebe0;">${stop.title}</div>
-            ${stop.place_name ? `<div style="font-size: 11px; color: #9a9a9f; margin-top: 2px;">${stop.place_name}</div>` : ''}
-            ${stop.stop_type ? `<div style="font-size: 10px; color: #e8893f; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em;">${stop.stop_type}</div>` : ''}
+          <div style="font-family: var(--sans); padding: 8px;">
+            <div style="font-size: 13px; font-weight: 600; color: #f0ebe0;">${escapeHtml(stop.title)}</div>
+            ${stop.place_name ? `<div style="font-size: 11px; color: #9a9a9f; margin-top: 2px;">${escapeHtml(stop.place_name)}</div>` : ''}
+            ${stop.stop_type ? `<div style="font-size: 10px; color: #e8893f; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.1em;">${escapeHtml(stop.stop_type)}</div>` : ''}
           </div>
         `);
 
@@ -224,7 +302,6 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
         markersRef.current.push(marker);
       });
 
-      // Draw route line between stops
       if (hasValidCoords && stops.length > 1) {
         const lineCoords = stops
           .map(s => {
@@ -237,15 +314,15 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
           if (map.getSource('route')) {
             map.getSource('route').setData({
               type: 'Feature',
-              geometry: { type: 'LineString', coordinates: lineCoords }
+              geometry: { type: 'LineString', coordinates: lineCoords },
             });
           } else {
             map.addSource('route', {
               type: 'geojson',
               data: {
                 type: 'Feature',
-                geometry: { type: 'LineString', coordinates: lineCoords }
-              }
+                geometry: { type: 'LineString', coordinates: lineCoords },
+              },
             });
             map.addLayer({
               id: 'route-line',
@@ -255,14 +332,13 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
                 'line-color': '#e8893f',
                 'line-width': 2,
                 'line-opacity': 0.4,
-                'line-dasharray': [4, 4]
-              }
+                'line-dasharray': [4, 4],
+              },
             });
           }
         }
       }
 
-      // Fit bounds
       if (hasValidCoords) {
         map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 500 });
       }
@@ -273,75 +349,72 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
     } else {
       map.on('load', addMarkers);
     }
-  }, [stops, activeStopId, mapReady]);
+  }, [stops, activeStopId, mapReady, onStopClick]);
 
-  // Fly to active stop
   useEffect(() => {
     const map = mapRef.current;
+    const provider = providerRef.current;
     if (!map || !activeStopId || !stops) return;
 
     const stop = stops.find(s => s.id === activeStopId);
     if (!stop) return;
 
     const coords = readStopCoords(stop);
-    const lat = coords?.lat;
-    const lon = coords?.lon;
-    if (lat == null || lon == null) return;
+    if (!coords) return;
 
-    map.flyTo({ center: [lon, lat], zoom: 10, duration: 800 });
-  }, [activeStopId]);
+    if (provider === 'google') {
+      map.panTo({ lat: coords.lat, lng: coords.lon });
+      if ((map.getZoom() || 0) < 10) map.setZoom(10);
+      return;
+    }
 
-  // React to URL state
+    if (provider === 'maplibre') {
+      map.flyTo({ center: [coords.lon, coords.lat], zoom: 10, duration: 800 });
+    }
+  }, [activeStopId, stops]);
+
   useEffect(() => {
     const map = mapRef.current;
-    if (map && state.lat && state.lon && state.z) {
+    const provider = providerRef.current;
+    if (!map || !state.lat || !state.lon || !state.z) return;
+
+    const newLat = parseFloat(state.lat);
+    const newLon = parseFloat(state.lon);
+    const newZ = parseFloat(state.z);
+    if (!Number.isFinite(newLat) || !Number.isFinite(newLon) || !Number.isFinite(newZ)) return;
+
+    if (provider === 'google') {
       const currentLoc = map.getCenter();
       const currentZoom = map.getZoom();
-      const newLat = parseFloat(state.lat);
-      const newLon = parseFloat(state.lon);
-      const newZ = parseFloat(state.z);
+      if (!currentLoc) return;
+      if (Math.abs(currentLoc.lat() - newLat) > 0.01 || Math.abs(currentLoc.lng() - newLon) > 0.01 || Math.abs(currentZoom - newZ) > 0.1) {
+        map.setCenter({ lat: newLat, lng: newLon });
+        map.setZoom(newZ);
+      }
+      return;
+    }
+
+    if (provider === 'maplibre') {
+      const currentLoc = map.getCenter();
+      const currentZoom = map.getZoom();
       if (Math.abs(currentLoc.lat - newLat) > 0.01 || Math.abs(currentLoc.lng - newLon) > 0.01 || Math.abs(currentZoom - newZ) > 0.1) {
         map.jumpTo({ center: [newLon, newLat], zoom: newZ });
       }
     }
   }, [state.lat, state.lon, state.z]);
 
+  const showFallbackRoute = Boolean(fallbackReason) && stopPoints.length > 0;
+  const providerLabel = useGoogle ? 'GOOGLE MAPS' : useMapLibre ? 'MAPLIBRE' : MAP_PROVIDER.toUpperCase();
+
   return (
     <div className="relative w-full h-full overflow-hidden">
       <div ref={mapContainer} className="absolute inset-0" />
-      {usingFallbackStyle && stopPoints.length > 0 && (
-        <div className="fallback-route" aria-hidden="true">
-          <svg viewBox="0 0 100 100" preserveAspectRatio="none">
-            {stopPoints.length > 1 && (
-              <polyline
-                points={stopPoints.map(point => `${point.x},${point.y}`).join(' ')}
-                fill="none"
-                stroke="#e8893f"
-                strokeWidth="1.4"
-                strokeDasharray="3 2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.9"
-              />
-            )}
-          </svg>
-          {stopPoints.map(point => (
-            <button
-              key={point.stop.id || point.index}
-              type="button"
-              className={`fallback-marker ${point.stop.is_current ? 'is-current' : ''} ${activeStopId === point.stop.id ? 'is-active' : ''}`}
-              style={{ left: `${point.x}%`, top: `${point.y}%` }}
-              aria-label={point.stop.title}
-              onClick={() => onStopClick?.(point.stop.id)}
-            >
-              <span>{point.index + 1}</span>
-            </button>
-          ))}
-        </div>
+      {showFallbackRoute && (
+        <FallbackRoute stopPoints={stopPoints} activeStopId={activeStopId} onStopClick={onStopClick} />
       )}
       <div className="map-overlay top-4 left-4">
-        MAP • {stops?.length || 0} STOPS
-        <div className="mt-1" style={{ color: 'var(--dim)' }}>{state.lat || '—'}, {state.lon || '—'}</div>
+        {providerLabel} • {stops?.length || 0} STOPS
+        <div className="mt-1" style={{ color: 'var(--dim)' }} suppressHydrationWarning>{fallbackReason || `${state.lat || '-'}, ${state.lon || '-'}`}</div>
       </div>
       <style>{`
         .gp-popup .maplibregl-popup-content {
@@ -417,6 +490,150 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
   );
 }
 
+function FallbackRoute({ stopPoints, activeStopId, onStopClick }) {
+  return (
+    <div className="fallback-route" aria-hidden="true">
+      <svg viewBox="0 0 100 100" preserveAspectRatio="none">
+        {stopPoints.length > 1 && (
+          <polyline
+            points={stopPoints.map(point => `${point.x},${point.y}`).join(' ')}
+            fill="none"
+            stroke="#e8893f"
+            strokeWidth="1.4"
+            strokeDasharray="3 2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity="0.9"
+          />
+        )}
+      </svg>
+      {stopPoints.map(point => (
+        <button
+          key={point.stop.id || point.index}
+          type="button"
+          className={`fallback-marker ${point.stop.is_current ? 'is-current' : ''} ${activeStopId === point.stop.id ? 'is-active' : ''}`}
+          style={{ left: `${point.x}%`, top: `${point.y}%` }}
+          aria-label={point.stop.title}
+          onClick={() => onStopClick?.(point.stop.id)}
+        >
+          <span>{point.index + 1}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, routeRef) {
+  markersRef.current.forEach(removeGoogleMarker);
+  markersRef.current = [];
+  if (routeRef.current) {
+    routeRef.current.setMap(null);
+    routeRef.current = null;
+  }
+
+  const google = window.google;
+  const bounds = new google.maps.LatLngBounds();
+  const route = [];
+
+  stops.forEach((stop) => {
+    const coords = readStopCoords(stop);
+    if (!coords) return;
+
+    const position = { lat: coords.lat, lng: coords.lon };
+    const isActive = activeStopId && stop.id === activeStopId;
+    const isCurrent = stop.is_current;
+    bounds.extend(position);
+    route.push(position);
+
+    const pin = new google.maps.marker.PinElement({
+      scale: isCurrent ? 1.25 : isActive ? 1.12 : 0.95,
+      background: isCurrent ? '#4a9f6e' : isActive ? '#e8893f' : '#6fa3c4',
+      borderColor: '#ffffff',
+      glyphColor: '#101419',
+    });
+
+    const marker = new google.maps.marker.AdvancedMarkerElement({
+      map,
+      position,
+      title: stop.title,
+      content: pin,
+    });
+
+    const infoWindow = new google.maps.InfoWindow({
+      content: `
+        <div style="font-family: system-ui, sans-serif; color: #101419;">
+          <div style="font-size: 13px; font-weight: 700;">${escapeHtml(stop.title)}</div>
+          ${stop.place_name ? `<div style="font-size: 12px; margin-top: 2px;">${escapeHtml(stop.place_name)}</div>` : ''}
+        </div>
+      `,
+    });
+
+    marker.addListener('gmp-click', () => {
+      infoWindow.open({ map, anchor: marker });
+      onStopClick?.(stop.id);
+    });
+
+    markersRef.current.push(marker);
+  });
+
+  if (route.length > 1) {
+    routeRef.current = new google.maps.Polyline({
+      map,
+      path: route,
+      geodesic: true,
+      strokeColor: '#e8893f',
+      strokeOpacity: 0.75,
+      strokeWeight: 3,
+    });
+  }
+
+  if (route.length === 1) {
+    map.setCenter(route[0]);
+    map.setZoom(9);
+  } else if (route.length > 1) {
+    map.fitBounds(bounds, 60);
+  }
+}
+
+function loadGoogleMaps(apiKey) {
+  if (googleMapsPromise) return googleMapsPromise;
+
+  googleMapsPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    const params = new URLSearchParams({
+      key: apiKey,
+      v: 'weekly',
+      libraries: 'marker',
+    });
+    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+    script.async = true;
+    script.defer = true;
+    script.onload = () => {
+      if (!window.google?.maps?.Map) {
+        reject(new Error('Google Maps did not initialize'));
+        return;
+      }
+      resolve({ google: window.google, Map: window.google.maps.Map });
+    };
+    script.onerror = (e) => {
+      console.error('[MapIsland] Google Maps script failed to load', e);
+      reject(new Error('Failed to load Google Maps'));
+    };
+    document.head.appendChild(script);
+  });
+
+  return googleMapsPromise;
+}
+
+function removeGoogleMarker(marker) {
+  if (typeof marker.setMap === 'function') {
+    marker.setMap(null);
+    return;
+  }
+
+  marker.map = null;
+}
+
 function readStopCoords(stop) {
   if (!stop) return null;
   let lat = stop.latitude;
@@ -434,4 +651,13 @@ function readStopCoords(stop) {
   lon = Number(lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   return { lat, lon };
+}
+
+function escapeHtml(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

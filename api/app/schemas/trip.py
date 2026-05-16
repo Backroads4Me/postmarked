@@ -48,3 +48,4 @@ class TripUpdate(BaseModel):
     status: Optional[TripStatus] = None
     visibility: Optional[Visibility] = None
     body: Optional[str] = None
+    cover_media_id: Optional[uuid.UUID] = None

@@ -1,0 +1,147 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
+
+const { id } = Astro.params;
+const cookie = Astro.request.headers.get('cookie');
+
+let post = null;
+let stops = [];
+try {
+  const [postsRes, stopsRes] = await Promise.all([
+    fetch(apiUrl('/api/admin/posts'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
+  ]);
+  if (postsRes.status === 401 || postsRes.status === 403) return Astro.redirect('/auth/login');
+  if (postsRes.ok) {
+    const all = await postsRes.json();
+    post = all.find(p => p.id === id);
+  }
+  if (stopsRes.ok) stops = await stopsRes.json();
+} catch (e) {}
+
+if (!post) return Astro.redirect('/admin/posts');
+
+stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+---
+
+<AdminLayout title={`Edit: ${post.title}`}>
+  <div class="max-w-2xl">
+    <div class="mb-8">
+      <a href="/admin/posts" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-4 inline-block">← Back</a>
+      <h1 class="display text-3xl">Edit Post</h1>
+    </div>
+
+    <form id="post-edit-form" class="flex flex-col gap-6">
+      <input type="hidden" name="id" value={post.id} />
+
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold" for="title">Title</label>
+        <input id="title" type="text" name="title" value={post.title} required maxlength="200"
+          class="bg-surface-2 border border-line p-3 focus:border-ember" />
+      </div>
+
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold" for="body">Body (markdown)</label>
+        <textarea id="body" name="body" rows="8"
+          class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.body ?? ''}</textarea>
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold" for="stop_id">Stop</label>
+          <select id="stop_id" name="stop_id" class="bg-surface-2 border border-line p-3">
+            <option value="">No stop</option>
+            {stops.map(s => (
+              <option value={s.id} selected={s.id === post.stop_id}>{s.title}</option>
+            ))}
+          </select>
+        </div>
+
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold" for="visibility">Visibility</label>
+          <select id="visibility" name="visibility" class="bg-surface-2 border border-line p-3">
+            <option value="public" selected={post.visibility === 'public'}>Public</option>
+            <option value="private" selected={post.visibility === 'private'}>Private</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
+      <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2">Saved!</div>
+
+      <div class="flex gap-3 items-center mt-2">
+        <button type="submit" class="btn">Save</button>
+        <button type="button" id="delete-btn" class="btn btn-sm"
+          style="border-color: rgba(212,107,92,.55); color: var(--sunset);">
+          Delete
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    const form = document.getElementById('post-edit-form');
+    const errorDiv = document.getElementById('form-error');
+    const successDiv = document.getElementById('form-success');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const id = formData.get('id');
+
+      errorDiv.classList.add('hidden');
+      successDiv.classList.add('hidden');
+
+      const body = {
+        title: formData.get('title'),
+        body: formData.get('body') || null,
+        stop_id: formData.get('stop_id') || null,
+        visibility: formData.get('visibility'),
+      };
+
+      try {
+        const res = await fetch(`/api/admin/posts/${id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+
+        if (res.ok) {
+          successDiv.classList.remove('hidden');
+          setTimeout(() => successDiv.classList.add('hidden'), 3000);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          errorDiv.textContent = err.detail || `Error ${res.status}`;
+          errorDiv.classList.remove('hidden');
+        }
+      } catch {
+        errorDiv.textContent = 'Network error';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('delete-btn').addEventListener('click', async () => {
+      const id = form.querySelector('[name="id"]').value;
+      const title = form.querySelector('[name="title"]').value;
+      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+      try {
+        const res = await fetch(`/api/admin/posts/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          window.location.href = '/admin/posts';
+        } else {
+          errorDiv.textContent = `Delete failed: HTTP ${res.status}`;
+          errorDiv.classList.remove('hidden');
+        }
+      } catch {
+        errorDiv.textContent = 'Network error';
+        errorDiv.classList.remove('hidden');
+      }
+    });
+  </script>
+</AdminLayout>

@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
-
 @import "tailwindcss";
 
 /* ============================================================
@@ -51,9 +49,9 @@
   --color-surface-3: var(--color-ink-3);
 
   /* Typography */
-  --font-display: 'Fraunces', ui-serif, Georgia, serif;
-  --font-sans:    'IBM Plex Sans', system-ui, -apple-system, sans-serif;
-  --font-mono:    'JetBrains Mono', ui-monospace, monospace;
+  --font-display: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --font-sans:    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono:    "SFMono-Regular", "Roboto Mono", ui-monospace, monospace;
 
   /* Radii */
   --radius-sm: 6px;
@@ -123,9 +121,6 @@
     font-feature-settings: "ss01","cv11";
     min-height: 100vh;
     padding-bottom: var(--nav-height-safe);
-    background-image:
-      radial-gradient(1200px 600px at 80% -10%, rgba(232,137,63,.05), transparent 60%),
-      radial-gradient(900px 600px at -10% 110%, rgba(111,163,196,.04), transparent 60%);
   }
 
   a { color: inherit; text-decoration: none; }
@@ -140,10 +135,9 @@
 @layer utilities {
   .display {
     font-family: var(--display);
-    font-weight: 360;
-    font-variation-settings: "opsz" 144, "SOFT" 30;
-    letter-spacing: -0.02em;
-    line-height: 0.95;
+    font-weight: 600;
+    letter-spacing: 0;
+    line-height: 1.02;
     color: var(--paper);
   }
   .display em {
@@ -156,7 +150,7 @@
   .eyebrow {
     font-family: var(--mono);
     font-size: 11px;
-    letter-spacing: 0.18em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--muted);
   }
@@ -182,7 +176,7 @@
   .label {
     font-family: var(--mono);
     font-size: 10px;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--dim);
   }
@@ -213,7 +207,7 @@
   .card {
     background: var(--surface);
     border: 1px solid var(--line);
-    border-radius: var(--r-lg);
+    border-radius: 8px;
     padding: 20px;
     box-shadow: var(--shadow-card);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -225,21 +219,23 @@
   .card-flat {
     background: var(--surface);
     border: 1px solid var(--line-soft);
-    border-radius: var(--r-md);
+    border-radius: 8px;
     padding: 16px;
   }
 
   .card-hero {
-    background: linear-gradient(135deg, var(--ink-2) 0%, var(--ink-1) 100%);
+    background:
+      linear-gradient(90deg, rgba(10,13,17,.4), rgba(10,13,17,.08)),
+      linear-gradient(135deg, var(--ink-2) 0%, var(--ink-1) 100%);
     border: 1px solid var(--line);
-    border-radius: var(--r-xl);
+    border-radius: 8px;
     padding: 24px;
     box-shadow: var(--shadow-glow);
     position: relative;
     overflow: hidden;
   }
   .card-hero::before {
-    content: '';
+    content: none;
     position: absolute;
     top: 0; right: 0;
     width: 200px; height: 200px;
@@ -256,7 +252,7 @@
     font-family: var(--sans);
     font-size: 14px;
     font-weight: 500;
-    border-radius: var(--r-md);
+    border-radius: 8px;
     border: 1px solid var(--line);
     background: var(--surface-2);
     color: var(--paper);
@@ -299,9 +295,9 @@
     padding: 4px 10px;
     font-size: 11px;
     font-family: var(--mono);
-    letter-spacing: 0.1em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    border-radius: 999px;
+    border-radius: 6px;
     background: var(--ink-3);
     color: var(--muted);
     border: 1px solid var(--line-soft);
@@ -343,7 +339,7 @@
     gap: 4px;
     padding: 4px 10px;
     font-size: 12px;
-    border-radius: 999px;
+    border-radius: 6px;
     background: var(--ink-3);
     color: var(--paper-2);
     border: 1px solid var(--line-soft);
@@ -408,7 +404,7 @@
     color: var(--dim);
     font-size: 10px;
     font-family: var(--mono);
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     transition: color 0.2s;
     padding: 4px 12px;
@@ -423,10 +419,105 @@
     margin-bottom: 2px;
   }
 
+  .brand-mark {
+    width: 28px;
+    height: 28px;
+    border: 1px solid rgba(232,137,63,.38);
+    border-radius: 8px;
+    background:
+      linear-gradient(135deg, rgba(232,137,63,.22), rgba(111,163,196,.12)),
+      var(--ink-2);
+    position: relative;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .brand-mark::before {
+    content: "";
+    position: absolute;
+    left: 7px;
+    right: 7px;
+    top: 8px;
+    height: 8px;
+    border: 2px solid var(--ember);
+    border-bottom: 0;
+    border-radius: 6px 6px 0 0;
+  }
+  .brand-mark::after {
+    content: "";
+    position: absolute;
+    left: 6px;
+    bottom: 7px;
+    width: 16px;
+    height: 2px;
+    background: var(--sky);
+    box-shadow: 0 5px 0 -1px var(--forest);
+  }
+
+  .nav-symbol {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: currentColor;
+  }
+  .nav-symbol svg {
+    width: 20px;
+    height: 20px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .section-band {
+    border-top: 1px solid var(--line-soft);
+    padding-top: 24px;
+  }
+
+  .metric-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+  @media (min-width: 768px) {
+    .metric-strip { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  }
+
+  .metric {
+    min-height: 88px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .inline-symbol {
+    width: 24px;
+    height: 24px;
+    border-radius: 7px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--ink-3);
+    color: var(--ember);
+    border: 1px solid var(--line-soft);
+    flex: 0 0 auto;
+  }
+
+  .inline-symbol svg {
+    width: 15px;
+    height: 15px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
   /* ── Map shell ──────────────────────────────────────────────── */
   .map-shell {
     position: relative;
-    border-radius: var(--r-lg);
+    border-radius: 8px;
     overflow: hidden;
     border: 1px solid var(--line);
     background: var(--surface-2);
@@ -437,7 +528,7 @@
     background: rgba(16,20,25,.85);
     backdrop-filter: blur(8px);
     border: 1px solid var(--line);
-    border-radius: var(--r-sm);
+    border-radius: 6px;
     padding: 6px 12px;
     font-size: 11px;
     font-family: var(--mono);

@@ -1,0 +1,211 @@
+---
+import AdminLayout from '../../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../../lib/api.js';
+
+const { trip_id, stop_id } = Astro.params;
+const cookie = Astro.request.headers.get('cookie');
+
+let trip = null;
+let stop = null;
+
+try {
+  const [tripsRes, stopsRes] = await Promise.all([
+    fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
+  ]);
+
+  if (tripsRes.status === 401 || tripsRes.status === 403) return Astro.redirect('/auth/login');
+
+  if (tripsRes.ok) {
+    const all = await tripsRes.json();
+    trip = all.find(t => t.id === trip_id);
+  }
+  if (stopsRes.ok) {
+    const all = await stopsRes.json();
+    stop = all.find(s => s.id === stop_id && s.trip_id === trip_id);
+  }
+} catch (e) {
+  console.error(e);
+}
+
+if (!trip || !stop) return Astro.redirect(`/admin/stops/${trip_id}`);
+
+function toLocalDatetime(dateStr) {
+  if (!dateStr) return '';
+  const d = new Date(dateStr);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+// Parse lat/lon from WKT POINT or direct fields
+let lat = stop.latitude ?? '';
+let lon = stop.longitude ?? '';
+if ((lat === '' || lon === '') && stop.location) {
+  const m = String(stop.location).match(/POINT\(([-\d.]+)\s+([-\d.]+)\)/);
+  if (m) { lon = m[1]; lat = m[2]; }
+}
+---
+
+<AdminLayout title={`Edit Stop — ${stop.title}`}>
+  <div class="max-w-2xl">
+    <div class="mb-8">
+      <a href={`/admin/stops/${trip_id}`} class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-3 inline-block">
+        ← {trip.title}
+      </a>
+      <h1 class="display text-3xl">Edit Stop</h1>
+    </div>
+
+    <form id="stop-edit-form" class="grid grid-cols-1 md:grid-cols-2 gap-5">
+      <input type="hidden" name="id" value={stop.id} />
+
+      <div class="flex flex-col gap-1 md:col-span-2">
+        <label class="text-sm font-bold">Title *</label>
+        <input type="text" name="title" value={stop.title} required maxlength="200"
+          class="bg-surface-2 border border-line p-3 focus:border-ember" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Slug</label>
+        <input type="text" name="slug" value={stop.slug}
+          class="bg-surface-2 border border-line p-3" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Place Name</label>
+        <input type="text" name="place_name" value={stop.place_name ?? ''}
+          class="bg-surface-2 border border-line p-3" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Latitude</label>
+        <input type="number" name="latitude" value={lat} step="any" min="-90" max="90"
+          class="bg-surface-2 border border-line p-3" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Longitude</label>
+        <input type="number" name="longitude" value={lon} step="any" min="-180" max="180"
+          class="bg-surface-2 border border-line p-3" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Start Date</label>
+        <input type="datetime-local" name="start_date" value={toLocalDatetime(stop.start_date)}
+          class="bg-surface-2 border border-line p-3" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">End Date</label>
+        <input type="datetime-local" name="end_date" value={toLocalDatetime(stop.end_date)}
+          class="bg-surface-2 border border-line p-3" />
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Type</label>
+        <select name="stop_type" class="bg-surface-2 border border-line p-3">
+          {['campground','boondocking','overnight','attraction','restaurant','service','other'].map(t => (
+            <option value={t} selected={stop.stop_type === t}>{t}</option>
+          ))}
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Status</label>
+        <select name="status" class="bg-surface-2 border border-line p-3">
+          {['active','planned','published','archived'].map(s => (
+            <option value={s} selected={stop.status === s}>{s}</option>
+          ))}
+        </select>
+      </div>
+
+      <div class="flex flex-col gap-1 md:col-span-2">
+        <label class="text-sm font-bold">Summary</label>
+        <textarea name="summary" rows="3"
+          class="bg-surface-2 border border-line p-3">{stop.summary ?? ''}</textarea>
+      </div>
+
+      <div class="md:col-span-2">
+        <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2 mb-3"></div>
+        <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2 mb-3">Saved!</div>
+        <div class="flex gap-3">
+          <button type="submit" class="btn">Save</button>
+          <a href={`/admin/stops/${trip_id}`} class="btn btn-ghost">Cancel</a>
+        </div>
+      </div>
+    </form>
+
+    <section class="card-flat mt-8" style="border-color: rgba(212,107,92,.45);">
+      <div class="label mb-2" style="color: var(--sunset);">Danger Zone</div>
+      <button type="button" id="delete-btn" class="btn btn-sm"
+        style="border-color: rgba(212,107,92,.55); color: var(--sunset);">
+        Delete Stop
+      </button>
+    </section>
+  </div>
+
+  <script>
+    const form = document.getElementById('stop-edit-form') as HTMLFormElement;
+    const errorDiv = document.getElementById('form-error');
+    const successDiv = document.getElementById('form-success');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(form);
+      const id = fd.get('id');
+
+      const body: Record<string, any> = {};
+      for (const [k, v] of fd.entries()) {
+        if (k === 'id') continue;
+        if (v === '') continue;
+        body[k] = v;
+      }
+      if (body.latitude) body.latitude = parseFloat(body.latitude);
+      if (body.longitude) body.longitude = parseFloat(body.longitude);
+
+      errorDiv?.classList.add('hidden');
+      successDiv?.classList.add('hidden');
+
+      try {
+        const res = await fetch(`/api/admin/stops/${id}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        if (res.ok) {
+          successDiv?.classList.remove('hidden');
+          setTimeout(() => successDiv?.classList.add('hidden'), 3000);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          if (errorDiv) errorDiv.textContent = err.detail || `Error ${res.status}`;
+          errorDiv?.classList.remove('hidden');
+        }
+      } catch {
+        if (errorDiv) errorDiv.textContent = 'Network error';
+        errorDiv?.classList.remove('hidden');
+      }
+    });
+
+    document.getElementById('delete-btn')?.addEventListener('click', async () => {
+      const id = (form.querySelector('[name="id"]') as HTMLInputElement)?.value;
+      const title = (form.querySelector('[name="title"]') as HTMLInputElement)?.value || 'this stop';
+      if (!confirm(`Delete "${title}"? This cannot be undone.`)) return;
+
+      try {
+        const res = await fetch(`/api/admin/stops/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (res.ok) {
+          window.location.href = window.location.pathname.split('/').slice(0, -1).join('/');
+        } else {
+          if (errorDiv) errorDiv.textContent = `Delete failed: HTTP ${res.status}`;
+          errorDiv?.classList.remove('hidden');
+        }
+      } catch {
+        if (errorDiv) errorDiv.textContent = 'Network error';
+        errorDiv?.classList.remove('hidden');
+      }
+    });
+  </script>
+</AdminLayout>

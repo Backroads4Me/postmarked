@@ -11,9 +11,18 @@ venv/
 # Node
 node_modules/
 dist/
+build/
+coverage/
 .astro/
 .vite/
+.turbo/
 *.log
+
+# Frontend build artifacts
+/web/dist/
+/web/dist-codex-check/
+/web/.astro/
+/web/.vite/
 
 # Env / secrets
 .env
@@ -27,6 +36,10 @@ media/
 uploads/
 tiles/
 
+# Runtime-generated scheduler state
+/api/celerybeat-schedule
+/api/celerybeat-schedule.*
+
 # PMTiles basemap data (download from protomaps.com/builds)
 pmtiles/*.pmtiles
 
@@ -38,6 +51,11 @@ pmtiles/*.pmtiles
 
 # Agents
 .codex
+.agents
 CLAUDE.md
 GEMINI.md
 AGENTS.md
+
+# Example data
+/export-examples/
+/docs/

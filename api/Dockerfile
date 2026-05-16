@@ -4,6 +4,7 @@ FROM python:3.12-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     ffmpeg \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
@@ -19,7 +20,9 @@ RUN uv pip install --system .
 
 COPY . .
 RUN chown -R appuser:appuser /app
+RUN chmod +x /app/docker-entrypoint.sh && cp /app/docker-entrypoint.sh /usr/local/bin/goodpath-entrypoint
 
-USER appuser
+USER root
+ENTRYPOINT ["goodpath-entrypoint"]
 EXPOSE 8000
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

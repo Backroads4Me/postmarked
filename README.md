@@ -6,7 +6,7 @@ Goodpath is a personal, self-hosted RV lifestyle sharing app for full-time RV tr
 
 The local MVP is ready for owner testing. The stabilization pass is complete:
 
-- Docker stack boots with Astro, FastAPI, Postgres/PostGIS, Redis, Celery, and Caddy.
+- Docker stack boots with Astro, FastAPI, Postgres/PostGIS, Redis, and Celery.
 - Alembic migrations are at head.
 - Seed data creates a full-time RV journey, trip segments, current stop, future stop, and recent posts.
 - Public reader APIs are wired to the frontend.
@@ -20,18 +20,17 @@ Open polish work remains, but it is not blocking local testing.
 
 When the Docker dev stack is running:
 
-- Production-like dev proxy: http://localhost:8080
-- Direct Astro dev server: http://localhost:4321
+- Web app: http://localhost:4321
 - API: http://localhost:8000/api/health/ready
-- Flower: http://localhost:5555
+- Optional Flower dashboard: http://localhost:5555 when started with `--profile tools`
 
-Use the Caddy dev proxy at http://localhost:8080 for normal testing because it routes `/`, `/api/*`, `/media/*`, and `/tiles/*` the same way production will.
+Use the Astro web app at http://localhost:4321 for normal testing. Astro proxies `/api/*` and `/media/*` to FastAPI.
 
 Admin:
 
-- URL: http://localhost:8080/admin
-- Email: `admin@example.com`
-- Password: `admin123`
+- URL: http://localhost:4321/admin
+- Email: `GOODPATH_ADMIN_EMAIL` from `.env` (`admin@example.com` by default)
+- Password: `GOODPATH_ADMIN_PASSWORD` from `.env` (`admin123` by default)
 
 Change the seeded admin credentials before any real deployment.
 
@@ -52,13 +51,15 @@ Change the seeded admin credentials before any real deployment.
 2. Start the stack:
 
    ```bash
-   docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml up --build
+   docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml up --build
    ```
+
+   Add `--profile tools` if you want the optional Flower Celery dashboard.
 
 3. Seed or refresh demo data:
 
    ```bash
-   docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml exec api python scripts/seed.py
+   docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml exec api python scripts/seed.py
    ```
 
 The `api-migrate` service runs `alembic upgrade head` automatically during compose startup.
@@ -68,7 +69,7 @@ The `api-migrate` service runs `alembic upgrade head` automatically during compo
 Useful smoke checks:
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml ps
+docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml ps
 docker exec compose-api-1 alembic current
 docker exec compose-api-1 python -c "import app.main; print('api import ok')"
 docker exec compose-api-1 python scripts/seed.py
@@ -91,7 +92,7 @@ The MVP supports RV Trip Wizard `.xlsx` exports only.
 Browser flow:
 
 1. Log in as admin.
-2. Open http://localhost:8080/admin/imports/rv-trip-wizard.
+2. Open http://localhost:4321/admin/imports/rv-trip-wizard.
 3. Upload an `.xlsx` export.
 4. Review the diff.
 5. Apply it to an existing trip segment or create a new one.
@@ -136,11 +137,25 @@ PYTHONPATH=. DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/
 
 For direct API development you still need PostgreSQL/PostGIS and Redis. The easiest route is to run the Docker database services.
 
-## PMTiles
+## Maps
 
-Maps use MapLibre with a PMTiles source at `/tiles/basemap.pmtiles`. The app still renders markers and routes over a dark fallback background if the tile file is missing.
+The default map provider is Google Maps because it avoids requiring a local basemap file:
 
-To enable full local basemap tiles, place a compatible PMTiles file at:
+```env
+PUBLIC_MAP_PROVIDER=google
+PUBLIC_GOOGLE_MAPS_API_KEY=<your browser API key>
+PUBLIC_GOOGLE_MAPS_MAP_ID=<optional cloud map ID>
+```
+
+Create a Google Maps Platform API key, restrict it by HTTP referrer, and set budget/quota alerts in Google Cloud. If the key is missing, the app still renders a simple route schematic instead of a blank map. The optional map ID enables Google Advanced Markers and cloud map styling; local testing falls back to Google's demo map ID when it is blank.
+
+MapLibre + PMTiles remains available as the self-hosted basemap option:
+
+```env
+PUBLIC_MAP_PROVIDER=maplibre
+```
+
+To enable full local MapLibre basemap tiles, place a compatible PMTiles file under `GOODPATH_PMTILES_DIR` from `.env`:
 
 ```text
 pmtiles/basemap.pmtiles
@@ -155,11 +170,11 @@ For a single-host deployment:
 1. Copy `.env.example` to `.env`.
 2. Set a strong `SECRET_KEY`.
 3. Set production `ALLOWED_ORIGINS`, `ALLOWED_HOSTS`, and `FLOWER_BASIC_AUTH`.
-4. Review `caddy/Caddyfile` for the real domain and TLS settings.
+4. Point your own reverse proxy at the `web` service and expose only the routes you intend to publish. The bundled Compose file does not ship a Caddy container.
 5. Run:
 
    ```bash
-   docker compose -f compose/docker-compose.yml up --build -d
+   docker compose --env-file .env -f compose/docker-compose.yml up --build -d
    ```
 
 Backups and restores are handled by `scripts/backup.sh` and `scripts/restore.sh`.

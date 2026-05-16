@@ -49,7 +49,9 @@ function timeAgo(dateStr?: string) {
 
 <div class="card-flat" id={`post-${title?.toLowerCase().replace(/\s+/g, '-')}`}>
   <div class="flex items-center gap-2 mb-3">
-    <span class="text-lg">✏️</span>
+    <span class="inline-symbol" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M5 19h14"/><path d="m14 5 5 5"/><path d="M4 16.5 15.5 5 19 8.5 7.5 20H4v-3.5Z"/></svg>
+    </span>
     <span class="eyebrow">Update</span>
     {date && <span class="label ml-auto">{timeAgo(date)}</span>}
   </div>
@@ -86,6 +88,6 @@ function timeAgo(dateStr?: string) {
 
   <div class="flex items-center gap-3 mt-3 text-xs">
     {placeName && <span class="coord">{placeName}</span>}
-    {tripTitle && <span class="text-dim">• {tripTitle}</span>}
+    {tripTitle && <span class="text-dim">{tripTitle}</span>}
   </div>
 </div>

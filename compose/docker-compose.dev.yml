@@ -6,6 +6,9 @@ services:
     command: npm run dev -- --host 0.0.0.0
     environment:
       - API_BASE_URL=http://api:8000
+      - PUBLIC_MAP_PROVIDER=${PUBLIC_MAP_PROVIDER:-google}
+      - PUBLIC_GOOGLE_MAPS_API_KEY=${PUBLIC_GOOGLE_MAPS_API_KEY}
+      - PUBLIC_GOOGLE_MAPS_MAP_ID=${PUBLIC_GOOGLE_MAPS_MAP_ID}
       - HOST=0.0.0.0
       - PORT=4321
     ports:
@@ -30,7 +33,3 @@ services:
   beat:
     volumes:
       - ../api:/app
-
-  proxy:
-    ports:
-      - "8080:80"

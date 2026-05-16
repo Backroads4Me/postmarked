@@ -14,6 +14,7 @@ interface Props {
 }
 
 const { title, slug, tripSlug, summary, date, tripTitle, placeName, stopType } = Astro.props;
+const href = slug && tripSlug ? `/trips/${tripSlug}/stops/${slug}` : undefined;
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -23,11 +24,18 @@ function formatDate(dateStr?: string) {
 }
 ---
 
-<div class="card group cursor-pointer" id={slug ? `stop-${slug}` : undefined}>
+<a
+  href={href}
+  class="card group block"
+  id={slug ? `stop-${slug}` : undefined}
+  aria-disabled={href ? undefined : 'true'}
+>
   <div class="flex items-start justify-between gap-4">
     <div class="flex-1 min-w-0">
       <div class="flex items-center gap-2 mb-2">
-        <span class="text-lg">📍</span>
+        <span class="inline-symbol" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
+        </span>
         {stopType && <span class="badge text-[10px] py-0.5">{stopType}</span>}
         {date && <span class="label">{formatDate(date)}</span>}
       </div>
@@ -47,4 +55,4 @@ function formatDate(dateStr?: string) {
       )}
     </div>
   </div>
-</div>
+</a>

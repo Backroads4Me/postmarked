@@ -2,128 +2,53 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
 
-let stops = [];
+let trips = [];
+const cookie = Astro.request.headers.get('cookie');
+
 try {
-  const res = await fetch(apiUrl('/api/admin/stops'), {
-    headers: { 'Cookie': Astro.request.headers.get('cookie') || '' }
+  const res = await fetch(apiUrl('/api/admin/trips'), {
+    headers: cookie ? { cookie } : {}
   });
-  if (res.ok) stops = await res.json();
+  if (res.status === 401 || res.status === 403) return Astro.redirect('/auth/login');
+  if (res.ok) trips = await res.json();
 } catch (e) {
   console.error(e);
-}
-
-function formatDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 ---
 
 <AdminLayout title="Stops">
-  <div class="mb-8 flex justify-between items-start">
-    <div>
-      <div class="label mb-2">Manage</div>
-      <h1 class="display text-3xl">Stops</h1>
-    </div>
-    <a href="/admin/trips" class="btn btn-sm">+ New Stop</a>
+  <div class="mb-8">
+    <div class="label mb-2">Manage</div>
+    <h1 class="display text-3xl">Stops</h1>
+    <p class="text-muted text-sm mt-2">Select a trip to view and manage its stops.</p>
   </div>
 
-  {stops.length > 0 ? (
-    <div class="card-flat" style="padding: 0; overflow: hidden;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--line);">
-            <th class="label" style="padding: 10px 16px; text-align: left;">Title</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Status</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Type</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Visibility</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Date</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Nights</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Action</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stops.map(stop => (
-            <tr style="border-bottom: 1px solid var(--line-soft);" data-stop-row={stop.id}>
-              <td style="padding: 10px 16px;">
-                <div class="flex items-center gap-2">
-                  {stop.is_current && <span class="pulse-dot" style="width: 8px; height: 8px;"></span>}
-                  <span style="color: var(--paper);">{stop.title}</span>
-                </div>
-                {stop.place_name && <span class="coord block mt-0.5">{stop.place_name}</span>}
-              </td>
-              <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.status === 'active' ? 'badge-active' : stop.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
-                  {stop.status}
-                </span>
-              </td>
-              <td style="padding: 10px 12px; text-align: center;">
-                <span class="text-xs text-muted">{stop.stop_type || '—'}</span>
-              </td>
-              <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
-                  {stop.visibility}
-                </span>
-              </td>
-              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
-                {formatDate(stop.start_date)}
-              </td>
-              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
-                {stop.nights ?? '—'}
-              </td>
-              <td style="padding: 10px 12px; text-align: center;">
-                {stop.is_current ? (
-                  <span class="badge badge-active text-[9px]">current</span>
-                ) : (
-                  <button
-                    type="button"
-                    class="btn btn-sm js-set-current"
-                    data-stop-id={stop.id}
-                    style="min-height: 32px;"
-                  >
-                    Mark current
-                  </button>
-                )}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+  {trips.length > 0 ? (
+    <div class="bg-surface-2 border border-line rounded divide-y divide-line">
+      {trips.map(trip => (
+        <a
+          href={`/admin/stops/${trip.id}`}
+          class="p-4 flex items-center justify-between hover:bg-surface-1 transition-colors group"
+        >
+          <div>
+            <div class="flex items-center gap-2">
+              <span class="font-medium" style="color: var(--paper);">{trip.title}</span>
+              <span class={`badge text-[9px] ${trip.status === 'active' ? 'badge-active' : trip.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
+                {trip.status}
+              </span>
+            </div>
+            <div class="text-xs text-dim font-mono mt-0.5">{trip.slug}</div>
+          </div>
+          <span class="text-dim text-sm group-hover:text-ember transition-colors">Manage stops →</span>
+        </a>
+      ))}
     </div>
   ) : (
     <div class="empty-state">
       <div class="icon">📍</div>
-      <h3>No stops yet</h3>
-      <p>Create stops manually or import from RV Trip Wizard.</p>
+      <h3>No trips yet</h3>
+      <p>Create a trip first, then add stops to it.</p>
+      <a href="/admin/trips/new" class="btn btn-sm mt-4">New Trip</a>
     </div>
   )}
 </AdminLayout>
-
-<script>
-  // Wire row "Mark current" buttons. POST same-origin so the cookie + Origin
-  // checks both pass automatically.
-  document.querySelectorAll('button.js-set-current').forEach((btn) => {
-    btn.addEventListener('click', async (ev) => {
-      const target = ev.currentTarget as HTMLButtonElement;
-      const stopId = target.dataset.stopId;
-      if (!stopId) return;
-      target.disabled = true;
-      const original = target.textContent;
-      target.textContent = 'Saving…';
-      try {
-        const res = await fetch('/api/admin/current-stop', {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ stop_id: stopId }),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        // Reload to refresh badges and the dot.
-        location.reload();
-      } catch (e) {
-        target.disabled = false;
-        target.textContent = original;
-        alert('Failed to set current stop: ' + (e instanceof Error ? e.message : String(e)));
-      }
-    });
-  });
-</script>

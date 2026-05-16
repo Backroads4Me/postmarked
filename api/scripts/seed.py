@@ -1,4 +1,5 @@
 import asyncio
+import os
 from datetime import datetime, timezone, timedelta
 
 from fastapi_users.password import PasswordHelper
@@ -28,15 +29,31 @@ async def first_or_none(session, model, **filters):
 
 
 async def seed_user(session):
-    existing = await first_or_none(session, User, email="admin@example.com")
-    if existing:
-        return existing
+    admin_email = os.getenv("GOODPATH_ADMIN_EMAIL", "admin@example.com").strip().lower()
+    admin_password = os.getenv("GOODPATH_ADMIN_PASSWORD", "admin123")
+    admin_display_name = os.getenv("GOODPATH_ADMIN_DISPLAY_NAME", "Ted & Family")
+
+    if not admin_email:
+        raise RuntimeError("GOODPATH_ADMIN_EMAIL must not be empty")
+    if not admin_password:
+        raise RuntimeError("GOODPATH_ADMIN_PASSWORD must not be empty")
 
     password_helper = PasswordHelper()
+    existing = await first_or_none(session, User, email=admin_email)
+    if existing:
+        existing.hashed_password = password_helper.hash(admin_password)
+        existing.display_name = existing.display_name or admin_display_name
+        existing.role = UserRole.ADMIN
+        existing.approval_state = ApprovalState.APPROVED
+        existing.is_active = True
+        existing.is_superuser = True
+        existing.is_verified = True
+        return existing
+
     admin = User(
-        email="admin@example.com",
-        hashed_password=password_helper.hash("admin123"),
-        display_name="Ted & Family",
+        email=admin_email,
+        hashed_password=password_helper.hash(admin_password),
+        display_name=admin_display_name,
         role=UserRole.ADMIN,
         approval_state=ApprovalState.APPROVED,
         is_active=True,

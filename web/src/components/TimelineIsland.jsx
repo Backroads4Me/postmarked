@@ -14,19 +14,19 @@ export default function TimelineIsland({ stops, activeStopId, onStopClick }) {
     } catch { return ''; }
   }
 
-  function getStopTypeIcon(type) {
-    const icons = {
-      campground: '⛺',
-      boondocking: '🏕️',
-      harvest_host: '🍇',
-      service: '🔧',
-      attraction: '🎡',
-      family: '👨‍👩‍👧‍👦',
-      overnight: '🌙',
-      fuel: '⛽',
-      restaurant: '🍽️',
+  function getStopTypeLabel(type) {
+    const labels = {
+      campground: 'Camp',
+      boondocking: 'Wild',
+      harvest_host: 'Host',
+      service: 'Svc',
+      attraction: 'See',
+      family: 'Fam',
+      overnight: 'Night',
+      fuel: 'Fuel',
+      restaurant: 'Food',
     };
-    return icons[type] || '📍';
+    return labels[type] || 'Stop';
   }
 
   return (
@@ -80,8 +80,10 @@ export default function TimelineIsland({ stops, activeStopId, onStopClick }) {
                   }}
                 />
 
-                {/* Icon */}
-                <span className="text-sm">{getStopTypeIcon(stop.stop_type)}</span>
+                {/* Type */}
+                <span className="label" style={{ fontSize: '8px', color: isActive ? 'var(--ember)' : 'var(--dim)' }}>
+                  {getStopTypeLabel(stop.stop_type)}
+                </span>
 
                 {/* Label */}
                 <span

@@ -12,7 +12,7 @@ export function apiUrl(path) {
 
 /**
  * Builds a root-relative URL for browser fetch calls (React islands, inline scripts).
- * Caddy routes /api/* and /media/* to the right backend, so no host needed.
+ * Astro middleware proxies /api/* and /media/* to the backend, so no host needed.
  */
 export function clientApiUrl(path) {
   const p = path.startsWith("/") ? path : `/${path}`;

@@ -7,8 +7,8 @@ Astro frontend for Goodpath. The app is server-rendered with React islands for i
 - Astro 6
 - React 19 islands
 - Tailwind 4
-- MapLibre GL JS
-- PMTiles vector tiles through Caddy
+- Google Maps by default
+- Optional MapLibre GL JS + PMTiles vector tiles
 
 ## Development
 
@@ -20,8 +20,7 @@ docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml u
 
 The web dev server is available at:
 
-- Direct Astro dev server: http://localhost:4321
-- Caddy dev proxy: http://localhost:8080
+- Astro dev server: http://localhost:4321
 
 For direct frontend work:
 
@@ -36,9 +35,20 @@ API_BASE_URL=http://localhost:8000 npm run dev
 Use `src/lib/api.js`:
 
 - `apiUrl(path)` for Astro server-side fetches. In Docker it resolves to `http://api:8000`.
-- `clientApiUrl(path)` for browser-side fetches. It always returns root-relative `/api/...` paths that work through Caddy.
+- `clientApiUrl(path)` for browser-side fetches. It always returns root-relative `/api/...` paths that work through the Astro middleware proxy.
 
 Browser code should never call `http://api:8000` directly.
+
+## Maps
+
+The default map provider is Google Maps:
+
+```env
+PUBLIC_MAP_PROVIDER=google
+PUBLIC_GOOGLE_MAPS_API_KEY=<your browser API key>
+```
+
+Set `PUBLIC_MAP_PROVIDER=maplibre` to use the optional PMTiles-backed MapLibre path instead.
 
 ## Useful Commands
 

@@ -19,14 +19,15 @@ This document replaces the old sprint tracker. S1-S3 stabilization work is compl
 - Pending user approval page.
 - RV Trip Wizard Excel preview/apply flow.
 - Media streaming through `/media/{asset_id}/{variant}`.
-- PMTiles map source with dark fallback if `pmtiles/basemap.pmtiles` is missing.
+- Google Maps provider with route schematic fallback when no API key is configured.
+- Optional PMTiles map source when `PUBLIC_MAP_PROVIDER=maplibre`.
 
 ## Verified Checks
 
 These checks passed on 2026-05-04:
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml ps
+docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml ps
 docker exec compose-api-1 alembic current
 docker exec compose-api-1 python -c "import app.main; print('api import ok')"
 docker exec compose-api-1 python scripts/seed.py
@@ -47,7 +48,7 @@ Verified API/page behavior:
 
 ## Owner Testing Path
 
-Use http://localhost:8080 for normal testing.
+Use http://localhost:4321 for normal testing.
 
 1. Open `/`.
 2. Confirm the home page quickly answers:
@@ -75,7 +76,7 @@ Admin credentials for local seed data:
 
 Start with owner testing first. After that, the app is suitable for one or two trusted family testers once obvious mobile and visual issues from the polish backlog are addressed.
 
-Do not treat the local seeded password, default Flower auth, or dev Caddy config as production-safe.
+Do not treat the local seeded password or default Flower auth as production-safe.
 
 ## Non-Blocking Polish Backlog
 
@@ -90,4 +91,4 @@ Highest value before wider family testing:
 7. Add admin settings/profile pages for RV and traveler details.
 8. Add deeper tests for import reimport edge cases.
 9. Add deeper tests for visibility inheritance across journey, trip, stop, post, and media.
-10. Finish production Caddy/TLS/header review before deploying on a public domain.
+10. Finish production reverse-proxy/TLS/header review before deploying on a public domain.

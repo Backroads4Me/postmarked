@@ -17,7 +17,7 @@ async def list_trips_admin(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
-    result = await session.execute(select(Trip))
+    result = await session.execute(select(Trip).order_by(Trip.start_date.desc().nulls_last()))
     return result.scalars().all()
 
 @router.post("", response_model=TripOut)

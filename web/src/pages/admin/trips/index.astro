@@ -9,47 +9,153 @@ try {
   const res = await fetch(apiUrl('/api/admin/trips'), {
     headers: cookie ? { cookie } : {}
   });
-  
+
   if (res.status === 401 || res.status === 403) {
     return Astro.redirect('/auth/login');
   }
-  
+
   if (res.ok) {
     trips = await res.json();
   }
 } catch (e) {
   console.error("Failed to load admin trips", e);
 }
+
+const activeTrips = trips.filter(t => t.status !== 'planned');
+const plannedTrips = trips.filter(t => t.status === 'planned');
 ---
 
 <AdminLayout title="Manage Trips">
-  <div class="mb-12 flex justify-between items-center">
+  <div class="mb-8 flex justify-between items-center">
     <div>
       <h1 class="display text-4xl">Trips</h1>
       <p class="text-muted mt-2">Manage all journeys, including non-published drafts.</p>
     </div>
     <a href="/admin/trips/new" class="btn">New Trip</a>
   </div>
-  
-  <div class="bg-surface-2 border border-line rounded">
-    {trips.length > 0 ? (
+
+  <div class="bg-surface-2 border border-line rounded" id="trips-list">
+    {activeTrips.length > 0 ? (
       <div class="divide-y divide-line">
-        {trips.map(trip => (
-          <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
+        {activeTrips.map(trip => (
+          <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4" data-trip-row={trip.id}>
             <div>
-              <div class="font-bold text-lg">{trip.title}</div>
-              <div class="text-sm text-dim font-mono tracking-widest">{trip.slug} · {trip.status} · {trip.visibility}</div>
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-bold text-lg">{trip.title}</span>
+                <span class={`badge text-[9px] ${trip.status === 'active' ? 'badge-active' : trip.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
+                  {trip.status}
+                </span>
+              </div>
+              <div class="text-xs text-dim font-mono tracking-widest">
+                {trip.slug}
+                {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                {trip.end_date && ` – ${new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+              </div>
             </div>
             <div class="flex gap-2">
               <a href={`/admin/trips/${trip.id}`} class="btn ghost btn-sm">Edit</a>
+              <button
+                type="button"
+                class="btn btn-sm js-delete-trip"
+                data-trip-id={trip.id}
+                data-trip-title={trip.title}
+                style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+              >
+                Delete
+              </button>
             </div>
           </div>
         ))}
       </div>
     ) : (
-      <div class="p-8 text-center text-muted">
-        No trips found. Create one to get started.
-      </div>
+      <div class="p-8 text-center text-muted">No trips found. Create one to get started.</div>
     )}
   </div>
+
+  {plannedTrips.length > 0 && (
+    <div class="mt-6">
+      <button
+        id="toggle-planned"
+        type="button"
+        class="btn btn-sm btn-ghost text-xs"
+      >
+        Show {plannedTrips.length} planned trip{plannedTrips.length !== 1 ? 's' : ''}
+      </button>
+
+      <div id="planned-trips" class="hidden mt-4 bg-surface-2 border border-line rounded">
+        <div class="divide-y divide-line">
+          {plannedTrips.map(trip => (
+            <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4" data-trip-row={trip.id}>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-bold text-lg">{trip.title}</span>
+                  <span class="badge badge-planned text-[9px]">planned</span>
+                </div>
+                <div class="text-xs text-dim font-mono tracking-widest">
+                  {trip.slug}
+                  {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <a href={`/admin/trips/${trip.id}`} class="btn ghost btn-sm">Edit</a>
+                <button
+                  type="button"
+                  class="btn btn-sm js-delete-trip"
+                  data-trip-id={trip.id}
+                  data-trip-title={trip.title}
+                  style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
 </AdminLayout>
+
+<script>
+  document.getElementById('toggle-planned')?.addEventListener('click', (e) => {
+    const btn = e.currentTarget as HTMLButtonElement;
+    const panel = document.getElementById('planned-trips');
+    const hidden = panel?.classList.toggle('hidden');
+    const count = panel?.querySelectorAll('[data-trip-row]').length ?? 0;
+    btn.textContent = hidden
+      ? `Show ${count} planned trip${count !== 1 ? 's' : ''}`
+      : `Hide planned trips`;
+  });
+
+  document.querySelectorAll('button.js-delete-trip').forEach((btn) => {
+    btn.addEventListener('click', async (event) => {
+      const target = event.currentTarget as HTMLButtonElement;
+      const tripId = target.dataset.tripId;
+      const tripTitle = target.dataset.tripTitle || 'this trip';
+      if (!tripId) return;
+
+      const confirmed = window.confirm(`Delete "${tripTitle}"? This also removes its stops and planned stops. This cannot be undone.`);
+      if (!confirmed) return;
+
+      target.disabled = true;
+      const originalText = target.textContent;
+      target.textContent = 'Deleting...';
+
+      try {
+        const res = await fetch(`/api/admin/trips/${tripId}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (!res.ok) {
+          const detail = await res.text();
+          throw new Error(detail || `HTTP ${res.status}`);
+        }
+        document.querySelector(`[data-trip-row="${tripId}"]`)?.remove();
+      } catch (error) {
+        target.disabled = false;
+        target.textContent = originalText;
+        alert(`Could not delete trip: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    });
+  });
+</script>

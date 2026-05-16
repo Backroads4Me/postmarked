@@ -9,6 +9,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select, update
+from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -31,7 +32,7 @@ async def list_posts(
     user: User = Depends(current_admin_user),
 ):
     result = await session.execute(
-        select(Post).order_by(Post.posted_at.desc())
+        select(Post).options(selectinload(Post.media)).order_by(Post.posted_at.desc())
     )
     return result.scalars().all()
 

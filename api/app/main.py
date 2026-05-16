@@ -23,7 +23,7 @@ def _env_list(var: str, default: str) -> list[str]:
 # requests (Origin header check, see CsrfOriginMiddleware below). Comma-separated env.
 ALLOWED_ORIGINS = _env_list(
     "ALLOWED_ORIGINS",
-    "http://localhost:4321,http://localhost:8080,http://localhost:8000",
+    "http://localhost:4321,http://localhost:8000",
 )
 ALLOWED_HOSTS = _env_list(
     "ALLOWED_HOSTS",
@@ -44,10 +44,10 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """
     Security headers for API JSON and media-byte responses.
 
-    NOTE: the Astro frontend is served by Caddy (not by FastAPI), so its HTML
-    pages must get CSP/HSTS at the edge. The CSP we set here applies only to
-    /api/* and /media/* responses, which are non-HTML, so default-src 'none'
-    is the appropriate strict default.
+    The Astro frontend is served separately from FastAPI, so its HTML pages
+    should get CSP/HSTS from Astro or the deployment reverse proxy. The CSP we
+    set here applies only to /api/* and /media/* responses, which are non-HTML,
+    so default-src 'none' is the appropriate strict default.
     """
 
     async def dispatch(self, request: Request, call_next):
@@ -147,8 +147,8 @@ app.include_router(profiles.router, prefix="/api")
 app.include_router(social.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 
-# Media streaming. Caddy routes /media/* directly to the API, so this router
-# is mounted at the root, not under /api.
+# Media streaming is mounted at the root so a deployment proxy or the Astro
+# middleware can route /media/* directly to the API.
 app.include_router(media.router)
 
 

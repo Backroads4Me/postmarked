@@ -279,3 +279,32 @@ async def patch_upload(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
+
+
+@router.post("/{asset_id}/requeue")
+async def requeue_media_asset(
+    asset_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_admin_user),
+):
+    asset = await session.get(MediaAsset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset.processing_state = MediaProcessingState.PENDING
+    await session.commit()
+    process_media_asset.delay(str(asset_id))
+    return {"ok": True}
+
+
+@router.delete("/{asset_id}")
+async def delete_media_asset(
+    asset_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_admin_user),
+):
+    asset = await session.get(MediaAsset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    await session.delete(asset)
+    await session.commit()
+    return {"ok": True}

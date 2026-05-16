@@ -10,7 +10,7 @@ interface Props {
 }
 
 const {
-  icon = '🗺️',
+  icon = '',
   title = 'Nothing here yet',
   message = 'Check back soon for updates.',
   variant = 'empty'
@@ -18,7 +18,13 @@ const {
 ---
 
 <div class="empty-state">
-  <div class="icon">{icon}</div>
+  {icon ? (
+    <div class="icon">{icon}</div>
+  ) : (
+    <div class="inline-symbol mb-4" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path d="M9 18 4 20V6l5-2 6 2 5-2v14l-5 2-6-2Z"/><path d="M9 4v14"/><path d="M15 6v14"/></svg>
+    </div>
+  )}
   <h3>{title}</h3>
   <p>{message}</p>
   {variant === 'loading' && (

@@ -26,6 +26,8 @@ class PostOut(BaseResponse):
     trip_title: Optional[str] = None
     place_name: Optional[str] = None
 
+    media: List[MediaAssetOut] = []
+
 
 class PostCreate(BaseModel):
     title: str = Field(min_length=1, max_length=200)

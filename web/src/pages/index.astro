@@ -32,10 +32,21 @@ const updates = [
 });
 const nextStop = homeData?.next_stop;
 const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
+const completedStops = activeTrip?.stops_completed ?? 0;
+const totalStops = activeTrip?.stops_total ?? homeData?.recent_stops?.length ?? 0;
+const remainingStops = Math.max(totalStops - completedStops, 0);
 ---
 
 <Layout title="Goodpath — Where Are We Now?">
   <main class="frame py-8 md:py-12">
+    {error && (
+      <section class="mb-6" aria-live="polite">
+        <div class="card-flat text-sm text-paper-2">
+          <div class="label mb-1">Reader data unavailable</div>
+          <p class="text-muted">The frontend is running, but the API did not return journey data: {error}</p>
+        </div>
+      </section>
+    )}
 
     {/* ── Hero: Current Location ─────────────────────────────── */}
     <section class="mb-10" id="current-location-section">
@@ -54,7 +65,7 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
       ) : (
         <div class="card-hero">
           <div class="flex items-center gap-3 mb-4">
-            <span class="text-2xl">🚐</span>
+            <span class="brand-mark" aria-hidden="true"></span>
             <span class="eyebrow">Welcome to Goodpath</span>
           </div>
           <h2 class="display text-3xl md:text-4xl mb-3">
@@ -71,25 +82,25 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
 
     {/* ── Stats Bar ──────────────────────────────────────────── */}
     {homeData && (
-      <section class="flex gap-4 md:gap-8 mb-10 overflow-x-auto" id="stats-bar">
-        <div class="card-flat flex flex-col items-center min-w-[100px] text-center">
-          <span class="text-2xl font-bold text-ember">{activeTrip?.stops_completed ?? 0}</span>
-          <span class="label mt-1">Done</span>
+      <section class="metric-strip mb-10" id="stats-bar" aria-label="Journey snapshot">
+        <div class="card-flat metric">
+          <span class="label">Completed</span>
+          <span class="display text-3xl text-ember">{completedStops}</span>
         </div>
-        <div class="card-flat flex flex-col items-center min-w-[100px] text-center">
-          <span class="text-2xl font-bold text-ember">{activeTrip?.stops_total ?? homeData.recent_stops?.length ?? 0}</span>
-          <span class="label mt-1">Stops</span>
+        <div class="card-flat metric">
+          <span class="label">Remaining</span>
+          <span class="display text-3xl">{remainingStops}</span>
         </div>
         {activeTrip && (
-          <a href={`/trips/${activeTrip.slug}`} class="card-flat flex flex-col items-center min-w-[100px] text-center hover:border-ember transition-colors">
-            <span class="badge badge-active text-[10px] mb-1">Active</span>
-            <span class="text-xs text-paper-2 truncate max-w-[120px]">{activeTrip.title}</span>
+          <a href={`/trips/${activeTrip.slug}`} class="card-flat metric hover:border-ember transition-colors">
+            <span class="badge badge-active text-[10px] self-start">Active</span>
+            <span class="text-sm text-paper-2 line-clamp-2">{activeTrip.title}</span>
           </a>
         )}
         {nextStop && (
-          <div class="card-flat flex flex-col items-center min-w-[100px] text-center">
-            <span class="badge badge-planned text-[10px] mb-1">Next</span>
-            <span class="text-xs text-paper-2 truncate max-w-[120px]">{nextStop.title}</span>
+          <div class="card-flat metric">
+            <span class="badge badge-planned text-[10px] self-start">Next</span>
+            <span class="text-sm text-paper-2 line-clamp-2">{nextStop.title}</span>
           </div>
         )}
       </section>
@@ -100,7 +111,9 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
       <section class="mb-10" id="next-stop-section">
         <div class="card">
           <div class="flex items-center gap-2 mb-3">
-            <span class="text-lg">🧭</span>
+            <span class="inline-symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m14.5 9.5-1.8 4.8-4.8 1.8 1.8-4.8 4.8-1.8Z"/></svg>
+            </span>
             <span class="eyebrow">Next Up</span>
           </div>
           <h3 class="display text-xl mb-1">{nextStop.title}</h3>
@@ -116,7 +129,7 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
 
     {/* ── Up Next: Planned Itinerary ─────────────────────────── */}
     {upcomingPlanned.length > 0 && (
-      <section class="mb-10" id="upcoming-planned">
+      <section class="mb-10 section-band" id="upcoming-planned">
         <div class="flex items-center justify-between mb-4">
           <div>
             <div class="label mb-1">From the trip plan</div>
@@ -157,7 +170,9 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
           <div class="label mb-1">Recent</div>
           <h2 class="display text-2xl">Latest Updates</h2>
         </div>
-        <a href="/timeline" class="btn btn-sm btn-ghost">View All →</a>
+        <a href="/timeline" class="btn btn-sm btn-ghost" aria-label="View all timeline updates">
+          View All
+        </a>
       </div>
 
       {updates.length > 0 ? (
@@ -188,7 +203,7 @@ const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
         </div>
       ) : (
         <EmptyState
-          icon="📸"
+          icon=""
           title="No updates yet"
           message="Check back soon for travel stories and photos."
         />
