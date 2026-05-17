@@ -30,11 +30,11 @@ coverage/
 !.env.example
 
 # Docker / data
-postgres-data/
-redis-data/
-media/
-uploads/
-tiles/
+/postgres-data/
+/redis-data/
+/media/
+/uploads/
+/tiles/
 
 # Runtime-generated scheduler state
 /api/celerybeat-schedule
@@ -58,4 +58,3 @@ AGENTS.md
 
 # Example data
 /export-examples/
-/docs/

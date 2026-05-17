@@ -11,7 +11,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset, PlannedStop, Post, Stop, Trip
-from app.models.enums import PlannedStopImportState, StopStatus, TripStatus, Visibility
+from app.models.enums import MediaProcessingState, PlannedStopImportState, StopStatus, TripStatus, Visibility
 from app.schemas.journey import (
     HomeOut,
     PublicPlannedStopSummary,
@@ -59,6 +59,16 @@ def _visible_media(media: list[MediaAsset], user) -> list[MediaAsset]:
     return [asset for asset in media if asset.visibility == Visibility.PUBLIC]
 
 
+def _visible_cover_media(asset: Optional[MediaAsset], user) -> Optional[MediaAsset]:
+    if not asset:
+        return None
+    if asset.processing_state != MediaProcessingState.READY:
+        return None
+    if _is_admin(user) or asset.visibility == Visibility.PUBLIC:
+        return asset
+    return None
+
+
 def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]], user) -> Optional[PublicStopSummary]:
     if not stop:
         return None
@@ -88,11 +98,11 @@ def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]]
         miles_from_previous=stop.miles_from_previous,
         estimated_travel_time=stop.estimated_travel_time,
         public_note=stop.public_note,
-        cover_media=stop.cover_media if stop.cover_media and (_is_admin(user) or stop.cover_media.visibility == Visibility.PUBLIC) else None,
+        cover_media=_visible_cover_media(stop.cover_media, user),
     )
 
 
-def _trip_summary_out(trip: Optional[Trip], stops: list[Stop]) -> Optional[PublicTripSegmentSummary]:
+def _trip_summary_out(trip: Optional[Trip], stops: list[Stop], user=None) -> Optional[PublicTripSegmentSummary]:
     if not trip:
         return None
     completed_statuses = {StopStatus.ACTIVE, StopStatus.PUBLISHED, StopStatus.ARCHIVED}
@@ -107,6 +117,7 @@ def _trip_summary_out(trip: Optional[Trip], stops: list[Stop]) -> Optional[Publi
         total_distance_meters=trip.total_distance_meters,
         stops_completed=sum(1 for stop in stops if stop.status in completed_statuses),
         stops_total=len(stops),
+        cover_media=_visible_cover_media(trip.cover_media, user),
     )
 
 
@@ -146,9 +157,6 @@ def _post_to_update(post: Post, user) -> RecentUpdate:
 
 
 def _stop_to_update(stop: Stop, user) -> RecentUpdate:
-    show_cover = stop.cover_media and (
-        _is_admin(user) or stop.cover_media.visibility == Visibility.PUBLIC
-    )
     return RecentUpdate(
         kind="stop",
         id=stop.id,
@@ -164,7 +172,7 @@ def _stop_to_update(stop: Stop, user) -> RecentUpdate:
         stop_slug=stop.slug,
         place_name=stop.place_name,
         stop_type=stop.stop_type,
-        cover_media=stop.cover_media if show_cover else None,
+        cover_media=_visible_cover_media(stop.cover_media, user),
     )
 
 
@@ -213,10 +221,10 @@ async def get_home(
     active_trip = None
     active_trip_stops: list[Stop] = []
     if current_stop:
-        active_trip = await session.get(Trip, current_stop.trip_id)
+        active_trip = await session.get(Trip, current_stop.trip_id, options=[selectinload(Trip.cover_media)])
         active_trip_stops = [s for s in stops if s.trip_id == current_stop.trip_id]
     if not active_trip:
-        trip_query = select(Trip).where(Trip.status == TripStatus.ACTIVE)
+        trip_query = select(Trip).where(Trip.status == TripStatus.ACTIVE).options(selectinload(Trip.cover_media))
         trip_query = _public_only(trip_query, Trip, user)
         active_trip = (await session.execute(trip_query)).scalars().first()
         active_trip_stops = [s for s in stops if active_trip and s.trip_id == active_trip.id]
@@ -267,7 +275,7 @@ async def get_home(
         next_stop=_stop_out(next_stop_model, coords, user),
         recent_stops=[_stop_out(s, coords, user) for s in reversed(stops[-5:]) if _stop_out(s, coords, user)],
         recent_posts=[await _post_out(post, coords, user) for post in posts],
-        active_trip_segment=_trip_summary_out(active_trip, active_trip_stops),
+        active_trip_segment=_trip_summary_out(active_trip, active_trip_stops, user),
         upcoming_planned_stops=upcoming_planned,
     )
 
@@ -337,7 +345,7 @@ async def list_trip_segments(
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
 ):
-    trip_query = select(Trip).order_by(Trip.start_date.asc())
+    trip_query = select(Trip).options(selectinload(Trip.cover_media)).order_by(Trip.start_date.asc())
     trip_query = _public_only(trip_query, Trip, user)
     trips = list((await session.execute(trip_query)).scalars().all())
 
@@ -345,7 +353,7 @@ async def list_trip_segments(
     stop_query = _public_only(stop_query, Stop, user)
     stops = list((await session.execute(stop_query)).scalars().all())
 
-    return [_trip_summary_out(trip, [s for s in stops if s.trip_id == trip.id]) for trip in trips]
+    return [_trip_summary_out(trip, [s for s in stops if s.trip_id == trip.id], user) for trip in trips]
 
 
 @router.get("/trip-segments/{slug}", response_model=PublicTripSegmentDetail)
@@ -354,7 +362,10 @@ async def get_trip_segment(
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
 ):
-    trip_query = select(Trip).where(Trip.slug == slug).options(selectinload(Trip.stops).selectinload(Stop.cover_media))
+    trip_query = select(Trip).where(Trip.slug == slug).options(
+        selectinload(Trip.cover_media),
+        selectinload(Trip.stops).selectinload(Stop.cover_media),
+    )
     trip_query = _public_only(trip_query, Trip, user)
     trip = (await session.execute(trip_query)).scalars().first()
     if not trip:
@@ -384,7 +395,7 @@ async def get_trip_segment(
     posts_query = _public_only(posts_query, Post, user)
     posts = list((await session.execute(posts_query)).scalars().all())
 
-    summary = _trip_summary_out(trip, stops)
+    summary = _trip_summary_out(trip, stops, user)
     return PublicTripSegmentDetail(
         **summary.model_dump(),
         body=trip.body,

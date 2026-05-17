@@ -49,11 +49,12 @@ def process_media_asset(asset_id: str):
         if not asset:
             return "Asset not found"
 
-        file_path = os.path.join(ORIGINALS_PATH, f"{asset.id}.bin")
+        file_path = asset.original_path or os.path.join(ORIGINALS_PATH, f"{asset.id}.bin")
         if not os.path.exists(file_path):
             asset.processing_state = MediaProcessingState.FAILED
+            asset.error_message = f"Original file not found: {file_path}"
             db.commit()
-            return "File not found"
+            return asset.error_message
 
         os.makedirs(DERIVATIVES_PATH, exist_ok=True)
         
@@ -100,10 +101,12 @@ def process_media_asset(asset_id: str):
                     else:
                         asset.dominant_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
                         
-                    asset.derivative_paths = {"webp": f"/media/derivatives/{asset.id}.webp"}
+                    asset.derivative_paths = {"webp": f"/media/{asset.id}/webp"}
                     asset.processing_state = MediaProcessingState.READY
+                    asset.error_message = None
             except Exception as e:
-                print(f"Image processing failed: {e}")
+                asset.error_message = f"Image processing failed: {e}"
+                print(asset.error_message)
                 asset.processing_state = MediaProcessingState.FAILED
 
         # Video processing 
@@ -132,11 +135,13 @@ def process_media_asset(asset_id: str):
                     img.thumbnail((32, 32))
                     asset.blurhash = blurhash.encode(img, x_components=4, y_components=3)
 
-                asset.derivative_paths = {"poster": f"/media/derivatives/{asset.id}-poster.jpg"}
+                asset.derivative_paths = {"poster": f"/media/{asset.id}/poster"}
                 asset.processing_state = MediaProcessingState.READY
+                asset.error_message = None
 
             except Exception as e:
-                print(f"Video processing failed: {e}")
+                asset.error_message = f"Video processing failed: {e}"
+                print(asset.error_message)
                 asset.processing_state = MediaProcessingState.FAILED
 
         db.commit()

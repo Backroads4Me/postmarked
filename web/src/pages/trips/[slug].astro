@@ -30,6 +30,9 @@ const posts = trip.posts || [];
 const stopsWithCoords = stops.filter(s => s.latitude != null && s.longitude != null);
 const photoCount = posts.reduce((n, p) => n + (p.media?.length || 0), 0);
 const milesTotal = stops.reduce((n, s) => n + (s.miles_from_previous || 0), 0);
+const cover = trip.cover_media?.processing_state === 'ready' && trip.cover_media?.derivative_paths?.webp
+  ? trip.cover_media
+  : null;
 
 function fmtDate(d) {
   if (!d) return '';
@@ -66,6 +69,17 @@ function statusClass(s) {
       <h1 class="display text-3xl md:text-5xl">{trip.title}</h1>
       {trip.summary && (
         <p class="lede mt-3 text-base" style="font-family: var(--sans);">{trip.summary}</p>
+      )}
+
+      {cover && (
+        <figure class="mt-6 overflow-hidden rounded-lg border border-line bg-surface-2">
+          <img
+            src={`/media/${cover.id}/webp`}
+            alt={cover.alt_text || ''}
+            class="w-full object-cover"
+            style="aspect-ratio: 16 / 7;"
+          />
+        </figure>
       )}
 
       <div class="flex gap-6 md:gap-10 mt-6 flex-wrap">

@@ -1,7 +1,7 @@
 services:
   web:
     volumes:
-      - ../web:/app
+      - ./web:/app
       - /app/node_modules
     command: npm run dev -- --host 0.0.0.0
     environment:
@@ -16,20 +16,20 @@ services:
 
   api-migrate:
     volumes:
-      - ../api:/app
+      - ./api:/app
 
   api:
     volumes:
-      - ../api:/app
+      - ./api:/app
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
       - "8000:8000"
 
   worker:
     volumes:
-      - ../api:/app
+      - ./api:/app
     command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery -A app.tasks worker -l info
 
   beat:
     volumes:
-      - ../api:/app
+      - ./api:/app

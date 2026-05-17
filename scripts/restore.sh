@@ -26,8 +26,8 @@ docker run --rm \
 
 echo "[2/2] Restoring PostgreSQL database..."
 # Fast wipe and restore
-docker compose -f compose/docker-compose.yml exec -T db dropdb -U postgres goodpath || true
-docker compose -f compose/docker-compose.yml exec -T db createdb -U postgres goodpath
-cat "$DB_FILE" | docker compose -f compose/docker-compose.yml exec -T db psql -U postgres -d goodpath
+docker compose exec -T db dropdb -U postgres goodpath || true
+docker compose exec -T db createdb -U postgres goodpath
+cat "$DB_FILE" | docker compose exec -T db psql -U postgres -d goodpath
 
 echo "Restore complete!"

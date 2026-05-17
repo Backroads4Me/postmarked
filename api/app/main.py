@@ -93,16 +93,14 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         origin = request.headers.get("origin")
-        if origin is None:
-            # No Origin: typically a non-browser client. Permit but log.
-            # For stricter posture, reject here.
-            return await call_next(request)
-
-        if origin not in ALLOWED_ORIGINS:
+        if origin is not None and origin not in ALLOWED_ORIGINS:
+            import logging
+            logging.error(f"CSRF blocked: origin={origin!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
             return JSONResponse(
                 status_code=403,
-                content={"detail": "Origin not allowed"},
+                content={"detail": f"Origin not allowed: {origin}"},
             )
+        return await call_next(request)
         return await call_next(request)
 
 

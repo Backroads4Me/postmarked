@@ -1,10 +1,10 @@
 services:
   web:
     build:
-      context: ../web
+      context: ./web
       dockerfile: Dockerfile
     env_file:
-      - ../.env
+      - .env
     environment:
       - PUBLIC_BASE_URL=http://localhost
       - PUBLIC_MAP_PROVIDER=${PUBLIC_MAP_PROVIDER:-google}
@@ -19,7 +19,7 @@ services:
 
   api-migrate:
     build:
-      context: ../api
+      context: ./api
       dockerfile: Dockerfile
     command: ["alembic", "upgrade", "head"]
     environment:
@@ -37,7 +37,7 @@ services:
 
   api:
     build:
-      context: ../api
+      context: ./api
       dockerfile: Dockerfile
     environment:
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
@@ -67,7 +67,7 @@ services:
 
   worker:
     build:
-      context: ../api
+      context: ./api
       dockerfile: Dockerfile
     command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
     environment:
@@ -90,7 +90,7 @@ services:
 
   beat:
     build:
-      context: ../api
+      context: ./api
       dockerfile: Dockerfile
     command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
     environment:

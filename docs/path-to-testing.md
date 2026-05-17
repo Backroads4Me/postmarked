@@ -27,11 +27,11 @@ This document replaces the old sprint tracker. S1-S3 stabilization work is compl
 These checks passed on 2026-05-04:
 
 ```bash
-docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml ps
-docker exec compose-api-1 alembic current
-docker exec compose-api-1 python -c "import app.main; print('api import ok')"
-docker exec compose-api-1 python scripts/seed.py
-docker exec compose-web-1 npm run build
+docker compose ps
+docker exec goodpath-api-1 alembic current
+docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
+docker exec goodpath-api-1 python scripts/seed.py
+docker exec goodpath-web-1 npm run build
 ```
 
 Verified API/page behavior:

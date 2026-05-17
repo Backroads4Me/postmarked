@@ -1,0 +1,123 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
+
+const cookie = Astro.request.headers.get('cookie');
+let orphans = [];
+let stops = [];
+
+try {
+  const [resOrphans, resStops] = await Promise.all([
+    fetch(apiUrl('/api/admin/media/orphans'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} })
+  ]);
+  
+  if (resOrphans.status === 401 || resOrphans.status === 403) return Astro.redirect('/auth/login');
+  
+  if (resOrphans.ok) orphans = await resOrphans.json();
+  if (resStops.ok) stops = await resStops.json();
+} catch (e) {
+  console.error("Failed to fetch batch data", e);
+}
+---
+
+<AdminLayout title="Batch Assignment">
+  <div class="mb-8 flex justify-between items-end">
+    <div>
+      <h1 class="display text-4xl">Batch Assigner</h1>
+      <p class="text-muted mt-2">Select unassigned media files below and bind them to a stop.</p>
+    </div>
+    
+    <div class="flex gap-4 items-center bg-surface-2 p-4 border border-line rounded">
+      <select id="target-stop" class="bg-surface-1 border border-line p-2 outline-none">
+        <option value="">-- Choose Stop --</option>
+        {stops.map(s => <option value={s.id}>{s.title}</option>)}
+      </select>
+      <button id="btn-assign" class="btn" disabled>Assign (<span id="count">0</span>)</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4" id="media-grid">
+    {orphans.length > 0 ? orphans.map(asset => (
+      <div 
+        class="media-card aspect-square bg-surface-2 border-2 border-transparent cursor-pointer relative rounded overflow-hidden hover:border-line"
+        data-id={asset.id}
+      >
+        {asset.derivative_paths?.webp || asset.derivative_paths?.poster ? (
+          <img src={asset.derivative_paths.webp || asset.derivative_paths.poster} class="w-full h-full object-cover pointer-events-none" />
+        ) : (
+          <div class="flex flex-col items-center justify-center h-full w-full pointer-events-none">
+            <span class="text-xs uppercase tracking-widest text-dim">{asset.processing_state}</span>
+          </div>
+        )}
+        <div class="absolute inset-0 bg-ember/20 opacity-0 transition-opacity selection-overlay pointer-events-none"></div>
+      </div>
+    )) : (
+      <div class="col-span-full py-24 text-center text-muted">
+        No orphaned media found. Try running a scan or uploading new TUS files.
+      </div>
+    )}
+  </div>
+
+  <script>
+    const grid = document.getElementById('media-grid');
+    const btnAssign = document.getElementById('btn-assign');
+    const stopSelect = document.getElementById('target-stop');
+    const countDisplay = document.getElementById('count');
+    
+    let selected = new Set();
+
+    grid.addEventListener('click', (e) => {
+      const card = e.target.closest('.media-card');
+      if (!card) return;
+      
+      const id = card.dataset.id;
+      if (selected.has(id)) {
+        selected.delete(id);
+        card.classList.remove('border-ember');
+        card.querySelector('.selection-overlay').classList.add('opacity-0');
+      } else {
+        selected.add(id);
+        card.classList.add('border-ember');
+        card.querySelector('.selection-overlay').classList.remove('opacity-0');
+      }
+      
+      countDisplay.textContent = selected.size;
+      checkState();
+    });
+
+    stopSelect.addEventListener('change', checkState);
+
+    function checkState() {
+      btnAssign.disabled = selected.size === 0 || !stopSelect.value;
+    }
+
+    btnAssign.addEventListener('click', async () => {
+      const stop_id = stopSelect.value;
+      const media_ids = Array.from(selected);
+
+      btnAssign.textContent = "Assigning...";
+      
+      try {
+        const res = await fetch('/api/admin/media/assign', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ media_ids, stop_id })
+        });
+        
+        if (res.ok) {
+          window.location.reload();
+        } else {
+          alert("Failed to assign.");
+          btnAssign.textContent = `Assign (${selected.size})`;
+        }
+      } catch (err) {
+        alert("Network error.");
+      }
+    });
+  </script>
+  
+  <style>
+    .media-card.border-ember { border-color: var(--ember); }
+  </style>
+</AdminLayout>

@@ -33,7 +33,7 @@ Direct API work still needs PostgreSQL/PostGIS and Redis. The easiest path is us
 From the repo root:
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml up --build
+docker compose up --build
 ```
 
 The dev compose file mounts `api/` into the container and runs Uvicorn with reload.
@@ -59,9 +59,9 @@ python scripts/seed.py
 Docker equivalents:
 
 ```bash
-docker exec compose-api-1 alembic current
-docker exec compose-api-1 python -c "import app.main; print('api import ok')"
-docker exec compose-api-1 python scripts/seed.py
+docker exec goodpath-api-1 alembic current
+docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
+docker exec goodpath-api-1 python scripts/seed.py
 ```
 
 ## Route Map

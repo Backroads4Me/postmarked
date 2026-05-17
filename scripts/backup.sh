@@ -13,7 +13,7 @@ mkdir -p "$ARCHIVE_DIR"
 
 echo "[1/2] Dumping PostgreSQL database..."
 # Assuming standard goodpath compose stack running locally
-docker compose -f compose/docker-compose.yml exec -T db pg_dump -U postgres goodpath > "$DB_BACKUP_SQL"
+docker compose exec -T db pg_dump -U postgres goodpath > "$DB_BACKUP_SQL"
 
 echo "[2/2] Tarballing /originals and /derivatives volumes..."
 # Spin up an ephemeral alpine container to zip the volumes safely

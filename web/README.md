@@ -15,7 +15,7 @@ Astro frontend for Goodpath. The app is server-rendered with React islands for i
 From the repo root, Docker is the preferred path:
 
 ```bash
-docker compose -f compose/docker-compose.yml -f compose/docker-compose.dev.yml up --build
+docker compose up --build
 ```
 
 The web dev server is available at:

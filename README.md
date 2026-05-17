@@ -51,7 +51,7 @@ Change the seeded admin credentials before any real deployment.
 2. Start the stack:
 
    ```bash
-   docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml up --build
+   docker compose up --build
    ```
 
    Add `--profile tools` if you want the optional Flower Celery dashboard.
@@ -59,7 +59,7 @@ Change the seeded admin credentials before any real deployment.
 3. Seed or refresh demo data:
 
    ```bash
-   docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml exec api python scripts/seed.py
+   docker compose exec api python scripts/seed.py
    ```
 
 The `api-migrate` service runs `alembic upgrade head` automatically during compose startup.
@@ -69,11 +69,11 @@ The `api-migrate` service runs `alembic upgrade head` automatically during compo
 Useful smoke checks:
 
 ```bash
-docker compose --env-file .env -f compose/docker-compose.yml -f compose/docker-compose.dev.yml ps
-docker exec compose-api-1 alembic current
-docker exec compose-api-1 python -c "import app.main; print('api import ok')"
-docker exec compose-api-1 python scripts/seed.py
-docker exec compose-web-1 npm run build
+docker compose ps
+docker exec goodpath-api-1 alembic current
+docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
+docker exec goodpath-api-1 python scripts/seed.py
+docker exec goodpath-web-1 npm run build
 ```
 
 Expected public API checks:
@@ -174,7 +174,7 @@ For a single-host deployment:
 5. Run:
 
    ```bash
-   docker compose --env-file .env -f compose/docker-compose.yml up --build -d
+   docker compose -f compose.yaml up --build -d
    ```
 
 Backups and restores are handled by `scripts/backup.sh` and `scripts/restore.sh`.

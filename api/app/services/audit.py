@@ -2,6 +2,17 @@ import uuid
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.system import AuditLog
 
+
+def _serialize(value):
+    if isinstance(value, uuid.UUID):
+        return str(value)
+    if isinstance(value, dict):
+        return {k: _serialize(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize(v) for v in value]
+    return value
+
+
 async def log_audit_event(
     session: AsyncSession,
     user_id: uuid.UUID,
@@ -15,6 +26,6 @@ async def log_audit_event(
         action=action,
         target_kind=entity_type,
         target_id=str(entity_id),
-        payload=details or {}
+        payload=_serialize(details) if details else {}
     )
     session.add(audit)

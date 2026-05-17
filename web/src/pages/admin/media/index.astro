@@ -1,0 +1,137 @@
+---
+import AdminLayout from '../../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../../lib/api.js';
+
+let mediaAssets = [];
+const cookie = Astro.request.headers.get('cookie');
+
+try {
+  const res = await fetch(apiUrl('/api/admin/media'), {
+    headers: cookie ? { cookie } : {}
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    return Astro.redirect('/auth/login');
+  }
+
+  if (res.ok) {
+    mediaAssets = await res.json();
+  }
+} catch (e) {
+  console.error("Failed to load admin media", e);
+}
+---
+
+<AdminLayout title="Media Logs">
+  <div class="mb-8 flex justify-between items-center">
+    <div>
+      <h1 class="display text-4xl">Media Assets</h1>
+      <p class="text-muted mt-2">View the processing status of ingested media.</p>
+    </div>
+    <a href="/admin/intake" class="btn">Upload More</a>
+  </div>
+
+  <div class="bg-surface-2 border border-line rounded">
+    {mediaAssets.length > 0 ? (
+      <div class="divide-y divide-line">
+        {mediaAssets.map(asset => (
+          <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4" data-asset-row={asset.id}>
+            <div class="flex gap-4 items-center">
+              {asset.derivative_paths?.webp || asset.derivative_paths?.poster ? (
+                <div class="w-16 h-16 bg-surface-1 rounded overflow-hidden flex-shrink-0 border border-line">
+                  <img src={asset.derivative_paths.webp || asset.derivative_paths.poster} class="w-full h-full object-cover" alt="" />
+                </div>
+              ) : (
+                <div class="w-16 h-16 bg-surface-1 rounded border border-line flex items-center justify-center text-xs text-dim flex-shrink-0"
+                  style={asset.processing_state === 'failed' ? 'border-color: rgba(212,107,92,.45);' : ''}>
+                  {asset.processing_state}
+                </div>
+              )}
+
+              <div>
+                <div class="text-xs font-mono text-dim">{asset.id}</div>
+                <div class="text-xs text-dim font-mono tracking-widest uppercase mt-0.5">
+                  {asset.kind} ·
+                  <span style={asset.processing_state === 'failed' ? 'color: var(--sunset);' : asset.processing_state === 'done' ? 'color: var(--forest);' : ''}>
+                    {asset.processing_state}
+                  </span>
+                  {asset.width && ` · ${asset.width}×${asset.height}`}
+                </div>
+              </div>
+            </div>
+
+            <div class="flex gap-2 items-center flex-shrink-0">
+              <span class="text-xs px-2 py-1 bg-surface-1 border border-line rounded-full uppercase font-mono tracking-widest">{asset.visibility}</span>
+              {asset.processing_state === 'failed' || asset.processing_state === 'pending' ? (
+                <button
+                  type="button"
+                  class="btn btn-sm js-requeue"
+                  data-asset-id={asset.id}
+                  title="Retry processing"
+                >
+                  Retry
+                </button>
+              ) : null}
+              <button
+                type="button"
+                class="btn btn-sm js-delete-asset"
+                data-asset-id={asset.id}
+                style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    ) : (
+      <div class="p-8 text-center text-muted">
+        No media assets found.
+      </div>
+    )}
+  </div>
+</AdminLayout>
+
+<script>
+  document.querySelectorAll('button.js-requeue').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const id = target.dataset.assetId;
+      if (!id) return;
+      target.disabled = true;
+      target.textContent = 'Queued…';
+      try {
+        const res = await fetch(`/api/admin/media/${id}/requeue`, {
+          method: 'POST',
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        target.textContent = 'Queued';
+      } catch (err) {
+        target.disabled = false;
+        target.textContent = 'Retry';
+        alert(`Requeue failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    });
+  });
+
+  document.querySelectorAll('button.js-delete-asset').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const target = e.currentTarget as HTMLButtonElement;
+      const id = target.dataset.assetId;
+      if (!id || !confirm('Delete this media asset? This cannot be undone.')) return;
+      target.disabled = true;
+      try {
+        const res = await fetch(`/api/admin/media/${id}`, {
+          method: 'DELETE',
+          credentials: 'include',
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        document.querySelector(`[data-asset-row="${id}"]`)?.remove();
+      } catch (err) {
+        target.disabled = false;
+        alert(`Delete failed: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    });
+  });
+</script>

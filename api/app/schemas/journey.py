@@ -80,6 +80,7 @@ class PublicTripSegmentSummary(BaseResponse):
     total_distance_meters: Optional[float] = None
     stops_completed: int = 0
     stops_total: int = 0
+    cover_media: Optional[MediaAssetOut] = None
 
 
 class PublicTripSegmentDetail(PublicTripSegmentSummary):
