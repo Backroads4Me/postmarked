@@ -4,9 +4,26 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
-from app.models.enums import JourneyStatus, StopStatus, StopType, TripStatus, Visibility
+from app.models.enums import ActivityType, PostType, StopStatus, StopType, TripStatus, Visibility
 from app.schemas.common import BaseResponse
 from app.schemas.media import MediaAssetOut
+
+
+class PublicPOISummary(BaseModel):
+    """Allowlisted public POI fields — intentionally excludes notes."""
+    id: uuid.UUID
+    label: str
+    poi_type: str
+    google_maps_url: Optional[str] = None
+    latitude: float
+    longitude: float
+
+
+class MediaGPSPoint(BaseModel):
+    """Slim GPS coordinate for a photo, used for map dots on stop detail."""
+    media_id: uuid.UUID
+    latitude: float
+    longitude: float
 
 
 class PublicStopSummary(BaseResponse):
@@ -44,6 +61,13 @@ class PublicPostSummary(BaseResponse):
     stop: Optional[PublicStopSummary] = None
     media: List[MediaAssetOut] = []
 
+    post_type: PostType = PostType.UPDATE
+    activity_type: Optional[ActivityType] = None
+    summary: Optional[str] = None
+    activity_started_at: Optional[datetime] = None
+    activity_ended_at: Optional[datetime] = None
+    poi: Optional[PublicPOISummary] = None
+
 
 class PublicTripSegmentSummary(BaseResponse):
     id: uuid.UUID
@@ -70,26 +94,26 @@ class PublicStopSibling(BaseModel):
     title: str
 
 
+class PublicPostSibling(BaseModel):
+    """Slim previous/next activity nav handle."""
+    slug: str
+    title: str
+    stop_slug: str
+    trip_slug: str
+
+
 class PublicStopDetail(PublicStopSummary):
     """Full public-facing stop view: body + own media + on-stop posts + nav."""
     body: Optional[str] = None
     trip_slug: str
     trip_title: str
+    timezone_id: Optional[str] = None
     media: List[MediaAssetOut] = []
     posts: List["PublicPostSummary"] = []
+    pois: List[PublicPOISummary] = []
+    media_with_gps: List[MediaGPSPoint] = []
     prev: Optional[PublicStopSibling] = None
     next: Optional[PublicStopSibling] = None
-
-
-class PublicJourneySummary(BaseResponse):
-    id: uuid.UUID
-    slug: str
-    title: str
-    summary: Optional[str] = None
-    starts_on: Optional[date] = None
-    ends_on: Optional[date] = None
-    status: JourneyStatus
-    current_location_note: Optional[str] = None
 
 
 class PublicPlannedStopSummary(BaseResponse):
@@ -112,7 +136,6 @@ class PublicPlannedStopSummary(BaseResponse):
 
 
 class HomeOut(BaseModel):
-    journey: Optional[PublicJourneySummary] = None
     current_stop: Optional[PublicStopSummary] = None
     next_stop: Optional[PublicStopSummary] = None
     recent_stops: List[PublicStopSummary] = []
@@ -147,12 +170,21 @@ class RecentUpdate(BaseModel):
     media: List[MediaAssetOut] = []
 
 
+class PublicPostDetail(PublicPostSummary):
+    """Full public-facing post view for the activity detail page."""
+    stop_slug: str
+    stop_title: str
+    trip_slug: str
+    trip_title: str
+    stop_timezone_id: Optional[str] = None
+    prev_activity: Optional[PublicPostSibling] = None
+    next_activity: Optional[PublicPostSibling] = None
+
+
 PublicStopDetail.model_rebuild()
 
 
 class TimelineOut(BaseModel):
-    """Paginated cross-trip activity feed for the journey."""
-    journey: Optional[PublicJourneySummary] = None
     updates: List[RecentUpdate] = []
     limit: int
     offset: int

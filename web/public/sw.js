@@ -1,13 +1,16 @@
 // sw.js - Goodpath PWA Service Worker
-const CACHE_NAME = 'goodpath-cache-v1';
+const CACHE_NAME = 'goodpath-cache-v3';
 
-// We want to aggressively cache maplibregl tiles and static assets so the app survives dead-zones
+// Astro hashes filenames for cache-busting (e.g. _astro/index.Dg3fK.js).
+// These are immutable — serve cache-first with no revalidation.
+// Non-hashed static assets (favicon, manifest, fonts, pmtiles) use
+// stale-while-revalidate so they stay fresh without blocking the user.
+const IMMUTABLE_RE = /\/_astro\//;
+
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // Precache the core application shell
       return cache.addAll([
-        '/',
         '/manifest.json',
         '/favicon.svg',
       ]);
@@ -18,13 +21,13 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
+    caches.keys().then(cacheNames =>
+      Promise.all(
         cacheNames
           .filter(name => name !== CACHE_NAME)
           .map(name => caches.delete(name))
-      );
-    })
+      )
+    )
   );
   self.clients.claim();
 });
@@ -32,30 +35,44 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // Strategy: Stale-While-Revalidate for PMTiles and API reads
-  // Exclude auth borders, admin paths, and POST requests
-  if (
-    event.request.method === 'GET' && 
+  // Never intercept admin, auth, API, or HTML pages
+  const isCacheableAsset =
+    event.request.method === 'GET' &&
     !url.pathname.startsWith('/admin') &&
-    !url.pathname.startsWith('/auth')
-  ) {
+    !url.pathname.startsWith('/auth') &&
+    !url.pathname.startsWith('/api/') &&
+    /\.(css|js|png|jpg|jpeg|gif|svg|ico|woff2|woff|ttf|pmtiles)(\?|$)/i.test(url.pathname);
+
+  if (!isCacheableAsset) return;
+
+  if (IMMUTABLE_RE.test(url.pathname)) {
+    // Cache-first: hashed filenames never change, no need to revalidate
     event.respondWith(
-      caches.match(event.request).then(cachedResponse => {
-        const fetchPromise = fetch(event.request).then(networkResponse => {
-          // Cache the fresh response dynamically
-          if (networkResponse.ok) {
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResponse.clone());
-            });
+      caches.match(event.request).then(cached => {
+        if (cached) return cached;
+        return fetch(event.request).then(response => {
+          if (response.ok) {
+            caches.open(CACHE_NAME).then(cache => cache.put(event.request, response.clone()));
           }
-          return networkResponse;
-        }).catch(() => {
-          // Network failed, we either have the cached response or we return an offline mock if image
+          return response;
         });
-        
-        // Return cached immediately if we have it, but fetchPromise will update cache in background
-        return cachedResponse || fetchPromise;
       })
+    );
+  } else {
+    // Stale-while-revalidate: return cache immediately, update in background
+    event.respondWith(
+      caches.open(CACHE_NAME).then(cache =>
+        cache.match(event.request).then(cached => {
+          const fetchPromise = fetch(event.request)
+            .then(response => {
+              if (response.ok) cache.put(event.request, response.clone());
+              return response;
+            })
+            .catch(() => cached); // network failed — fall back to stale cache
+
+          return cached || fetchPromise;
+        })
+      )
     );
   }
 });

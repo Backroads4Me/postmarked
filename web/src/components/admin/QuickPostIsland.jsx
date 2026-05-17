@@ -3,32 +3,50 @@ import { useEffect, useRef, useState } from "react";
 const DRAFT_KEY = "goodpath:draft:quick-post";
 const TUS_VERSION = "1.0.0";
 
-/**
- * Quick Post composer — designed for one-handed use from a phone on the road.
- *
- * Flow:
- *   1. Pick stop (defaults to currently-marked stop)
- *   2. Type title (required) + body (markdown ok)
- *   3. Optionally attach photos — each is uploaded via TUS to
- *      /api/admin/media/tus, returning a MediaAsset id
- *   4. Publish → POST /api/admin/posts with {title, body, stop_id, media_ids}
- *
- * Body autosaves to localStorage so an interrupted session doesn't lose work.
- */
+const ACTIVITY_TYPES = [
+  { value: "hiking", label: "Hiking" },
+  { value: "museum", label: "Museum" },
+  { value: "restaurant", label: "Restaurant" },
+  { value: "attraction", label: "Attraction" },
+  { value: "service", label: "Service" },
+  { value: "scenic_drive", label: "Scenic Drive" },
+  { value: "shopping", label: "Shopping" },
+  { value: "family", label: "Family" },
+  { value: "other", label: "Other" },
+];
+
+const inputStyle = {
+  width: "100%",
+  padding: "10px 12px",
+  background: "var(--surface-2)",
+  border: "1px solid var(--line)",
+  borderRadius: 6,
+  color: "var(--paper)",
+  fontSize: 14,
+  marginTop: 6,
+  minHeight: 44,
+};
+
 export default function QuickPostIsland() {
+  const [postType, setPostType] = useState("update");
   const [stops, setStops] = useState([]);
   const [currentStopId, setCurrentStopId] = useState("");
   const [stopId, setStopId] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
+  const [summary, setSummary] = useState("");
   const [visibility, setVisibility] = useState("public");
+  const [activityType, setActivityType] = useState("other");
+  const [activityStartedAt, setActivityStartedAt] = useState("");
+  const [activityEndedAt, setActivityEndedAt] = useState("");
+  const [pois, setPois] = useState([]);
+  const [poiId, setPoiId] = useState("");
 
-  const [photos, setPhotos] = useState([]); // { localId, name, status: 'queued'|'uploading'|'done'|'error', progress, mediaId, error }
+  const [photos, setPhotos] = useState([]);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
 
-  // Load stops + current, hydrate draft.
   useEffect(() => {
     (async () => {
       try {
@@ -43,7 +61,7 @@ export default function QuickPostIsland() {
         const cur = currentBody.current_stop?.id ?? "";
         setCurrentStopId(cur);
         setStopId(cur);
-      } catch (e) {
+      } catch {
         setError("Failed to load stops");
       }
     })();
@@ -58,7 +76,17 @@ export default function QuickPostIsland() {
     } catch {}
   }, []);
 
-  // Persist draft on body/title changes.
+  // Load POIs when stop changes
+  useEffect(() => {
+    setPoiId("");
+    setPois([]);
+    if (!stopId) return;
+    fetch(`/api/admin/stops/${stopId}/pois`, { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setPois)
+      .catch(() => {});
+  }, [stopId]);
+
   useEffect(() => {
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, body }));
@@ -66,12 +94,8 @@ export default function QuickPostIsland() {
   }, [title, body]);
 
   function clearDraft() {
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-    } catch {}
+    try { localStorage.removeItem(DRAFT_KEY); } catch {}
   }
-
-  // ── TUS upload (single-shot, no resume — fine for <10MB phone photos) ──
 
   async function uploadOne(localId, file) {
     setPhotos((prev) => prev.map((p) => (p.localId === localId ? { ...p, status: "uploading" } : p)));
@@ -103,9 +127,7 @@ export default function QuickPostIsland() {
       if (!patchRes.ok) throw new Error(`patch: ${patchRes.status}`);
 
       const assetId =
-        patchRes.headers.get("X-Goodpath-Asset-Id") ||
-        // location is /api/admin/media/tus/{file_id} — file_id == asset_id on success
-        location.split("/").pop();
+        patchRes.headers.get("X-Goodpath-Asset-Id") || location.split("/").pop();
 
       setPhotos((prev) =>
         prev.map((p) => (p.localId === localId ? { ...p, status: "done", mediaId: assetId, progress: 100 } : p))
@@ -135,33 +157,39 @@ export default function QuickPostIsland() {
     setPhotos((prev) => prev.filter((p) => p.localId !== localId));
   }
 
-  // ── Publish ─────────────────────────────────────────────────────────
-
   async function publish() {
-    if (!title.trim()) {
-      setError("Title is required");
+    if (!title.trim()) { setError("Title is required"); return; }
+    if (postType === "activity" && !activityStartedAt) {
+      setError("Activity date/time is required");
       return;
     }
     const pending = photos.filter((p) => p.status === "uploading" || p.status === "queued");
-    if (pending.length > 0) {
-      setError("Wait for photo uploads to finish");
-      return;
-    }
+    if (pending.length > 0) { setError("Wait for photo uploads to finish"); return; }
+
     setPublishing(true);
     setError(null);
     try {
       const mediaIds = photos.filter((p) => p.status === "done" && p.mediaId).map((p) => p.mediaId);
+      const payload = {
+        title: title.trim(),
+        body: body.trim() || null,
+        stop_id: stopId || null,
+        visibility,
+        media_ids: mediaIds,
+        post_type: postType,
+      };
+      if (postType === "activity") {
+        payload.activity_type = activityType;
+        payload.summary = summary.trim() || null;
+        payload.activity_started_at = activityStartedAt || null;
+        payload.activity_ended_at = activityEndedAt || null;
+        payload.poi_id = poiId || null;
+      }
       const res = await fetch("/api/admin/posts", {
         method: "POST",
         credentials: "include",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: title.trim(),
-          body: body.trim() || null,
-          stop_id: stopId || null,
-          visibility,
-          media_ids: mediaIds,
-        }),
+        body: JSON.stringify(payload),
       });
       if (!res.ok) {
         const detail = await res.text();
@@ -186,34 +214,61 @@ export default function QuickPostIsland() {
         </div>
       )}
 
+      {/* Mode selector */}
+      <div style={{ display: "flex", gap: 8 }}>
+        {["update", "activity"].map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => setPostType(t)}
+            style={{
+              padding: "8px 18px",
+              borderRadius: 6,
+              border: "1px solid var(--line)",
+              background: postType === t ? "var(--ember)" : "var(--surface-2)",
+              color: postType === t ? "#fff" : "var(--muted)",
+              fontSize: 13,
+              fontWeight: postType === t ? 600 : 400,
+              cursor: "pointer",
+            }}
+          >
+            {t === "update" ? "Quick Update" : "Activity"}
+          </button>
+        ))}
+      </div>
+
       <div>
-        <label className="label" htmlFor="qp-title">
-          Title
-        </label>
+        <label className="label" htmlFor="qp-title">Title</label>
         <input
           id="qp-title"
           type="text"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={200}
-          placeholder="Quick note from the road"
+          placeholder={postType === "activity" ? "What did you do?" : "Quick note from the road"}
           autoComplete="off"
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            background: "var(--surface-2)",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            color: "var(--paper)",
-            fontSize: 16,
-            marginTop: 6,
-          }}
+          style={{ ...inputStyle, fontSize: 16, padding: "12px 14px" }}
         />
       </div>
 
+      {postType === "activity" && (
+        <div>
+          <label className="label" htmlFor="qp-summary">Summary (short card text)</label>
+          <input
+            id="qp-summary"
+            type="text"
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            maxLength={500}
+            placeholder="One-line description for the activity card"
+            style={inputStyle}
+          />
+        </div>
+      )}
+
       <div>
         <label className="label" htmlFor="qp-body">
-          Body (markdown)
+          {postType === "activity" ? "Details (markdown)" : "Body (markdown)"}
         </label>
         <textarea
           id="qp-body"
@@ -221,7 +276,7 @@ export default function QuickPostIsland() {
           onChange={(e) => setBody(e.target.value)}
           rows={6}
           maxLength={10000}
-          placeholder="What's happening?"
+          placeholder={postType === "activity" ? "Tell the story..." : "What's happening?"}
           style={{
             width: "100%",
             padding: "12px 14px",
@@ -237,61 +292,73 @@ export default function QuickPostIsland() {
         />
       </div>
 
+      {postType === "activity" && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div>
+            <label className="label" htmlFor="qp-activity-type">Activity type</label>
+            <select id="qp-activity-type" value={activityType} onChange={(e) => setActivityType(e.target.value)} style={inputStyle}>
+              {ACTIVITY_TYPES.map((t) => (
+                <option key={t.value} value={t.value}>{t.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label" htmlFor="qp-started-at">
+              When <span style={{ color: "var(--ember)" }}>*</span>
+            </label>
+            <input
+              id="qp-started-at"
+              type="datetime-local"
+              value={activityStartedAt}
+              onChange={(e) => setActivityStartedAt(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+          <div>
+            <label className="label" htmlFor="qp-ended-at">Ended at (optional)</label>
+            <input
+              id="qp-ended-at"
+              type="datetime-local"
+              value={activityEndedAt}
+              onChange={(e) => setActivityEndedAt(e.target.value)}
+              style={inputStyle}
+            />
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
-          <label className="label" htmlFor="qp-stop">
-            Stop
-          </label>
-          <select
-            id="qp-stop"
-            value={stopId}
-            onChange={(e) => setStopId(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              background: "var(--surface-2)",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              color: "var(--paper)",
-              fontSize: 14,
-              marginTop: 6,
-              minHeight: 44,
-            }}
-          >
+          <label className="label" htmlFor="qp-stop">Stop</label>
+          <select id="qp-stop" value={stopId} onChange={(e) => setStopId(e.target.value)} style={inputStyle}>
             <option value="">No stop</option>
             {stops.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.title}
-                {s.id === currentStopId ? "  (current)" : ""}
+                {s.title}{s.id === currentStopId ? "  (current)" : ""}
               </option>
             ))}
           </select>
         </div>
         <div>
-          <label className="label" htmlFor="qp-vis">
-            Visibility
-          </label>
-          <select
-            id="qp-vis"
-            value={visibility}
-            onChange={(e) => setVisibility(e.target.value)}
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              background: "var(--surface-2)",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              color: "var(--paper)",
-              fontSize: 14,
-              marginTop: 6,
-              minHeight: 44,
-            }}
-          >
+          <label className="label" htmlFor="qp-vis">Visibility</label>
+          <select id="qp-vis" value={visibility} onChange={(e) => setVisibility(e.target.value)} style={inputStyle}>
             <option value="public">Public — family can see</option>
             <option value="private">Private — only admin</option>
           </select>
         </div>
       </div>
+
+      {postType === "activity" && stopId && pois.length > 0 && (
+        <div>
+          <label className="label" htmlFor="qp-poi">Place (optional)</label>
+          <select id="qp-poi" value={poiId} onChange={(e) => setPoiId(e.target.value)} style={inputStyle}>
+            <option value="">No place linked</option>
+            {pois.map((p) => (
+              <option key={p.id} value={p.id}>{p.label} ({p.poi_type})</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className="label">Photos</label>
@@ -332,24 +399,12 @@ export default function QuickPostIsland() {
                   <span
                     className="label"
                     style={{
-                      color:
-                        p.status === "done"
-                          ? "var(--ok, #4ade80)"
-                          : p.status === "error"
-                          ? "var(--ember)"
-                          : "var(--muted)",
+                      color: p.status === "done" ? "var(--ok, #4ade80)" : p.status === "error" ? "var(--ember)" : "var(--muted)",
                     }}
                   >
-                    {p.status}
-                    {p.error ? `: ${p.error}` : ""}
+                    {p.status}{p.error ? `: ${p.error}` : ""}
                   </span>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-ghost"
-                    onClick={() => removePhoto(p.localId)}
-                  >
-                    ✕
-                  </button>
+                  <button type="button" className="btn btn-sm btn-ghost" onClick={() => removePhoto(p.localId)}>✕</button>
                 </li>
               ))}
             </ul>
@@ -373,18 +428,14 @@ export default function QuickPostIsland() {
           onClick={() => {
             if (confirm("Discard this draft?")) {
               clearDraft();
-              setTitle("");
-              setBody("");
-              setPhotos([]);
+              setTitle(""); setBody(""); setSummary(""); setPhotos([]);
             }
           }}
           disabled={publishing}
         >
           Discard
         </button>
-        <span className="label" style={{ marginLeft: "auto" }}>
-          Draft autosaves
-        </span>
+        <span className="label" style={{ marginLeft: "auto" }}>Draft autosaves</span>
       </div>
     </div>
   );

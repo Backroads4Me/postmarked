@@ -3,18 +3,19 @@ from datetime import date, datetime
 from typing import Any, List, Optional
 
 from geoalchemy2 import Geography
-from sqlalchemy import Boolean, Date, DateTime, Float, ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, Date, DateTime, Enum as SAEnum, Float, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
 from app.models.base import Base
 from app.models.enums import (
-    JourneyStatus,
+    ActivityType,
     MediaKind,
     MediaProcessingState,
     PlannedStopImportState,
     POIType,
+    PostType,
     StopStatus,
     StopType,
     TripStatus,
@@ -22,50 +23,10 @@ from app.models.enums import (
 )
 
 
-class Journey(Base):
-    __tablename__ = "journey"
-
-    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    slug: Mapped[str] = mapped_column(String, unique=True, index=True)
-    title: Mapped[str] = mapped_column(String, nullable=False)
-    summary: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    starts_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    ends_on: Mapped[Optional[date]] = mapped_column(Date, nullable=True)
-    status: Mapped[JourneyStatus] = mapped_column(default=JourneyStatus.ACTIVE)
-    visibility: Mapped[Visibility] = mapped_column(default=Visibility.PRIVATE)
-    current_stop_id: Mapped[Optional[uuid.UUID]] = mapped_column(
-        ForeignKey("stop.id", ondelete="SET NULL", use_alter=True),
-        nullable=True,
-    )
-    current_location_note: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-
-    current_stop: Mapped[Optional["Stop"]] = relationship(
-        "Stop",
-        foreign_keys=[current_stop_id],
-        post_update=True,
-    )
-    trips: Mapped[List["Trip"]] = relationship(
-        "Trip",
-        foreign_keys="Trip.journey_id",
-        back_populates="journey",
-    )
-    stops: Mapped[List["Stop"]] = relationship(
-        "Stop",
-        foreign_keys="Stop.journey_id",
-        back_populates="journey",
-    )
-    posts: Mapped[List["Post"]] = relationship("Post", back_populates="journey")
-    planned_stops: Mapped[List["PlannedStop"]] = relationship("PlannedStop", back_populates="journey")
-
-
 class Trip(Base):
     __tablename__ = "trip"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    journey_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("journey.id", ondelete="SET NULL"), nullable=True)
     slug: Mapped[str] = mapped_column(String, unique=True, index=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     summary: Mapped[Optional[str]] = mapped_column(String, nullable=True)
@@ -96,13 +57,8 @@ class Trip(Base):
         foreign_keys=[cover_media_id],
         post_update=True,
     )
-    journey: Mapped[Optional["Journey"]] = relationship(
-        "Journey",
-        foreign_keys=[journey_id],
-        back_populates="trips",
-    )
     stops: Mapped[List["Stop"]] = relationship("Stop", back_populates="trip", order_by="Stop.sort_order", cascade="all, delete-orphan")
-    planned_stops: Mapped[List["PlannedStop"]] = relationship("PlannedStop", back_populates="trip")
+    planned_stops: Mapped[List["PlannedStop"]] = relationship("PlannedStop", back_populates="trip", cascade="all, delete-orphan")
     posts: Mapped[List["Post"]] = relationship("Post", back_populates="trip")
     source_import_run: Mapped[Optional["ImportRun"]] = relationship(
         "ImportRun",
@@ -122,7 +78,6 @@ class Stop(Base):
     )
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    journey_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("journey.id", ondelete="SET NULL"), nullable=True)
     trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trip.id", ondelete="CASCADE"), nullable=False)
     planned_stop_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("planned_stop.id", ondelete="SET NULL"), nullable=True)
     slug: Mapped[str] = mapped_column(String, nullable=False)
@@ -158,6 +113,8 @@ class Stop(Base):
     site_number_private: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     reservation_private: Mapped[Optional[str]] = mapped_column(String, nullable=True)
 
+    timezone_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+
     cover_media_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("media_asset.id", ondelete="SET NULL", use_alter=True), nullable=True)
 
     published_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -165,11 +122,6 @@ class Stop(Base):
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     trip: Mapped["Trip"] = relationship("Trip", back_populates="stops")
-    journey: Mapped[Optional["Journey"]] = relationship(
-        "Journey",
-        foreign_keys=[journey_id],
-        back_populates="stops",
-    )
     planned_stop: Mapped[Optional["PlannedStop"]] = relationship(
         "PlannedStop",
         foreign_keys=[planned_stop_id],
@@ -211,7 +163,6 @@ class PlannedStop(Base):
     __tablename__ = "planned_stop"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("journey.id", ondelete="CASCADE"), nullable=False)
     trip_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("trip.id", ondelete="CASCADE"), nullable=False)
     source_import_run_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("import_run.id", ondelete="SET NULL"), nullable=True)
     source_row_number: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -249,7 +200,6 @@ class PlannedStop(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    journey: Mapped["Journey"] = relationship("Journey", back_populates="planned_stops")
     trip: Mapped["Trip"] = relationship("Trip", back_populates="planned_stops")
     source_import_run: Mapped[Optional["ImportRun"]] = relationship("ImportRun", back_populates="planned_stops")
     matched_stop: Mapped[Optional["Stop"]] = relationship("Stop", foreign_keys=[matched_stop_id])
@@ -259,7 +209,6 @@ class Post(Base):
     __tablename__ = "post"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    journey_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("journey.id", ondelete="CASCADE"), nullable=False)
     trip_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("trip.id", ondelete="SET NULL"), nullable=True)
     stop_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("stop.id", ondelete="SET NULL"), nullable=True)
     slug: Mapped[str] = mapped_column(String, unique=True, index=True)
@@ -268,13 +217,34 @@ class Post(Base):
     posted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     visibility: Mapped[Visibility] = mapped_column(default=Visibility.PRIVATE)
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    post_type: Mapped[PostType] = mapped_column(
+        SAEnum(PostType, values_callable=lambda x: [e.value for e in x], name="posttype", create_type=False),
+        default=PostType.UPDATE,
+    )
+    activity_type: Mapped[Optional[ActivityType]] = mapped_column(
+        SAEnum(ActivityType, values_callable=lambda x: [e.value for e in x], name="activitytype", create_type=False),
+        nullable=True,
+    )
+    summary: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    activity_started_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    activity_ended_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    poi_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        ForeignKey("point_of_interest.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+    )
+
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
-    journey: Mapped["Journey"] = relationship("Journey", back_populates="posts")
     trip: Mapped[Optional["Trip"]] = relationship("Trip", back_populates="posts")
     stop: Mapped[Optional["Stop"]] = relationship("Stop", back_populates="posts")
     media: Mapped[List["MediaAsset"]] = relationship("MediaAsset", back_populates="post")
+    poi: Mapped[Optional["PointOfInterest"]] = relationship(
+        "PointOfInterest",
+        foreign_keys=[poi_id],
+        post_update=True,
+    )
 
 
 class PointOfInterest(Base):

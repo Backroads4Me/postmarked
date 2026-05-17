@@ -7,6 +7,7 @@ const cookie = Astro.request.headers.get('cookie');
 
 let post = null;
 let stops = [];
+let pois = [];
 try {
   const [postsRes, stopsRes] = await Promise.all([
     fetch(apiUrl('/api/admin/posts'), { headers: cookie ? { cookie } : {} }),
@@ -23,17 +24,39 @@ try {
 if (!post) return Astro.redirect('/admin/posts');
 
 stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
+
+const isActivity = post.post_type === 'activity';
+
+// Load POIs for the current stop if this is an activity post
+if (isActivity && post.stop_id) {
+  try {
+    const poisRes = await fetch(apiUrl(`/api/admin/stops/${post.stop_id}/pois`), { headers: cookie ? { cookie } : {} });
+    if (poisRes.ok) pois = await poisRes.json();
+  } catch (e) {}
+}
+
+// Format datetime for datetime-local input (strips timezone, yields local-ish value)
+function toDatetimeLocal(iso) {
+  if (!iso) return '';
+  return new Date(iso).toISOString().slice(0, 16);
+}
 ---
 
 <AdminLayout title={`Edit: ${post.title}`}>
   <div class="max-w-2xl">
     <div class="mb-8">
       <a href="/admin/posts" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-4 inline-block">← Back</a>
-      <h1 class="display text-3xl">Edit Post</h1>
+      <div class="flex items-center gap-3">
+        <h1 class="display text-3xl">Edit Post</h1>
+        <span class="badge" style={isActivity ? 'background: var(--ember-glow); color: var(--ember);' : ''}>
+          {post.post_type}
+        </span>
+      </div>
     </div>
 
-    <form id="post-edit-form" class="flex flex-col gap-6">
+    <form id="post-edit-form" class="flex flex-col gap-6" data-post-type={post.post_type}>
       <input type="hidden" name="id" value={post.id} />
+      <input type="hidden" name="post_type" value={post.post_type} />
 
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold" for="title">Title</label>
@@ -41,11 +64,49 @@ stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
           class="bg-surface-2 border border-line p-3 focus:border-ember" />
       </div>
 
+      {isActivity && (
+        <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold" for="summary">Summary</label>
+          <input id="summary" type="text" name="summary" value={post.summary ?? ''} maxlength="500"
+            placeholder="Short card text for the activity"
+            class="bg-surface-2 border border-line p-3 focus:border-ember" />
+        </div>
+      )}
+
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold" for="body">Body (markdown)</label>
         <textarea id="body" name="body" rows="8"
           class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.body ?? ''}</textarea>
       </div>
+
+      {isActivity && (
+        <div class="grid grid-cols-2 gap-4">
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold" for="activity_type">Activity Type</label>
+            <select id="activity_type" name="activity_type" class="bg-surface-2 border border-line p-3">
+              {['hiking','museum','restaurant','attraction','service','scenic_drive','shopping','family','other'].map(t => (
+                <option value={t} selected={post.activity_type === t} style="text-transform: capitalize;">
+                  {t.replace(/_/g, ' ')}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold" for="activity_started_at">
+              When <span class="text-ember">*</span>
+            </label>
+            <input id="activity_started_at" type="datetime-local" name="activity_started_at"
+              value={toDatetimeLocal(post.activity_started_at)}
+              class="bg-surface-2 border border-line p-3 focus:border-ember" />
+          </div>
+          <div class="flex flex-col gap-2">
+            <label class="text-sm font-bold" for="activity_ended_at">Ended At (optional)</label>
+            <input id="activity_ended_at" type="datetime-local" name="activity_ended_at"
+              value={toDatetimeLocal(post.activity_ended_at)}
+              class="bg-surface-2 border border-line p-3 focus:border-ember" />
+          </div>
+        </div>
+      )}
 
       <div class="grid grid-cols-2 gap-4">
         <div class="flex flex-col gap-2">
@@ -67,6 +128,23 @@ stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
         </div>
       </div>
 
+      {isActivity && (
+        <div class="flex flex-col gap-2" id="poi-row">
+          <label class="text-sm font-bold" for="poi_id">Place (optional)</label>
+          <select id="poi_id" name="poi_id" class="bg-surface-2 border border-line p-3">
+            <option value="">No place linked</option>
+            {pois.map(p => (
+              <option value={p.id} selected={p.id === post.poi_id}>
+                {p.label} ({p.poi_type})
+              </option>
+            ))}
+          </select>
+          <p class="text-xs text-dim" id="poi-hint">
+            {pois.length === 0 ? 'No POIs for this stop. Add them in the Stops admin.' : ''}
+          </p>
+        </div>
+      )}
+
       <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
       <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2">Saved!</div>
 
@@ -80,15 +158,43 @@ stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
     </form>
   </div>
 
-  <script>
+  <script define:vars={{ isActivity, initialStopId: post.stop_id ?? '' }}>
     const form = document.getElementById('post-edit-form');
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
+    const stopSelect = document.getElementById('stop_id');
+
+    // Reload POIs when stop changes (activity posts only)
+    if (isActivity && stopSelect) {
+      stopSelect.addEventListener('change', async () => {
+        const stopId = stopSelect.value;
+        const poiSelect = document.getElementById('poi_id');
+        const hint = document.getElementById('poi-hint');
+        if (!poiSelect) return;
+
+        if (!stopId) {
+          poiSelect.innerHTML = '<option value="">No place linked</option>';
+          if (hint) hint.textContent = '';
+          return;
+        }
+
+        try {
+          const res = await fetch(`/api/admin/stops/${stopId}/pois`, { credentials: 'include' });
+          const pois = res.ok ? await res.json() : [];
+          poiSelect.innerHTML = '<option value="">No place linked</option>' +
+            pois.map(p => `<option value="${p.id}">${p.label} (${p.poi_type})</option>`).join('');
+          if (hint) hint.textContent = pois.length === 0 ? 'No POIs for this stop. Add them in the Stops admin.' : '';
+        } catch {
+          if (hint) hint.textContent = 'Failed to load POIs';
+        }
+      });
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
       const id = formData.get('id');
+      const postType = formData.get('post_type');
 
       errorDiv.classList.add('hidden');
       successDiv.classList.add('hidden');
@@ -99,6 +205,14 @@ stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
         stop_id: formData.get('stop_id') || null,
         visibility: formData.get('visibility'),
       };
+
+      if (postType === 'activity') {
+        body.activity_type = formData.get('activity_type') || null;
+        body.summary = formData.get('summary') || null;
+        body.activity_started_at = formData.get('activity_started_at') || null;
+        body.activity_ended_at = formData.get('activity_ended_at') || null;
+        body.poi_id = formData.get('poi_id') || null;
+      }
 
       try {
         const res = await fetch(`/api/admin/posts/${id}`, {

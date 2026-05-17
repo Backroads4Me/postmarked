@@ -2,6 +2,7 @@
 import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
+import StopMapIsland from '../../../../components/StopMapIsland.jsx';
 
 const { slug, stop } = Astro.params;
 
@@ -40,6 +41,16 @@ function fmtDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+function fmtActivityTime(d, timezoneId) {
+  if (!d) return '';
+  const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  if (timezoneId) opts.timeZone = timezoneId;
+  return new Date(d).toLocaleString('en-US', opts);
+}
+
+const activities = (detail.posts || []).filter(p => p.post_type === 'activity');
+const updates = (detail.posts || []).filter(p => p.post_type !== 'activity');
 
 function fmtRange(start, end) {
   if (!start) return '';
@@ -123,12 +134,61 @@ function fmtRange(start, end) {
       </section>
     )}
 
-    {/* ── Posts attached to this stop ─────────────────────── */}
-    {detail.posts && detail.posts.length > 0 && (
+    {/* ── Activities ───────────────────────────────────────── */}
+    {activities.length > 0 && (
+      <section class="mb-10">
+        <h2 class="display text-2xl mb-3">Activities</h2>
+        <div class="grid gap-3">
+          {activities.map(p => (
+            <article class="card-flat">
+              <div class="flex items-start justify-between mb-2 gap-3">
+                <div>
+                  <a href={`/trips/${detail.trip_slug}/stops/${detail.slug}/posts/${p.slug}`}
+                     class="text-base font-medium hover:text-ember transition-colors"
+                     style="color: var(--paper); text-decoration: none;">
+                    {p.title}
+                  </a>
+                  {p.activity_started_at && (
+                    <span class="label block mt-0.5">{fmtActivityTime(p.activity_started_at, detail.timezone_id)}</span>
+                  )}
+                </div>
+                {p.activity_type && (
+                  <span class="badge" style="white-space: nowrap; text-transform: capitalize;">{p.activity_type.replace(/_/g, ' ')}</span>
+                )}
+              </div>
+              {p.summary && <p class="text-sm mb-2" style="color: var(--paper-muted);">{p.summary}</p>}
+              {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
+              {p.poi && (
+                <div class="mt-3 pt-3" style="border-top: 1px solid var(--line-soft);">
+                  <div class="label mb-1">{p.poi.label}</div>
+                  {p.poi.google_maps_url && (
+                    <a href={p.poi.google_maps_url} target="_blank" rel="noopener noreferrer"
+                       class="text-xs" style="color: var(--ember); text-decoration: none;">
+                      Open in Maps ↗
+                    </a>
+                  )}
+                </div>
+              )}
+              {p.media && p.media.length > 0 && (
+                <div class="mt-3 flex gap-2 overflow-x-auto">
+                  {p.media.slice(0, 4).map(m => (
+                    <img src={`/media/${m.id}/webp`} alt={m.alt_text || ''} loading="lazy"
+                         class="rounded" style="height: 72px; width: 72px; object-fit: cover; flex-shrink: 0;" />
+                  ))}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* ── Updates ──────────────────────────────────────────── */}
+    {updates.length > 0 && (
       <section class="mb-10">
         <h2 class="display text-2xl mb-3">Updates from here</h2>
         <div class="grid gap-3">
-          {detail.posts.map(p => (
+          {updates.map(p => (
             <article class="card-flat">
               <div class="flex items-center justify-between mb-2">
                 <h3 class="text-base font-medium" style="color: var(--paper);">{p.title}</h3>
@@ -141,22 +201,19 @@ function fmtRange(start, end) {
       </section>
     )}
 
-    {/* ── Coordinates ─────────────────────────────────────── */}
+    {/* ── Map (stop + POIs + photo GPS dots) ──────────────── */}
     {detail.latitude != null && detail.longitude != null && (
       <section class="mb-10">
-        <div class="card-flat">
-          <div class="label mb-1">Coordinates</div>
-          <p class="coord">{detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}</p>
-          <a
-            href={`https://www.google.com/maps?q=${detail.latitude},${detail.longitude}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            class="text-xs"
-            style="color: var(--ember); text-decoration: none;"
-          >
-            Open in Google Maps ↗
-          </a>
-        </div>
+        <StopMapIsland
+          client:load
+          latitude={detail.latitude}
+          longitude={detail.longitude}
+          pois={detail.pois || []}
+          mediaGps={detail.media_with_gps || []}
+        />
+        <p class="coord mt-2" style="font-size: 11px;">
+          {detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}
+        </p>
       </section>
     )}
 

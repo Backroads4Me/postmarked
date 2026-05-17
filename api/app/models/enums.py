@@ -11,11 +11,6 @@ class TripStatus(str, enum.Enum):
     PUBLISHED = "published"
     ARCHIVED = "archived"
 
-class JourneyStatus(str, enum.Enum):
-    ACTIVE = "active"
-    PAUSED = "paused"
-    ARCHIVED = "archived"
-
 class StopStatus(str, enum.Enum):
     PLANNED = "planned"
     ACTIVE = "active"
@@ -74,4 +69,19 @@ class POIType(str, enum.Enum):
     FUEL = "fuel"
     RESTAURANT = "restaurant"
     ATTRACTION = "attraction"
+    OTHER = "other"
+
+class PostType(str, enum.Enum):
+    UPDATE = "update"
+    ACTIVITY = "activity"
+
+class ActivityType(str, enum.Enum):
+    HIKING = "hiking"
+    MUSEUM = "museum"
+    RESTAURANT = "restaurant"
+    ATTRACTION = "attraction"
+    SERVICE = "service"
+    SCENIC_DRIVE = "scenic_drive"
+    SHOPPING = "shopping"
+    FAMILY = "family"
     OTHER = "other"

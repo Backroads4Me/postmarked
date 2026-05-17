@@ -155,8 +155,8 @@ app.include_router(media.router)
 # Admin (mounted under /api/admin)
 from app.routers.admin import (
     imports as admin_imports,
-    journeys as admin_journeys,
     media as admin_media,
+    pois as admin_pois,
     posts as admin_posts,
     stops as admin_stops,
     trips as admin_trips,
@@ -165,10 +165,10 @@ from app.routers.admin import (
 
 app.include_router(admin_trips.router, prefix="/api/admin")
 app.include_router(admin_stops.router, prefix="/api/admin")
+app.include_router(admin_pois.router, prefix="/api/admin")
 app.include_router(admin_media.router, prefix="/api/admin")
 app.include_router(admin_posts.router, prefix="/api/admin")
 app.include_router(admin_imports.router, prefix="/api/admin")
-app.include_router(admin_journeys.router, prefix="/api/admin")
 app.include_router(admin_users.router, prefix="/api/admin")
 
 

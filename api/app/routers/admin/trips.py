@@ -1,10 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from typing import List
 
 from app.db import get_async_session
-from app.models.content import Trip
+from app.models.content import Trip, Stop, PlannedStop
 from app.schemas.trip import TripOut, TripCreate, TripUpdate
 from app.auth.dependencies import current_admin_user
 from app.models.user import User
@@ -64,6 +64,8 @@ async def delete_trip_admin(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
         
+    await session.execute(delete(Stop).where(Stop.trip_id == trip.id))
+    await session.execute(delete(PlannedStop).where(PlannedStop.trip_id == trip.id))
     await session.delete(trip)
     await log_audit_event(session, user.id, "DELETE", "Trip", trip.id)
     await session.commit()

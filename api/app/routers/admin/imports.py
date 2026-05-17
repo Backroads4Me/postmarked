@@ -15,7 +15,7 @@ from sqlalchemy.orm import selectinload
 
 from app.db import get_async_session
 from app.auth.dependencies import current_admin_user
-from app.models.content import ImportRun, PlannedStop, Trip, Journey
+from app.models.content import ImportRun, PlannedStop, Trip
 from app.models.enums import PlannedStopImportState
 from app.models.user import User
 from app.imports.rv_trip_wizard import parse_excel
@@ -51,11 +51,9 @@ def _parse_date(value):
 def _apply_payload_to_planned_stop(
     planned_stop: PlannedStop,
     payload: dict,
-    journey_id: uuid.UUID,
     trip_id: uuid.UUID,
     import_run_id: uuid.UUID,
 ) -> None:
-    planned_stop.journey_id = journey_id
     planned_stop.trip_id = trip_id
     planned_stop.source_import_run_id = import_run_id
     planned_stop.source_row_number = payload.get("row_number")
@@ -225,25 +223,6 @@ async def apply_import(
     if not parsed_stops:
         raise HTTPException(status_code=400, detail="Import preview did not store parsed stops")
 
-    # Find or create journey
-    journey = None
-    if req.target_journey_id:
-        journey = await session.get(Journey, req.target_journey_id)
-    if not journey:
-        journey_query = select(Journey).limit(1)
-        result = await session.execute(journey_query)
-        journey = result.scalars().first()
-    if not journey:
-        from app.models.enums import JourneyStatus, Visibility
-        journey = Journey(
-            title="Our RV Journey",
-            slug="our-rv-journey",
-            status=JourneyStatus.ACTIVE,
-            visibility=Visibility.PUBLIC,
-        )
-        session.add(journey)
-        await session.flush()
-
     # Find or create trip
     trip = None
     if req.target_trip_id:
@@ -257,7 +236,6 @@ async def apply_import(
             slug = f"{slug}-{str(import_run.id)[:8]}"
         from app.models.enums import TripStatus, Visibility
         trip = Trip(
-            journey_id=journey.id,
             slug=slug,
             title=import_run.trip_title_from_file or "Imported Trip",
             status=TripStatus.PLANNED,
@@ -300,7 +278,6 @@ async def apply_import(
             _apply_payload_to_planned_stop(
                 planned_stop,
                 payload,
-                journey.id,
                 trip.id,
                 import_run.id,
             )
@@ -315,7 +292,6 @@ async def apply_import(
             counts["unchanged" if before == after else "updated"] += 1
         else:
             planned_stop = PlannedStop(
-                journey_id=journey.id,
                 trip_id=trip.id,
                 source_fingerprint=payload["fingerprint"],
                 source_sequence=payload["sequence"],
@@ -324,7 +300,6 @@ async def apply_import(
             _apply_payload_to_planned_stop(
                 planned_stop,
                 payload,
-                journey.id,
                 trip.id,
                 import_run.id,
             )

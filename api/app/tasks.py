@@ -22,6 +22,22 @@ celery_app = Celery("goodpath_tasks", broker=REDIS_URL)
 engine = create_engine(DATABASE_URL_SYNC)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+def _dms_to_decimal(dms, ref) -> float | None:
+    """Convert EXIF DMS tuple + hemisphere ref to signed decimal degrees."""
+    if not dms or not ref:
+        return None
+    try:
+        degrees = float(dms[0])
+        minutes = float(dms[1])
+        seconds = float(dms[2])
+        decimal = degrees + minutes / 60 + seconds / 3600
+        if ref in ("S", "W"):
+            decimal = -decimal
+        return decimal
+    except Exception:
+        return None
+
+
 @celery_app.task(name="process_media_asset")
 def process_media_asset(asset_id: str):
     """
@@ -45,13 +61,23 @@ def process_media_asset(asset_id: str):
         if asset.kind == MediaKind.PHOTO:
             try:
                 with Image.open(file_path) as img:
-                    # Fix orientation based on EXIF
+                    # Fix orientation and extract GPS from EXIF
                     exif = img.getexif()
                     if exif:
                         orientation = exif.get(274)
                         if orientation == 3:   img = img.rotate(180, expand=True)
                         elif orientation == 6: img = img.rotate(270, expand=True)
                         elif orientation == 8: img = img.rotate(90, expand=True)
+
+                        gps_info = exif.get_ifd(0x8825)  # GPSInfo IFD
+                        if gps_info:
+                            try:
+                                lat = _dms_to_decimal(gps_info.get(2), gps_info.get(1))
+                                lon = _dms_to_decimal(gps_info.get(4), gps_info.get(3))
+                                if lat is not None and lon is not None:
+                                    asset.gps_location = f"POINT({lon} {lat})"
+                            except Exception:
+                                pass
 
                     asset.width = img.width
                     asset.height = img.height

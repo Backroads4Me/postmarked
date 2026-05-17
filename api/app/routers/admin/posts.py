@@ -15,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
-from app.models.content import Journey, MediaAsset, Post, Stop
+from app.models.content import MediaAsset, PointOfInterest, Post, Stop
 from app.models.enums import StopStatus, Visibility
 from app.models.user import User
 from app.schemas.post import PostCreate, PostOut, PostUpdate
@@ -32,7 +32,9 @@ async def list_posts(
     user: User = Depends(current_admin_user),
 ):
     result = await session.execute(
-        select(Post).options(selectinload(Post.media)).order_by(Post.posted_at.desc())
+        select(Post)
+        .options(selectinload(Post.media), selectinload(Post.poi))
+        .order_by(Post.posted_at.desc())
     )
     return result.scalars().all()
 
@@ -64,21 +66,17 @@ async def create_post(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
-    # Active journey lookup mirrors get_home / set_current_stop semantics:
-    # take the first one, or 404 if none exists yet.
-    journey = (await session.execute(select(Journey).limit(1))).scalars().first()
-    if not journey:
-        raise HTTPException(
-            status_code=400,
-            detail="No journey exists yet. Import a trip plan or create one first.",
-        )
-
     posted_at = post_in.posted_at or datetime.now(timezone.utc)
     visibility = Visibility(post_in.visibility)
     slug = await _unique_post_slug(session, post_in.title)
 
+    # Validate poi_id belongs to the given stop
+    if post_in.poi_id and post_in.stop_id:
+        poi = await session.get(PointOfInterest, post_in.poi_id)
+        if not poi or poi.stop_id != post_in.stop_id:
+            raise HTTPException(status_code=422, detail="poi_id does not belong to the given stop")
+
     post = Post(
-        journey_id=journey.id,
         trip_id=post_in.trip_id,
         stop_id=post_in.stop_id,
         slug=slug,
@@ -86,6 +84,12 @@ async def create_post(
         body=post_in.body,
         posted_at=posted_at,
         visibility=visibility,
+        post_type=post_in.post_type,
+        activity_type=post_in.activity_type,
+        summary=post_in.summary,
+        activity_started_at=post_in.activity_started_at,
+        activity_ended_at=post_in.activity_ended_at,
+        poi_id=post_in.poi_id,
     )
     session.add(post)
 
@@ -111,6 +115,7 @@ async def create_post(
     await log_audit_event(session, user.id, "CREATE", "Post", post.id)
     await session.commit()
     await session.refresh(post)
+    await session.refresh(post, ["poi"])
     return post
 
 
@@ -121,7 +126,12 @@ async def update_post(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
-    post = await session.get(Post, post_id)
+    result = await session.execute(
+        select(Post)
+        .where(Post.id == post_id)
+        .options(selectinload(Post.media), selectinload(Post.poi))
+    )
+    post = result.scalars().first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
@@ -165,10 +175,7 @@ async def set_current_stop(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
-    """
-    Mark a stop as the current location. Unmarks all other stops.
-    Also updates the Journey's current_stop_id if a journey exists.
-    """
+    """Mark a stop as the current location. Unmarks all other stops."""
     stop = await session.get(Stop, req.stop_id)
     if not stop:
         raise HTTPException(status_code=404, detail="Stop not found")
@@ -185,10 +192,6 @@ async def set_current_stop(
     )
     stop.is_current = True
     stop.status = StopStatus.ACTIVE
-
-    journey = (await session.execute(select(Journey).limit(1))).scalars().first()
-    if journey:
-        journey.current_stop_id = stop.id
 
     await log_audit_event(session, user.id, "SET_CURRENT_STOP", "Stop", stop.id)
     await session.commit()

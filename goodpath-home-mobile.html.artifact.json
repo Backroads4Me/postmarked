@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "kind": "html",
+  "title": "Goodpath — Home Screen (Mobile)",
+  "entry": "goodpath-home-mobile.html",
+  "renderer": "html",
+  "status": "complete",
+  "exports": [
+    "html",
+    "pdf",
+    "zip"
+  ],
+  "createdAt": "2026-05-16T09:18:06.952Z",
+  "updatedAt": "2026-05-16T09:18:06.962Z",
+  "metadata": {
+    "identifier": "goodpath-home-mobile",
+    "artifactType": "text/html",
+    "inferred": false
+  }
+}

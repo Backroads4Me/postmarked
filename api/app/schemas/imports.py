@@ -56,7 +56,6 @@ class ImportPreviewResponse(BaseModel):
 
 class ImportApplyRequest(BaseModel):
     """Request to apply a parsed import."""
-    target_journey_id: Optional[uuid.UUID] = None
     target_trip_id: Optional[uuid.UUID] = None
     create_trip: bool = True
     confirm_dangerous: bool = False

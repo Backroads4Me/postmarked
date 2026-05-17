@@ -10,6 +10,7 @@ from app.schemas.stop import StopOut, StopCreate, StopUpdate
 from app.auth.dependencies import current_admin_user
 from app.models.user import User
 from app.services.audit import log_audit_event
+from app.services.timezone import timezone_for_coords
 
 router = APIRouter(prefix="/stops", tags=["admin-stops"])
 
@@ -35,8 +36,7 @@ async def create_stop_admin(
     trip = await session.get(Trip, data["trip_id"])
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
-    data["journey_id"] = trip.journey_id
-    stop = Stop(**data, location=f"POINT({lon} {lat})")
+    stop = Stop(**data, location=f"POINT({lon} {lat})", timezone_id=timezone_for_coords(lat, lon))
     session.add(stop)
     try:
         await session.flush()
@@ -75,6 +75,7 @@ async def update_stop_admin(
                 detail="latitude and longitude must be supplied together when updating location.",
             )
         stop.location = f"POINT({new_lon} {new_lat})"
+        stop.timezone_id = timezone_for_coords(new_lat, new_lon)
 
     for key, value in update_data.items():
         setattr(stop, key, value)

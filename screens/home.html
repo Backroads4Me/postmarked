@@ -1,0 +1,796 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Home — Goodpath</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT@9..144,300..900,0..100&family=IBM+Plex+Sans:wght@300;400;500&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    /* ── tokens ── */
+    :root {
+      --ink-0:      #07090d;
+      --ink-1:      #0c1017;
+      --ink-2:      #11161f;
+      --ink-3:      #181e2a;
+      --ink-4:      #222a39;
+      --line:       #2a3344;
+      --line-soft:  #1c2230;
+
+      --paper:      #ece9e0;
+      --paper-2:    #d9d4c5;
+      --muted:      #8b8e98;
+      --dim:        #585c68;
+
+      --ember:      #e8893f;
+      --ember-2:    #f4a663;
+      --ember-glow: rgba(232,137,63,.18);
+      --sky:        #6fa3c4;
+
+      --display:    'Fraunces', ui-serif, Georgia, serif;
+      --sans:       'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+      --mono:       'JetBrains Mono', ui-monospace, monospace;
+
+      --hair:       1px solid var(--line);
+      --hair-soft:  1px solid var(--line-soft);
+      --r-sm:       4px;
+      --r-md:       10px;
+      --r-lg:       16px;
+
+      /* header height including safe-area */
+      --header-h: calc(52px + env(safe-area-inset-top, 0px));
+    }
+
+    /* ── reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { height: 100%; }
+    body {
+      background: var(--ink-0);
+      color: var(--paper);
+      font-family: var(--sans);
+      font-size: 16px;
+      line-height: 1.55;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+      /* space for fixed header + tab bar */
+      padding-top: var(--header-h);
+      padding-bottom: calc(60px + env(safe-area-inset-bottom, 16px));
+      background-image:
+        radial-gradient(ellipse 140% 40% at 70% 0%, rgba(232,137,63,.05), transparent 50%),
+        radial-gradient(ellipse 80% 50% at 0% 100%, rgba(111,163,196,.04), transparent 50%);
+    }
+    a { color: inherit; text-decoration: none; }
+    svg { display: block; }
+
+    /* ── fixed app header ── */
+    .app-header {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 50;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: calc(env(safe-area-inset-top, 0px) + 14px) 20px 14px;
+      background: rgba(7,9,13,0);
+      backdrop-filter: blur(0px);
+      -webkit-backdrop-filter: blur(0px);
+      border-bottom: 1px solid transparent;
+      transition: background .28s ease, backdrop-filter .28s ease, border-color .28s ease;
+    }
+    .app-header.scrolled {
+      background: rgba(7,9,13,.88);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom-color: var(--line-soft);
+    }
+    .brand-mark {
+      font-family: var(--display);
+      font-weight: 380;
+      font-variation-settings: "opsz" 144, "SOFT" 50;
+      font-size: 22px;
+      letter-spacing: -0.025em;
+      line-height: 1;
+    }
+    .brand-mark em {
+      font-style: italic;
+      color: var(--ember);
+      font-variation-settings: "opsz" 144, "SOFT" 100;
+    }
+    .header-actions { display: flex; gap: 6px; }
+    .icon-btn {
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      color: var(--muted);
+      background: rgba(255,255,255,.05);
+      transition: color .2s, background .2s;
+    }
+    .icon-btn:active { background: rgba(255,255,255,.1); color: var(--paper); }
+
+    /* ── location hero ── */
+    .location-hero {
+      position: relative;
+      /* bleed up behind fixed header */
+      margin-top: calc(-1 * var(--header-h));
+      min-height: clamp(340px, 68vh, 520px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      overflow: hidden;
+    }
+    .hero-bg {
+      position: absolute; inset: 0;
+      background:
+        radial-gradient(ellipse 90% 55% at 50% 105%, rgba(232,137,63,.28), transparent 65%),
+        linear-gradient(188deg, #07090d 0%, #0d1520 38%, #1e2b3c 62%, #3d3020 80%, #18100a 100%);
+    }
+    .hero-mountains {
+      position: absolute;
+      left: 0; right: 0; bottom: 0;
+      height: 62%;
+    }
+    .hero-grain {
+      position: absolute; inset: 0; pointer-events: none;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2'/><feColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.32 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+      mix-blend-mode: overlay;
+      opacity: .45;
+    }
+    .hero-vignette {
+      position: absolute; inset: 0;
+      background: linear-gradient(
+        to bottom,
+        rgba(7,9,13,.5) 0%,
+        transparent 28%,
+        transparent 55%,
+        rgba(7,9,13,.72) 100%
+      );
+    }
+    .hero-content {
+      position: relative;
+      padding: calc(var(--header-h) + 28px) 20px 28px;
+    }
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 12px 6px 9px;
+      background: rgba(7,9,13,.6);
+      border: 1px solid rgba(232,137,63,.3);
+      border-radius: 999px;
+      backdrop-filter: blur(10px);
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--paper-2);
+      margin-bottom: 18px;
+    }
+    .live-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--ember);
+      box-shadow: 0 0 8px var(--ember);
+      flex-shrink: 0;
+      animation: pulse-dot 2.4s ease-in-out infinite;
+    }
+    @keyframes pulse-dot {
+      0%,100% { opacity: 1; transform: scale(1); box-shadow: 0 0 8px var(--ember); }
+      50%      { opacity: .55; transform: scale(.75); box-shadow: 0 0 3px var(--ember); }
+    }
+    .location-name {
+      font-family: var(--display);
+      font-weight: 340;
+      font-variation-settings: "opsz" 144, "SOFT" 55;
+      font-size: clamp(40px, 10.5vw, 56px);
+      line-height: 0.95;
+      letter-spacing: -0.022em;
+    }
+    .location-name em {
+      font-style: italic;
+      color: var(--ember-2);
+      font-variation-settings: "opsz" 144, "SOFT" 100;
+      font-weight: 320;
+      display: block;
+    }
+    .hero-coord {
+      font-family: var(--mono);
+      font-size: 10px;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+    .hero-stats {
+      display: flex;
+      gap: 0;
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid rgba(236,233,224,.11);
+    }
+    .hero-stat {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      padding-right: 12px;
+    }
+    .hero-stat + .hero-stat {
+      padding-left: 12px;
+      padding-right: 12px;
+      border-left: 1px solid rgba(236,233,224,.1);
+    }
+    .stat-label {
+      font-family: var(--mono);
+      font-size: 8.5px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .stat-value {
+      font-family: var(--display);
+      font-size: 24px;
+      font-variation-settings: "opsz" 60;
+      font-weight: 360;
+      line-height: 1;
+      color: var(--paper);
+    }
+    .stat-value em { color: var(--ember); font-style: italic; }
+    .stat-unit { font-size: 11px; color: var(--dim); font-style: normal; font-family: var(--mono); }
+    .hero-cta {
+      display: flex;
+      gap: 10px;
+      margin-top: 22px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 11px 18px;
+      border-radius: 999px;
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: .14em;
+      text-transform: uppercase;
+      transition: all .2s ease;
+      white-space: nowrap;
+      min-height: 44px;
+    }
+    .btn-primary {
+      background: var(--ember);
+      color: var(--ink-0);
+    }
+    .btn-primary:active { background: var(--ember-2); }
+    .btn-ghost {
+      background: transparent;
+      color: var(--paper-2);
+      border: 1px solid rgba(236,233,224,.18);
+    }
+    .btn-ghost:active { border-color: var(--ember); color: var(--ember); }
+
+    /* ── route progress strip ── */
+    .route-strip {
+      margin: 0 16px 0;
+      padding: 16px 16px 14px;
+      background: var(--ink-1);
+      border: var(--hair);
+      border-radius: var(--r-lg);
+    }
+    .strip-label {
+      font-family: var(--mono);
+      font-size: 8.5px;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 14px;
+    }
+    .strip-meta {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-top: 10px;
+    }
+
+    /* ── section header ── */
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      padding: 28px 20px 14px;
+    }
+    .section-title {
+      font-family: var(--display);
+      font-weight: 360;
+      font-variation-settings: "opsz" 60, "SOFT" 30;
+      font-size: 27px;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .section-title em {
+      font-style: italic;
+      color: var(--ember);
+      font-variation-settings: "opsz" 60, "SOFT" 100;
+    }
+    .section-all {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    /* ── update feed ── */
+    .feed {
+      padding: 0 20px;
+      display: flex;
+      flex-direction: column;
+    }
+    .update-card {
+      display: grid;
+      grid-template-columns: 86px 1fr;
+      gap: 14px;
+      align-items: start;
+      padding: 14px 0;
+      border-top: 1px solid var(--line-soft);
+      transition: opacity .15s;
+    }
+    .update-card:active { opacity: .65; }
+    .update-thumb {
+      width: 86px;
+      aspect-ratio: 4/3;
+      border-radius: var(--r-sm);
+      overflow: hidden;
+      background: var(--ink-3);
+      flex-shrink: 0;
+    }
+    .update-thumb svg { width: 100%; height: 100%; }
+    .update-body { display: flex; flex-direction: column; gap: 4px; padding-top: 1px; }
+    .update-tag {
+      display: inline-flex;
+      align-items: center;
+      width: fit-content;
+      padding: 2px 7px;
+      border-radius: 3px;
+      background: rgba(232,137,63,.1);
+      border: 1px solid rgba(232,137,63,.18);
+      font-family: var(--mono);
+      font-size: 8px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--ember);
+    }
+    .update-title {
+      font-family: var(--display);
+      font-size: 17px;
+      font-variation-settings: "opsz" 18;
+      font-weight: 360;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      color: var(--paper);
+    }
+    .update-meta {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+    .update-date {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .04em;
+      color: var(--dim);
+    }
+
+    /* ── bottom tab bar ── */
+    .tabbar {
+      position: fixed;
+      left: 0; right: 0; bottom: 0;
+      z-index: 60;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      background: rgba(10,14,20,.93);
+      backdrop-filter: blur(22px);
+      -webkit-backdrop-filter: blur(22px);
+      border-top: var(--hair);
+      padding: 8px 4px calc(8px + env(safe-area-inset-bottom, 14px));
+    }
+    .tabbar a {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 6px 4px;
+      min-height: 44px;
+      justify-content: center;
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--dim);
+      transition: color .2s;
+    }
+    .tabbar a.active { color: var(--ember); }
+    .tabbar a:active { opacity: .65; }
+    .tabbar svg { width: 20px; height: 20px; flex-shrink: 0; }
+
+    /* ── desktop upgrade ── */
+    @media (min-width: 768px) {
+      .tabbar { display: none; }
+      body { padding-bottom: 0; padding-top: 0; }
+      :root { --header-h: 56px; }
+      .app-header { padding-top: 16px; padding-bottom: 16px; padding-left: 40px; padding-right: 40px; }
+      .app-header.scrolled { background: rgba(7,9,13,.85); }
+
+      /* show desktop nav links */
+      .desktop-nav { display: flex; gap: 4px; }
+      .desktop-nav a {
+        font-family: var(--mono);
+        font-size: 10px;
+        letter-spacing: .15em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 9px 13px;
+        border-radius: var(--r-sm);
+        transition: color .2s, background .2s;
+        min-height: 36px;
+        display: flex; align-items: center;
+      }
+      .desktop-nav a:hover { color: var(--paper); background: var(--ink-2); }
+      .desktop-nav a.active { color: var(--ember); }
+
+      .location-hero { min-height: clamp(440px, 60vh, 600px); }
+      .hero-content { padding-left: 48px; padding-right: 48px; max-width: 760px; }
+      .location-name { font-size: clamp(52px, 7vw, 82px); }
+      .route-strip { margin: 20px 40px 0; padding: 20px 24px 18px; }
+      .section-head { padding: 36px 40px 16px; }
+      .feed { padding: 0 40px; max-width: 700px; }
+    }
+    @media (min-width: 1100px) {
+      .main-grid {
+        display: grid;
+        grid-template-columns: 1fr 380px;
+        gap: 0 40px;
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 0 40px;
+        align-items: start;
+      }
+      .route-strip { margin-left: 0; margin-right: 0; }
+      .section-head { padding-left: 0; padding-right: 0; }
+      .feed { padding-left: 0; padding-right: 0; }
+      .sidebar { padding-top: 28px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Fixed app header -->
+  <header class="app-header" id="appHeader">
+    <div class="brand-mark">good<em>path</em></div>
+
+    <!-- Desktop nav (hidden on mobile via CSS) -->
+    <nav class="desktop-nav" style="display:none" aria-label="Main">
+      <a href="#" class="active">Home</a>
+      <a href="#">Trips</a>
+      <a href="#">Map</a>
+      <a href="#">Timeline</a>
+      <a href="#">About</a>
+    </nav>
+
+    <div class="header-actions">
+      <a href="#" class="icon-btn" aria-label="Notifications">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+      </a>
+      <a href="#" class="icon-btn" aria-label="Share location">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+      </a>
+    </div>
+  </header>
+
+  <!-- Location Hero — bleeds under fixed header -->
+  <section class="location-hero" data-od-id="location-hero" aria-label="Current location">
+    <div class="hero-bg" aria-hidden="true"></div>
+
+    <!-- Three-layer mountain ridgeline -->
+    <svg class="hero-mountains" viewBox="0 0 390 260" preserveAspectRatio="xMidYMax slice" aria-hidden="true">
+      <defs>
+        <linearGradient id="ridge1" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0"   stop-color="#1a2636"/>
+          <stop offset="1"   stop-color="#0a1018"/>
+        </linearGradient>
+        <linearGradient id="ridge2" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0"   stop-color="#0e1521"/>
+          <stop offset="1"   stop-color="#060810"/>
+        </linearGradient>
+        <linearGradient id="ridge3" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0"   stop-color="#070a12"/>
+          <stop offset="1"   stop-color="#030508"/>
+        </linearGradient>
+      </defs>
+      <!-- distant ridge -->
+      <path d="M-10 155 L 35 122 L 75 140 L 125 100 L 175 128 L 228 88 L 278 118 L 332 96 L 390 128 L 400 260 L-10 260Z" fill="url(#ridge1)"/>
+      <!-- mid ridge -->
+      <path d="M-10 192 L 45 170 L 100 186 L 158 158 L 215 184 L 270 152 L 318 182 L 368 164 L 400 176 L 400 260 L-10 260Z" fill="url(#ridge2)"/>
+      <!-- foreground ridge -->
+      <path d="M-10 225 L 55 210 L 125 226 L 200 206 L 265 228 L 325 212 L 400 226 L 400 260 L-10 260Z" fill="url(#ridge3)"/>
+    </svg>
+
+    <div class="hero-grain" aria-hidden="true"></div>
+    <div class="hero-vignette" aria-hidden="true"></div>
+
+    <div class="hero-content">
+      <!-- Live status badge -->
+      <div class="live-badge" role="status">
+        <span class="live-dot" aria-hidden="true"></span>
+        Live &nbsp;·&nbsp; Yellowstone Loop &nbsp;·&nbsp; Day 06 / 12
+      </div>
+
+      <!-- Location -->
+      <h1 class="location-name">
+        Madison Junction,<br>
+        <em>Yellowstone</em>
+      </h1>
+      <p class="hero-coord">44.6452° N &nbsp;·&nbsp; 110.8597° W</p>
+
+      <!-- Quick stats -->
+      <div class="hero-stats" role="list" aria-label="Trip stats">
+        <div class="hero-stat" role="listitem">
+          <span class="stat-label">Day</span>
+          <span class="stat-value"><em>06</em></span>
+        </div>
+        <div class="hero-stat" role="listitem">
+          <span class="stat-label">Stop</span>
+          <span class="stat-value">07<span class="stat-unit">/14</span></span>
+        </div>
+        <div class="hero-stat" role="listitem">
+          <span class="stat-label">Photos</span>
+          <span class="stat-value">182</span>
+        </div>
+        <div class="hero-stat" role="listitem">
+          <span class="stat-label">Distance</span>
+          <span class="stat-value">412<span class="stat-unit">mi</span></span>
+        </div>
+      </div>
+
+      <!-- CTAs -->
+      <div class="hero-cta">
+        <a href="#" class="btn btn-primary">Follow the route <span aria-hidden="true">→</span></a>
+        <a href="#" class="btn btn-ghost">Live map</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main content grid (two-column on wide desktop) -->
+  <div class="main-grid">
+    <div>
+
+      <!-- Route progress strip -->
+      <div class="route-strip" data-od-id="route-strip">
+        <p class="strip-label">Yellowstone Loop — journey progress</p>
+        <svg viewBox="0 0 350 44" style="width:100%;height:44px;overflow:visible" aria-label="Route progress: 7 of 14 stops complete" role="img">
+          <!-- Background track -->
+          <line x1="12" y1="22" x2="338" y2="22" stroke="#2a3344" stroke-width="1.5"/>
+          <!-- Completed segment -->
+          <line x1="12" y1="22" x2="172" y2="22" stroke="#e8893f" stroke-width="1.5" stroke-linecap="round"/>
+
+          <!-- Completed stops (6 visited before current) -->
+          <circle cx="12"  cy="22" r="3"   fill="#e8893f"/>
+          <circle cx="48"  cy="22" r="3"   fill="#e8893f"/>
+          <circle cx="84"  cy="22" r="3"   fill="#e8893f"/>
+          <circle cx="108" cy="22" r="3"   fill="#e8893f"/>
+          <circle cx="136" cy="22" r="3"   fill="#e8893f"/>
+          <circle cx="172" cy="22" r="3"   fill="#e8893f"/>
+
+          <!-- Labels: start / end -->
+          <text x="12"  y="39" fill="#585c68" font-family="JetBrains Mono,monospace" font-size="8" text-anchor="middle">Start</text>
+          <text x="338" y="39" fill="#585c68" font-family="JetBrains Mono,monospace" font-size="8" text-anchor="middle">End</text>
+
+          <!-- Current stop (pulsing beacon) -->
+          <circle cx="200" cy="22" r="8" fill="none" stroke="#e8893f" stroke-width="1.2" opacity=".35">
+            <animate attributeName="r"       from="8"   to="20"  dur="2.2s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" from=".35" to="0"   dur="2.2s" repeatCount="indefinite"/>
+          </circle>
+          <circle cx="200" cy="22" r="5.5" fill="#f4a663" stroke="#07090d" stroke-width="1.5"/>
+          <text x="200" y="39" fill="#e8893f" font-family="JetBrains Mono,monospace" font-size="8" text-anchor="middle">Here</text>
+
+          <!-- Future stops (7 remaining) -->
+          <circle cx="224" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+          <circle cx="250" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+          <circle cx="274" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+          <circle cx="296" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+          <circle cx="314" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+          <circle cx="328" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+          <circle cx="338" cy="22" r="3" fill="#181e2a" stroke="#585c68" stroke-width="1"/>
+        </svg>
+        <p class="strip-meta">7 of 14 stops &nbsp;·&nbsp; 412 mi driven &nbsp;·&nbsp; 6 days remaining</p>
+      </div>
+
+      <!-- Recent updates heading -->
+      <div class="section-head">
+        <h2 class="section-title">From the last<br><em>fortnight</em></h2>
+        <a href="#" class="section-all">See all →</a>
+      </div>
+
+      <!-- Feed -->
+      <div class="feed" data-od-id="update-feed">
+
+        <a class="update-card" href="#" aria-label="Sunset over Hayden Valley — Stop, Day 06, 24 photos, 1 video">
+          <div class="update-thumb">
+            <svg viewBox="0 0 86 65" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="th1" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0"   stop-color="#243349"/>
+                  <stop offset=".65" stop-color="#3d4055"/>
+                  <stop offset="1"   stop-color="#7a5a36"/>
+                </linearGradient>
+              </defs>
+              <rect width="86" height="65" fill="url(#th1)"/>
+              <path d="M0 40 L14 30 L28 37 L44 25 L60 34 L76 23 L86 29 L86 65 L0 65Z" fill="#0e1320"/>
+              <circle cx="68" cy="15" r="8"  fill="#f4a663" opacity=".92"/>
+              <circle cx="68" cy="15" r="16" fill="#e8893f" opacity=".14"/>
+            </svg>
+          </div>
+          <div class="update-body">
+            <span class="update-tag">Stop · Day 06</span>
+            <span class="update-title">Sunset over Hayden Valley</span>
+            <span class="update-meta">24 photos &nbsp;·&nbsp; 1 video</span>
+            <span class="update-date">Apr 5 &nbsp;·&nbsp; 17:42 MST</span>
+          </div>
+        </a>
+
+        <a class="update-card" href="#" aria-label="Old Faithful, before the crowd — Stop, Day 05, 18 photos">
+          <div class="update-thumb">
+            <svg viewBox="0 0 86 65" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="th2" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="#1d2a3a"/>
+                  <stop offset="1" stop-color="#0e1621"/>
+                </linearGradient>
+              </defs>
+              <rect width="86" height="65" fill="url(#th2)"/>
+              <g fill="none" stroke="#3a5468" stroke-width=".7">
+                <path d="M0 22 Q 22 14 43 20 T 86 18"/>
+                <path d="M0 32 Q 22 24 43 30 T 86 28"/>
+                <path d="M0 42 Q 22 34 43 40 T 86 38"/>
+                <path d="M0 52 Q 22 44 43 50 T 86 48"/>
+              </g>
+              <circle cx="43" cy="52" r="3"  fill="#e8893f"/>
+              <circle cx="43" cy="52" r="9"  fill="#e8893f" opacity=".14"/>
+            </svg>
+          </div>
+          <div class="update-body">
+            <span class="update-tag">Stop · Day 05</span>
+            <span class="update-title">Old Faithful, before the crowd</span>
+            <span class="update-meta">18 photos</span>
+            <span class="update-date">Apr 4 &nbsp;·&nbsp; 09:15 MST</span>
+          </div>
+        </a>
+
+        <a class="update-card" href="#" aria-label="A flat tire near Tower-Roosevelt — Stop, Day 03, 6 photos">
+          <div class="update-thumb">
+            <svg viewBox="0 0 86 65" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="th3" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0" stop-color="#0d1218"/>
+                  <stop offset="1" stop-color="#2a2018"/>
+                </linearGradient>
+              </defs>
+              <rect width="86" height="65" fill="url(#th3)"/>
+              <path d="M0 45 L22 36 L50 42 L72 30 L86 36 L86 65 L0 65Z" fill="#070a10"/>
+              <path d="M0 36 L30 22 L62 32 L86 24 L86 65 L0 65Z" fill="#1a1f2c" opacity=".7"/>
+            </svg>
+          </div>
+          <div class="update-body">
+            <span class="update-tag">Stop · Day 03</span>
+            <span class="update-title">A flat tire near Tower-Roosevelt</span>
+            <span class="update-meta">6 photos</span>
+            <span class="update-date">Apr 2 &nbsp;·&nbsp; 14:08 MST</span>
+          </div>
+        </a>
+
+        <a class="update-card" href="#" aria-label="First light, Lamar Valley — Stop, Day 02, 32 photos, 2 videos">
+          <div class="update-thumb">
+            <svg viewBox="0 0 86 65" preserveAspectRatio="xMidYMid slice">
+              <defs>
+                <linearGradient id="th4" x1="0" x2="0" y1="0" y2="1">
+                  <stop offset="0"   stop-color="#3a2a1c"/>
+                  <stop offset=".5"  stop-color="#1d1a26"/>
+                  <stop offset="1"   stop-color="#0a0d14"/>
+                </linearGradient>
+              </defs>
+              <rect width="86" height="65" fill="url(#th4)"/>
+              <circle cx="64" cy="16" r="6"  fill="#f4a663" opacity=".88"/>
+              <circle cx="64" cy="16" r="13" fill="#e8893f" opacity=".12"/>
+              <path d="M0 46 L18 40 L38 46 L58 36 L80 42 L86 39 L86 65 L0 65Z" fill="#070a10"/>
+            </svg>
+          </div>
+          <div class="update-body">
+            <span class="update-tag">Stop · Day 02</span>
+            <span class="update-title">First light, Lamar Valley</span>
+            <span class="update-meta">32 photos &nbsp;·&nbsp; 2 videos</span>
+            <span class="update-date">Apr 1 &nbsp;·&nbsp; 06:30 MST</span>
+          </div>
+        </a>
+
+      </div><!-- /feed -->
+
+    </div><!-- /main col -->
+
+    <!-- Sidebar (only visible at ≥1100px) -->
+    <aside class="sidebar" style="display:none" data-od-id="sidebar">
+      <!-- populated by JS at wide breakpoint -->
+    </aside>
+
+  </div><!-- /main-grid -->
+
+  <!-- Bottom tab bar (mobile only) -->
+  <nav class="tabbar" aria-label="Main navigation">
+    <a href="#" class="active" aria-current="page">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 11l9-8 9 8v10a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2z"/>
+      </svg>
+      Home
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3" y="5" width="18" height="14" rx="2"/>
+        <path d="M3 10h18"/>
+      </svg>
+      Trips
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M9 3 3 6v15l6-3 6 3 6-3V3l-6 3-6-3z"/>
+        <path d="M9 3v15M15 6v15"/>
+      </svg>
+      Map
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="9"/>
+        <path d="M12 7v5l3 3"/>
+      </svg>
+      Time
+    </a>
+    <a href="#">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="9" r="3"/>
+        <path d="M5 21c0-4 3-7 7-7s7 3 7 7"/>
+      </svg>
+      About
+    </a>
+  </nav>
+
+  <script>
+    // Frosted header on scroll
+    const header = document.getElementById('appHeader');
+    const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 10);
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    // Show desktop nav + sidebar at wide breakpoints
+    const mql768 = window.matchMedia('(min-width: 768px)');
+    const mql1100 = window.matchMedia('(min-width: 1100px)');
+    const desktopNav = document.querySelector('.desktop-nav');
+    const sidebar = document.querySelector('.sidebar');
+
+    function applyBreakpoints() {
+      if (mql768.matches) desktopNav.style.display = 'flex';
+      else desktopNav.style.display = 'none';
+      if (mql1100.matches) sidebar.style.display = 'block';
+      else sidebar.style.display = 'none';
+    }
+    applyBreakpoints();
+    mql768.addEventListener('change', applyBreakpoints);
+    mql1100.addEventListener('change', applyBreakpoints);
+  </script>
+
+</body>
+</html>

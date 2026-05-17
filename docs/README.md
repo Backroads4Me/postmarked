@@ -10,11 +10,13 @@ Read in this order:
    - Product intent: continuous full-time RV life sharing, not a generic travel app.
 3. `rv-mvp-api-contracts.md`
    - Current public reader API contracts used by the frontend.
-4. `rv-trip-wizard-excel-import.md`
+4. `post-activities-design.md`
+   - Proposed design for building local stop activities on top of posts, including optional Google Maps POI enrichment.
+5. `rv-trip-wizard-excel-import.md`
    - RV Trip Wizard Excel import and reimport behavior.
-5. `path-to-testing.md`
+6. `path-to-testing.md`
    - Current local testing checklist and non-blocking polish backlog.
-6. `../goodpath-design.md`
+7. `../goodpath-design.md`
    - Longer-term product/design specification. Treat this as directional when it goes beyond the current MVP.
 
 ## Current Product Decisions

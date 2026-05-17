@@ -1,0 +1,169 @@
+---
+import Layout from '../../../../../../layouts/Layout.astro';
+import { apiUrl } from '../../../../../../lib/api.js';
+import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
+
+const { slug, stop: stopSlug, post_slug } = Astro.params;
+
+let post = null;
+let loadError = null;
+try {
+  const res = await fetch(apiUrl(`/api/trips/${slug}/stops/${stopSlug}/posts/${post_slug}`));
+  if (res.ok) {
+    post = await res.json();
+  } else if (res.status === 404) {
+    return Astro.redirect('/404');
+  } else {
+    loadError = `API ${res.status}`;
+  }
+} catch (e) {
+  loadError = e?.message || 'Failed to connect';
+}
+
+if (!post) return Astro.redirect('/404');
+
+function fmtActivityTime(d, timezoneId) {
+  if (!d) return '';
+  const opts = { weekday: 'long', month: 'long', day: 'numeric', hour: 'numeric', minute: '2-digit' };
+  if (timezoneId) opts.timeZone = timezoneId;
+  return new Date(d).toLocaleString('en-US', opts);
+}
+
+function fmtTime(d, timezoneId) {
+  if (!d) return '';
+  const opts = { hour: 'numeric', minute: '2-digit' };
+  if (timezoneId) opts.timeZone = timezoneId;
+  return new Date(d).toLocaleTimeString('en-US', opts);
+}
+---
+
+<Layout title={`${post.title} — ${post.trip_title}`}>
+  <main class="frame py-8 md:py-12">
+    {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
+
+    {/* ── Breadcrumb ───────────────────────────────────────── */}
+    <nav class="label mb-3 flex items-center gap-1 flex-wrap">
+      <a href="/trips">Trips</a>
+      <span class="text-dim" style="margin: 0 4px;">/</span>
+      <a href={`/trips/${post.trip_slug}`}>{post.trip_title}</a>
+      <span class="text-dim" style="margin: 0 4px;">/</span>
+      <a href={`/trips/${post.trip_slug}/stops/${post.stop_slug}`}>{post.stop_title}</a>
+      <span class="text-dim" style="margin: 0 4px;">/</span>
+      <span style="color: var(--paper);">{post.title}</span>
+    </nav>
+
+    {/* ── Hero ─────────────────────────────────────────────── */}
+    <section class="mb-8">
+      <div class="flex items-center gap-2 mb-3 flex-wrap">
+        {post.activity_type && (
+          <span class="badge" style="text-transform: capitalize;">
+            {post.activity_type.replace(/_/g, ' ')}
+          </span>
+        )}
+        {post.activity_started_at && (
+          <span class="label">{fmtActivityTime(post.activity_started_at, post.stop_timezone_id)}</span>
+        )}
+        {post.activity_ended_at && (
+          <span class="label">– {fmtTime(post.activity_ended_at, post.stop_timezone_id)}</span>
+        )}
+      </div>
+      <h1 class="display text-3xl md:text-5xl">{post.title}</h1>
+      {post.summary && (
+        <p class="lede mt-4 text-base" style="font-family: var(--sans);">{post.summary}</p>
+      )}
+    </section>
+
+    {/* ── Gallery ──────────────────────────────────────────── */}
+    {post.media && post.media.length > 0 && (
+      <section class="mb-10">
+        <div
+          class="grid gap-2"
+          style={`grid-template-columns: repeat(${post.media.length === 1 ? 1 : post.media.length === 2 ? 2 : 3}, 1fr);`}
+        >
+          {post.media.map(m => (
+            <a
+              href={`/media/${m.id}/webp`}
+              class="block aspect-square rounded-md overflow-hidden border border-line-soft"
+              style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
+            >
+              <img
+                src={`/media/${m.id}/webp`}
+                alt={m.alt_text || m.caption || ''}
+                loading="lazy"
+                decoding="async"
+                class="w-full h-full object-cover"
+              />
+            </a>
+          ))}
+        </div>
+      </section>
+    )}
+
+    {/* ── Body ─────────────────────────────────────────────── */}
+    {post.body && (
+      <section class="mb-10">
+        <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.7;">{post.body}</p>
+      </section>
+    )}
+
+    {/* ── POI Card ─────────────────────────────────────────── */}
+    {post.poi && (
+      <section class="mb-10">
+        <div class="card-flat">
+          <div class="flex items-start justify-between gap-3">
+            <div>
+              <div class="label mb-1" style="text-transform: capitalize;">
+                {post.poi.poi_type.replace(/_/g, ' ')}
+              </div>
+              <h3 class="display text-lg">{post.poi.label}</h3>
+            </div>
+            {post.poi.google_maps_url && (
+              <a
+                href={post.poi.google_maps_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="btn btn-sm btn-ghost"
+                style="white-space: nowrap;"
+              >
+                Maps ↗
+              </a>
+            )}
+          </div>
+        </div>
+      </section>
+    )}
+
+    {/* ── Comments ────────────────────────────────────────── */}
+    <section class="mb-10">
+      <CommentsIsland client:load targetKind="post" targetId={post.id} />
+    </section>
+
+    {/* ── Prev / Next Activities ───────────────────────────── */}
+    {(post.prev_activity || post.next_activity) && (
+      <nav class="grid grid-cols-2 gap-3 mt-12 pt-6" style="border-top: 1px solid var(--line-soft);">
+        <div>
+          {post.prev_activity && (
+            <a
+              href={`/trips/${post.trip_slug}/stops/${post.stop_slug}/posts/${post.prev_activity.slug}`}
+              class="card-flat block"
+            >
+              <div class="label mb-1">← Previous</div>
+              <div style="color: var(--paper);">{post.prev_activity.title}</div>
+            </a>
+          )}
+        </div>
+        <div style="text-align: right;">
+          {post.next_activity && (
+            <a
+              href={`/trips/${post.trip_slug}/stops/${post.stop_slug}/posts/${post.next_activity.slug}`}
+              class="card-flat block"
+            >
+              <div class="label mb-1">Next →</div>
+              <div style="color: var(--paper);">{post.next_activity.title}</div>
+            </a>
+          )}
+        </div>
+      </nav>
+    )}
+  </main>
+</Layout>

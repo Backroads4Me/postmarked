@@ -1,3 +1,5 @@
+import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, select
@@ -6,9 +8,13 @@ from sqlalchemy.orm import selectinload
 
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
-from app.models.content import MediaAsset, Post, Stop, Trip
-from app.models.enums import Visibility
+from app.models.content import MediaAsset, PointOfInterest, Post, Stop, Trip
+from app.models.enums import PostType, Visibility
 from app.schemas.journey import (
+    MediaGPSPoint,
+    PublicPOISummary,
+    PublicPostDetail,
+    PublicPostSibling,
     PublicPostSummary,
     PublicStopDetail,
     PublicStopSibling,
@@ -16,6 +22,15 @@ from app.schemas.journey import (
 
 router = APIRouter(prefix="/trips", tags=["stops"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
+
+
+async def _poi_coords(session: AsyncSession, poi_id: uuid.UUID) -> tuple[float, float]:
+    point = cast(PointOfInterest.location, Geometry(geometry_type="POINT", srid=4326))
+    row = (await session.execute(
+        select(func.ST_Y(point).label("lat"), func.ST_X(point).label("lon"))
+        .where(PointOfInterest.id == poi_id)
+    )).first()
+    return (row.lat, row.lon) if row else (0.0, 0.0)
 
 
 def _is_admin(user) -> bool:
@@ -48,6 +63,7 @@ async def get_stop(
             selectinload(Stop.cover_media),
             selectinload(Stop.trip),
             selectinload(Stop.media),
+            selectinload(Stop.pois),
         )
     )
 
@@ -75,11 +91,42 @@ async def get_stop(
         if _is_admin(user) or m.visibility == Visibility.PUBLIC
     ]
 
+    # POIs for this stop with resolved coordinates
+    pois_out: list[PublicPOISummary] = []
+    for poi in (stop.pois or []):
+        coords = await _poi_coords(session, poi.id)
+        pois_out.append(PublicPOISummary(
+            id=poi.id,
+            label=poi.label,
+            poi_type=poi.poi_type.value,
+            google_maps_url=poi.google_maps_url,
+            latitude=coords[0],
+            longitude=coords[1],
+        ))
+
+    # Media GPS dots — only photos with gps_location set
+    media_gps_out: list[MediaGPSPoint] = []
+    if own_media:
+        gps_ids = [m.id for m in own_media if m.gps_location is not None]
+        if gps_ids:
+            gps_point = cast(MediaAsset.gps_location, Geometry(geometry_type="POINT", srid=4326))
+            gps_rows = (await session.execute(
+                select(
+                    MediaAsset.id,
+                    func.ST_Y(gps_point).label("lat"),
+                    func.ST_X(gps_point).label("lon"),
+                ).where(MediaAsset.id.in_(gps_ids))
+            )).all()
+            media_gps_out = [
+                MediaGPSPoint(media_id=row.id, latitude=row.lat, longitude=row.lon)
+                for row in gps_rows
+            ]
+
     # Posts pinned to this stop
     posts_query = (
         select(Post)
         .where(Post.stop_id == stop.id)
-        .options(selectinload(Post.media), selectinload(Post.stop))
+        .options(selectinload(Post.media), selectinload(Post.stop), selectinload(Post.poi))
         .order_by(Post.posted_at.desc())
     )
     posts_query = _public_or_admin(posts_query, Post, user)
@@ -90,6 +137,17 @@ async def get_stop(
             m for m in (p.media or [])
             if _is_admin(user) or m.visibility == Visibility.PUBLIC
         ]
+        poi_out = None
+        if p.poi:
+            poi_coords = await _poi_coords(session, p.poi.id)
+            poi_out = PublicPOISummary(
+                id=p.poi.id,
+                label=p.poi.label,
+                poi_type=p.poi.poi_type.value,
+                google_maps_url=p.poi.google_maps_url,
+                latitude=poi_coords[0],
+                longitude=poi_coords[1],
+            )
         posts_out.append(
             PublicPostSummary(
                 id=p.id,
@@ -100,6 +158,12 @@ async def get_stop(
                 is_featured=p.is_featured,
                 stop=None,  # already in stop context
                 media=visible_media,
+                post_type=p.post_type,
+                activity_type=p.activity_type,
+                summary=p.summary,
+                activity_started_at=p.activity_started_at,
+                activity_ended_at=p.activity_ended_at,
+                poi=poi_out,
             )
         )
 
@@ -146,8 +210,115 @@ async def get_stop(
         body=stop.body,
         trip_slug=stop.trip.slug,
         trip_title=stop.trip.title,
+        timezone_id=stop.timezone_id,
         media=own_media,
         posts=posts_out,
+        pois=pois_out,
+        media_with_gps=media_gps_out,
         prev=prev_sib,
         next=next_sib,
+    )
+
+
+@router.get("/{trip_slug}/stops/{stop_slug}/posts/{post_slug}", response_model=PublicPostDetail)
+async def get_post(
+    trip_slug: str,
+    stop_slug: str,
+    post_slug: str,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_user_optional),
+):
+    query = (
+        select(Post)
+        .join(Stop, Post.stop_id == Stop.id)
+        .join(Trip, Stop.trip_id == Trip.id)
+        .where(Trip.slug == trip_slug, Stop.slug == stop_slug, Post.slug == post_slug)
+        .options(
+            selectinload(Post.media),
+            selectinload(Post.poi),
+            selectinload(Post.stop).selectinload(Stop.trip),
+        )
+    )
+    if not _is_admin(user):
+        query = query.where(
+            Trip.visibility == Visibility.PUBLIC,
+            Stop.visibility == Visibility.PUBLIC,
+            Post.visibility == Visibility.PUBLIC,
+        )
+    post = (await session.execute(query)).scalars().first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    stop = post.stop
+    trip = stop.trip
+
+    poi_out = None
+    if post.poi:
+        poi_coords = await _poi_coords(session, post.poi.id)
+        poi_out = PublicPOISummary(
+            id=post.poi.id,
+            label=post.poi.label,
+            poi_type=post.poi.poi_type.value,
+            google_maps_url=post.poi.google_maps_url,
+            latitude=poi_coords[0],
+            longitude=poi_coords[1],
+        )
+
+    visible_media = [
+        m for m in (post.media or [])
+        if _is_admin(user) or m.visibility == Visibility.PUBLIC
+    ]
+
+    # Prev/next activity siblings on the same stop, ordered by activity_started_at
+    prev_activity = None
+    next_activity = None
+    if post.post_type == PostType.ACTIVITY:
+        sib_q = (
+            select(Post.slug, Post.title, Post.activity_started_at, Post.posted_at)
+            .where(Post.stop_id == stop.id, Post.post_type == PostType.ACTIVITY)
+            .order_by(func.coalesce(Post.activity_started_at, Post.posted_at).asc())
+        )
+        if not _is_admin(user):
+            sib_q = sib_q.where(Post.visibility == Visibility.PUBLIC)
+        sib_rows = (await session.execute(sib_q)).all()
+        for i, row in enumerate(sib_rows):
+            if row.slug == post.slug:
+                if i > 0:
+                    prev_activity = PublicPostSibling(
+                        slug=sib_rows[i - 1].slug,
+                        title=sib_rows[i - 1].title,
+                        stop_slug=stop.slug,
+                        trip_slug=trip.slug,
+                    )
+                if i + 1 < len(sib_rows):
+                    next_activity = PublicPostSibling(
+                        slug=sib_rows[i + 1].slug,
+                        title=sib_rows[i + 1].title,
+                        stop_slug=stop.slug,
+                        trip_slug=trip.slug,
+                    )
+                break
+
+    return PublicPostDetail(
+        id=post.id,
+        slug=post.slug,
+        title=post.title,
+        body=post.body,
+        posted_at=post.posted_at,
+        is_featured=post.is_featured,
+        stop=None,
+        media=visible_media,
+        post_type=post.post_type,
+        activity_type=post.activity_type,
+        summary=post.summary,
+        activity_started_at=post.activity_started_at,
+        activity_ended_at=post.activity_ended_at,
+        poi=poi_out,
+        stop_slug=stop.slug,
+        stop_title=stop.title,
+        trip_slug=trip.slug,
+        trip_title=trip.title,
+        stop_timezone_id=stop.timezone_id,
+        prev_activity=prev_activity,
+        next_activity=next_activity,
     )
