@@ -6,6 +6,7 @@ const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
 
 let trip = null;
+let plannedStops = [];
 try {
   // First verify authorization via trips list or detail endpoint
   const authRes = await fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} });
@@ -18,10 +19,18 @@ try {
   if (trip) {
     const dRes = await fetch(apiUrl(`/api/trips/${trip.slug}`), { headers: cookie ? { cookie } : {} });
     if (dRes.ok) trip = await dRes.json();
+
+    const plannedRes = await fetch(apiUrl(`/api/admin/imports/planned-stops/${id}`), { headers: cookie ? { cookie } : {} });
+    if (plannedRes.ok) plannedStops = await plannedRes.json();
   }
 } catch(e) {}
 
 if (!trip) return Astro.redirect('/admin/trips');
+
+function formatDate(value) {
+  if (!value) return '—';
+  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
 ---
 
 <AdminLayout title={`Edit ${trip.title}`}>
@@ -50,16 +59,17 @@ if (!trip) return Astro.redirect('/admin/trips');
           <textarea name="summary" rows="3" class="bg-surface-2 border border-line p-3">{trip.summary}</textarea>
         </div>
 
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-bold">Status</label>
             <select name="status" class="bg-surface-2 border border-line p-3">
+              <option value="draft" selected={trip.status === "draft"}>Draft</option>
               <option value="planned" selected={trip.status === "planned"}>Planned</option>
               <option value="active" selected={trip.status === "active"}>Active</option>
               <option value="completed" selected={trip.status === "completed"}>Completed</option>
-              <option value="published" selected={trip.status === "published"}>Published</option>
               <option value="archived" selected={trip.status === "archived"}>Archived</option>
             </select>
+            <span class="text-xs text-dim">Draft is admin-only. Planned, active, and completed can be shared based on visibility. Archived keeps the trip but removes it from normal public use.</span>
           </div>
           
           <div class="flex flex-col gap-2">
@@ -68,6 +78,7 @@ if (!trip) return Astro.redirect('/admin/trips');
               <option value="public" selected={trip.visibility === "public"}>Public</option>
               <option value="private" selected={trip.visibility === "private"}>Private</option>
             </select>
+            <span class="text-xs text-dim">Use Public when readers should see it, Private when only admins should.</span>
           </div>
         </div>
         
@@ -80,6 +91,7 @@ if (!trip) return Astro.redirect('/admin/trips');
       <section class="card-flat mt-8">
         <div class="label mb-3">Cover Image</div>
 
+        <div id="cover-preview">
         {trip.cover_media?.derivative_paths?.webp ? (
           <div class="mb-4">
             <img
@@ -95,6 +107,7 @@ if (!trip) return Astro.redirect('/admin/trips');
             No cover image
           </div>
         )}
+        </div>
 
         <div id="cover-upload-status" class="text-xs text-muted mb-2 hidden"></div>
         <input
@@ -103,14 +116,24 @@ if (!trip) return Astro.redirect('/admin/trips');
           accept="image/*"
           class="w-full p-2 bg-surface-2 border border-dashed border-line text-muted text-sm rounded"
         />
-        <button id="cover-upload-btn" type="button" class="btn btn-sm mt-3">Upload Cover</button>
+        <div class="flex flex-wrap gap-3 mt-3">
+          <button id="cover-upload-btn" type="button" class="btn btn-sm">Upload Cover</button>
+          <button
+            id="cover-clear-btn"
+            type="button"
+            class:list={['btn btn-sm btn-ghost', { hidden: !trip.cover_media }]}
+            style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+          >
+            Clear Cover
+          </button>
+        </div>
       </section>
 
       <section class="card-flat mt-8" style="border-color: rgba(212,107,92,.45);">
         <div class="label mb-2" style="color: var(--sunset);">Danger Zone</div>
         <h2 class="text-lg font-semibold mb-2">Delete this trip</h2>
         <p class="text-sm text-muted mb-4">
-          Removes the trip, its stops, and planned itinerary rows. Posts and media are kept but detached where possible.
+          Removes the trip, its stops, planned itinerary rows, and trip-only cover/uploads. Posts and attached media are kept but detached where possible.
         </p>
         <button
           type="button"
@@ -142,9 +165,31 @@ if (!trip) return Astro.redirect('/admin/trips');
               </div>
             ))}
           </div>
+        ) : plannedStops.length > 0 ? (
+          <div class="divide-y divide-line">
+            <div class="p-4 bg-surface-1">
+              <div class="label">Imported itinerary</div>
+              <p class="text-xs text-muted mt-1">
+                Legacy import rows: {plannedStops.length} stop{plannedStops.length === 1 ? '' : 's'} imported before Excel imports created normal stops.
+              </p>
+            </div>
+            {plannedStops.map(stop => (
+              <div class="p-4 flex flex-col gap-1">
+                <div class="flex items-center justify-between gap-4">
+                  <div class="font-bold text-base">{stop.name}</div>
+                  <span class="badge badge-planned text-[9px]">{stop.import_state}</span>
+                </div>
+                <div class="text-xs text-dim font-mono tracking-widest">
+                  {formatDate(stop.arrival_date)} → {formatDate(stop.departure_date)}
+                  {stop.nights != null ? ` · ${stop.nights} night${stop.nights === 1 ? '' : 's'}` : ''}
+                </div>
+                {stop.address && <div class="text-xs text-muted">{stop.address}</div>}
+              </div>
+            ))}
+          </div>
         ) : (
           <div class="p-8 text-center text-muted">
-            No stops recorded.
+            No stops imported or added yet.
           </div>
         )}
       </div>
@@ -274,13 +319,84 @@ if (!trip) return Astro.redirect('/admin/trips');
         });
         if (!patchTrip.ok) throw new Error(`Failed to set cover: ${patchTrip.status}`);
 
-        if (statusEl) statusEl.textContent = 'Cover uploaded! Reload to see it.';
-        btn.textContent = 'Done — reload to see';
+        updateCoverPreview(file);
+        if (fileInput) fileInput.value = '';
+        if (statusEl) statusEl.textContent = 'Cover uploaded. Processing may take a moment.';
+        document.getElementById('cover-clear-btn')?.classList.remove('hidden');
+        btn.textContent = 'Done';
       } catch (e) {
         if (statusEl) statusEl.textContent = `Error: ${e instanceof Error ? e.message : String(e)}`;
         btn.disabled = false;
         btn.textContent = 'Upload Cover';
       }
     });
+
+    document.getElementById('cover-clear-btn')?.addEventListener('click', async (e) => {
+      const button = e.currentTarget as HTMLButtonElement;
+      const tripId = document.querySelector<HTMLInputElement>('[name="id"]')?.value;
+      const statusEl = document.getElementById('cover-upload-status');
+      if (!tripId) return;
+
+      const confirmed = window.confirm('Clear this cover image? The current cover media file will be deleted.');
+      if (!confirmed) return;
+
+      button.disabled = true;
+      button.textContent = 'Clearing...';
+      statusEl?.classList.remove('hidden');
+      if (statusEl) statusEl.textContent = 'Clearing cover...';
+
+      try {
+        const res = await fetch(`/api/admin/trips/${tripId}`, {
+          method: 'PATCH',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ cover_media_id: null }),
+        });
+        if (!res.ok) throw new Error(`Failed to clear cover: ${res.status}`);
+
+        clearCoverPreview();
+        button.classList.add('hidden');
+        if (statusEl) statusEl.textContent = 'Cover cleared.';
+      } catch (err) {
+        if (statusEl) statusEl.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
+      } finally {
+        button.disabled = false;
+        button.textContent = 'Clear Cover';
+      }
+    });
+
+    function updateCoverPreview(file: File) {
+      const preview = document.getElementById('cover-preview');
+      if (!preview) return;
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'mb-4';
+
+      const image = document.createElement('img');
+      image.src = URL.createObjectURL(file);
+      image.alt = 'Cover';
+      image.className = 'w-full rounded border border-line object-cover';
+      image.style.maxHeight = '180px';
+      image.addEventListener('load', () => URL.revokeObjectURL(image.src), { once: true });
+
+      const caption = document.createElement('p');
+      caption.className = 'text-xs text-dim mt-1';
+      caption.textContent = 'Current cover';
+
+      wrapper.append(image, caption);
+      preview.replaceChildren(wrapper);
+    }
+
+    function clearCoverPreview() {
+      const preview = document.getElementById('cover-preview');
+      if (!preview) return;
+
+      const empty = document.createElement('div');
+      empty.className = 'mb-4 w-full rounded border border-line bg-surface-1 flex items-center justify-center text-dim text-sm';
+      empty.style.height = '100px';
+      empty.textContent = 'No cover image';
+
+      preview.replaceChildren(empty);
+    }
   </script>
 </AdminLayout>

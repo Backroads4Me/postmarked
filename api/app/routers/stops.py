@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset, PointOfInterest, Post, Stop, Trip
-from app.models.enums import PostType, Visibility
+from app.models.enums import PostType, StopStatus, TripStatus, Visibility
 from app.schemas.journey import (
     MediaGPSPoint,
     PublicPOISummary,
@@ -19,6 +19,7 @@ from app.schemas.journey import (
     PublicStopDetail,
     PublicStopSibling,
 )
+from app.services.visibility import visible_ready_cover_media, visible_ready_media
 
 router = APIRouter(prefix="/trips", tags=["stops"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
@@ -70,7 +71,8 @@ async def get_stop(
     if not _is_admin(user):
         query = query.where(
             Trip.visibility == Visibility.PUBLIC,
-            Stop.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+            Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]),
         )
 
     stop = (await session.execute(query)).scalars().first()
@@ -86,10 +88,7 @@ async def get_stop(
     latitude, longitude = (coord[0], coord[1]) if coord else (None, None)
 
     # Own media (assets directly attached to this stop)
-    own_media = [
-        m for m in (stop.media or [])
-        if _is_admin(user) or m.visibility == Visibility.PUBLIC
-    ]
+    own_media = visible_ready_media(stop.media or [], user)
 
     # POIs for this stop with resolved coordinates
     pois_out: list[PublicPOISummary] = []
@@ -133,10 +132,7 @@ async def get_stop(
     posts_rows = (await session.execute(posts_query)).scalars().all()
     posts_out: list[PublicPostSummary] = []
     for p in posts_rows:
-        visible_media = [
-            m for m in (p.media or [])
-            if _is_admin(user) or m.visibility == Visibility.PUBLIC
-        ]
+        visible_media = visible_ready_media(p.media or [], user)
         poi_out = None
         if p.poi:
             poi_coords = await _poi_coords(session, p.poi.id)
@@ -174,7 +170,7 @@ async def get_stop(
         .order_by(Stop.sort_order.asc())
     )
     if not _is_admin(user):
-        siblings_query = siblings_query.where(Stop.visibility == Visibility.PUBLIC)
+        siblings_query = siblings_query.where(Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]))
     sibling_rows = (await session.execute(siblings_query)).all()
     prev_sib = None
     next_sib = None
@@ -206,7 +202,7 @@ async def get_stop(
         miles_from_previous=stop.miles_from_previous,
         estimated_travel_time=stop.estimated_travel_time,
         public_note=stop.public_note,
-        cover_media=stop.cover_media if stop.cover_media and (_is_admin(user) or stop.cover_media.visibility == Visibility.PUBLIC) else None,
+        cover_media=visible_ready_cover_media(stop.cover_media, user),
         body=stop.body,
         trip_slug=stop.trip.slug,
         trip_title=stop.trip.title,
@@ -242,7 +238,8 @@ async def get_post(
     if not _is_admin(user):
         query = query.where(
             Trip.visibility == Visibility.PUBLIC,
-            Stop.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+            Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]),
             Post.visibility == Visibility.PUBLIC,
         )
     post = (await session.execute(query)).scalars().first()
@@ -264,10 +261,7 @@ async def get_post(
             longitude=poi_coords[1],
         )
 
-    visible_media = [
-        m for m in (post.media or [])
-        if _is_admin(user) or m.visibility == Visibility.PUBLIC
-    ]
+    visible_media = visible_ready_media(post.media or [], user)
 
     # Prev/next activity siblings on the same stop, ordered by activity_started_at
     prev_activity = None

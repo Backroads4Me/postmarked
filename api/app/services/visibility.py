@@ -15,7 +15,7 @@ from typing import Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import Visibility, ApprovalState, UserRole
+from app.models.enums import ApprovalState, MediaProcessingState, UserRole, Visibility
 
 
 # Fields that must NEVER appear in public/anonymous responses
@@ -80,6 +80,25 @@ def is_visible_to_user(entity_visibility, parent_visibility, user) -> bool:
     return False
 
 
+def is_ready_media_visible_to_user(asset, user) -> bool:
+    """Return true when a media asset is ready and visible to this reader."""
+    if not asset:
+        return False
+    if asset.processing_state != MediaProcessingState.READY:
+        return False
+    return is_admin(user) or asset.visibility == Visibility.PUBLIC
+
+
+def visible_ready_media(media, user) -> list:
+    """Filter media lists for public serializers while hiding pending/failed assets."""
+    return [asset for asset in media if is_ready_media_visible_to_user(asset, user)]
+
+
+def visible_ready_cover_media(asset, user):
+    """Return a ready visible cover asset, or None for serializers."""
+    return asset if is_ready_media_visible_to_user(asset, user) else None
+
+
 def strip_private_fields(data: dict, fields: set) -> dict:
     """Remove private fields from a response dict."""
     return {k: v for k, v in data.items() if k not in fields}
@@ -140,22 +159,21 @@ async def load_target_with_visibility(
         if not row:
             return None
         stop, trip_vis = row
-        return stop, effective_visibility(stop.visibility, trip_vis)
+        return stop, trip_vis
 
     if target_kind == "post":
         result = await session.execute(
-            select(Post, Stop.visibility, Trip.visibility)
+            select(Post, Trip.visibility)
             .outerjoin(Stop, Post.stop_id == Stop.id)
-            .outerjoin(Trip, Post.trip_id == Trip.id)
+            .outerjoin(Trip, (Post.trip_id == Trip.id) | (Stop.trip_id == Trip.id))
             .where(Post.id == target_id)
         )
         row = result.first()
         if not row:
             return None
-        post, stop_vis, trip_vis = row
+        post, trip_vis = row
         # Effective = min(post, stop_or_trip)
-        parent_vis = stop_vis if stop_vis is not None else trip_vis
-        return post, effective_visibility(post.visibility, parent_vis)
+        return post, effective_visibility(post.visibility, trip_vis)
 
     if target_kind == "media":
         media = await session.get(MediaAsset, target_id)
@@ -168,9 +186,12 @@ async def load_target_with_visibility(
             if post:
                 parent_vis = post.visibility
         if parent_vis is None and media.stop_id:
-            stop = await session.get(Stop, media.stop_id)
-            if stop:
-                parent_vis = stop.visibility
+            result = await session.execute(
+                select(Trip.visibility)
+                .join(Stop, Stop.trip_id == Trip.id)
+                .where(Stop.id == media.stop_id)
+            )
+            parent_vis = result.scalar_one_or_none()
         if parent_vis is None and media.trip_id:
             trip = await session.get(Trip, media.trip_id)
             if trip:

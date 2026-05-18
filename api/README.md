@@ -56,6 +56,15 @@ python -c "import app.main; print('api import ok')"
 python scripts/seed.py
 ```
 
+Local development quality checks require the `[dev]` extras from `pyproject.toml`:
+
+```bash
+uv pip install -e ".[dev]"
+PYTHONPATH=. uv run --extra dev python -m pytest tests/test_visibility.py
+ruff check app
+mypy app
+```
+
 Docker equivalents:
 
 ```bash
@@ -63,6 +72,10 @@ docker exec goodpath-api-1 alembic current
 docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
 docker exec goodpath-api-1 python scripts/seed.py
 ```
+
+The runtime Docker image installs production dependencies only, so `ruff` and
+`mypy` are intentionally local-dev commands unless the image is rebuilt with dev
+extras.
 
 ## Route Map
 

@@ -74,6 +74,8 @@ docker exec goodpath-api-1 alembic current
 docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
 docker exec goodpath-api-1 python scripts/seed.py
 docker exec goodpath-web-1 npm run build
+./scripts/check-media-storage.sh
+./scripts/smoke-media-upload.sh
 ```
 
 Expected public API checks:
@@ -178,6 +180,9 @@ For a single-host deployment:
    ```
 
 Backups and restores are handled by `scripts/backup.sh` and `scripts/restore.sh`.
+If media images start returning 404s after a compose/project-name migration,
+run `./scripts/check-media-storage.sh` to confirm the database still points at
+files present in the active Docker media volumes.
 
 ## Remaining Non-Blocking Work
 

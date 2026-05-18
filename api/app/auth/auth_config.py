@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 from typing import Optional
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
@@ -13,13 +14,15 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from app.db import get_async_session
 from app.models.user import User
 
+logger = logging.getLogger(__name__)
+
 APP_ENV = os.getenv("APP_ENV", "dev").lower()
 _DEV_SECRET_FALLBACK = "dev-only-change-me-not-for-production-use"
 
 _secret = os.getenv("SECRET_KEY")
 if not _secret:
     if APP_ENV == "dev":
-        print(
+        logger.warning(
             "[auth] WARNING: SECRET_KEY not set; using insecure dev fallback. "
             "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
         )
@@ -41,17 +44,17 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     verification_token_secret = SECRET
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
-        print(f"User {user.id} has registered.")
+        logger.info("User %s has registered.", user.id)
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        print(f"User {user.id} has forgot their password. Reset token: {token}")
+        logger.info("Password reset requested for user %s.", user.id)
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None
     ):
-        print(f"Verification requested for user {user.id}. Verification token: {token}")
+        logger.info("Verification requested for user %s.", user.id)
 
 async def get_user_db(session=Depends(get_async_session)):
     yield SQLAlchemyUserDatabase(session, User)

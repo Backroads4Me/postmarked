@@ -1,0 +1,118 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+import { apiUrl } from '../../lib/api.js';
+
+let sections = [];
+const cookie = Astro.request.headers.get('cookie');
+
+try {
+  const res = await fetch(apiUrl('/api/admin/site-text'), {
+    headers: cookie ? { cookie } : {}
+  });
+
+  if (res.status === 401 || res.status === 403) {
+    return Astro.redirect('/auth/login');
+  }
+
+  if (res.ok) {
+    sections = await res.json();
+  }
+} catch (e) {
+  console.error('Failed to load site text', e);
+}
+
+const pageLabels = {
+  home: 'Home',
+  trips: 'Trips',
+  timeline: 'Timeline',
+};
+---
+
+<AdminLayout title="Site Text">
+  <div class="mb-8">
+    <h1 class="display text-4xl">Site Text</h1>
+    <p class="text-muted mt-2">Configure the header and section copy shown on public pages.</p>
+  </div>
+
+  <div id="site-text-list" class="grid gap-5">
+    {sections.map(section => (
+      <form
+        class="bg-surface-2 border border-line rounded p-4 grid gap-4 site-text-form"
+        data-page-key={section.page_key}
+        data-section-key={section.section_key}
+      >
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <div class="label mb-1">{pageLabels[section.page_key] || section.page_key}</div>
+            <h2 class="display text-xl capitalize">{section.section_key.replaceAll('-', ' ')}</h2>
+          </div>
+          <span class="text-xs text-muted font-mono form-status" aria-live="polite"></span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="grid gap-2 text-sm font-bold">
+            Label
+            <input name="label" value={section.label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+          </label>
+          <label class="grid gap-2 text-sm font-bold">
+            Heading
+            <input name="heading" value={section.heading || ''} required class="bg-surface-1 border border-line p-3 font-normal" />
+          </label>
+        </div>
+
+        <label class="grid gap-2 text-sm font-bold">
+          Body
+          <textarea name="body" rows="3" class="bg-surface-1 border border-line p-3 font-normal">{section.body || ''}</textarea>
+        </label>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <label class="grid gap-2 text-sm font-bold">
+            Button Label
+            <input name="cta_label" value={section.cta_label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+          </label>
+          <label class="grid gap-2 text-sm font-bold">
+            Button Link
+            <input name="cta_href" value={section.cta_href || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+          </label>
+        </div>
+
+        <div>
+          <button type="submit" class="btn btn-sm">Save Text</button>
+        </div>
+      </form>
+    ))}
+  </div>
+
+  <script>
+    document.querySelectorAll('.site-text-form').forEach((form) => {
+      form.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const target = event.currentTarget as HTMLFormElement;
+        const status = target.querySelector('.form-status');
+        const pageKey = target.dataset.pageKey;
+        const sectionKey = target.dataset.sectionKey;
+        const data = Object.fromEntries(new FormData(target).entries());
+
+        if (status) status.textContent = 'Saving...';
+
+        try {
+          const res = await fetch(`/api/admin/site-text/${pageKey}/${sectionKey}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data),
+          });
+
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || `HTTP ${res.status}`);
+          }
+
+          if (status) status.textContent = 'Saved';
+        } catch (error) {
+          if (status) status.textContent = error instanceof Error ? error.message : 'Save failed';
+        }
+      });
+    });
+  </script>
+</AdminLayout>

@@ -62,9 +62,14 @@ async def _parent_visibility(session: AsyncSession, asset: MediaAsset):
         if post:
             return post.visibility
     if asset.stop_id:
-        stop = await session.get(Stop, asset.stop_id)
-        if stop:
-            return stop.visibility
+        result = await session.execute(
+            select(Trip.visibility)
+            .join(Stop, Stop.trip_id == Trip.id)
+            .where(Stop.id == asset.stop_id)
+        )
+        trip_visibility = result.scalar_one_or_none()
+        if trip_visibility:
+            return trip_visibility
     if asset.trip_id:
         trip = await session.get(Trip, asset.trip_id)
         if trip:

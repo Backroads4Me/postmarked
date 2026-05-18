@@ -188,8 +188,8 @@ export default function ImportPreviewIsland() {
           </div>
 
           {/* Diff table */}
-          <div className="card-flat" style={{ padding: 0, overflow: 'hidden' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+          <div className="card-flat" style={{ padding: 0, overflowX: 'auto' }}>
+            <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid var(--line)' }}>
                   <th style={thStyle}>#</th>
@@ -261,7 +261,7 @@ export default function ImportPreviewIsland() {
                 onClick={handleApply}
                 disabled={loading}
               >
-                {loading ? 'Applying...' : `Apply Import (${preview.parsed_stop_count} stops)`}
+                {loading ? 'Applying...' : `Create Draft Trip (${preview.parsed_stop_count} stops)`}
               </button>
             </div>
           )}
@@ -274,7 +274,7 @@ export default function ImportPreviewIsland() {
                 <span style={{ color: 'var(--forest)', fontWeight: 600 }}>Import Applied Successfully</span>
               </div>
               <p style={{ color: 'var(--muted)', fontSize: '14px' }}>
-                Trip: <a href={`/trips/${preview.appliedResult.trip_slug}`} style={{ color: 'var(--ember)' }}>
+                Draft trip: <a href={`/admin/trips/${preview.appliedResult.trip_id}`} style={{ color: 'var(--ember)' }}>
                   {preview.trip_title}
                 </a>
               </p>

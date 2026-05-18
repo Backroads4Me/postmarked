@@ -4,6 +4,7 @@ import StopCard from '../components/ui/StopCard.astro';
 import PostCard from '../components/ui/PostCard.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
+import { loadSiteText, sectionText } from '../lib/siteText.js';
 
 let timelineData = null;
 let error = null;
@@ -35,16 +36,24 @@ function groupByMonth(items) {
 }
 
 const grouped = groupByMonth(updates);
+const siteText = await loadSiteText();
+const headerText = sectionText(siteText, 'timeline.header', {
+  label: null,
+  heading: 'Timeline',
+  body: 'A chronological journey through our RV life — stops, stories, and moments.',
+});
 ---
 
 <Layout title="Timeline — Goodpath">
   <main class="frame py-8 md:py-12">
     <section class="mb-8">
-      <div class="label mb-2">Continuous</div>
-      <h1 class="display text-3xl md:text-4xl">Timeline</h1>
-      <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
-        A chronological journey through our RV life — stops, stories, and moments.
-      </p>
+      {headerText.label && <div class="label mb-2">{headerText.label}</div>}
+      <h1 class="display text-3xl md:text-4xl">{headerText.heading}</h1>
+      {headerText.body && (
+        <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+          {headerText.body}
+        </p>
+      )}
       {error && (
         <div class="mt-4 card-flat text-sm text-ember">
           Couldn't load the timeline ({error}).

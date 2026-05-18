@@ -13,10 +13,11 @@ from sqlalchemy.exc import IntegrityError
 
 from app.db import get_async_session
 from app.auth.dependencies import current_admin_user
-from app.models.content import MediaAsset, Stop
+from app.models.content import MediaAsset, Stop, Trip
 from app.models.enums import MediaKind, MediaProcessingState, Visibility
 from app.tasks import process_media_asset
 from app.schemas.media import MediaAssetOut
+from app.services.media_storage import delete_media_asset_files
 
 router = APIRouter(prefix="/media", tags=["admin-media"])  # tus sub-router lives at /media/tus
 
@@ -47,7 +48,7 @@ async def list_media_orphans_admin(
 class AssignMediaRequest(BaseModel):
     media_ids: List[uuid.UUID]
     stop_id: uuid.UUID
-    visibility: Optional[Visibility] = None  # explicit override; default = inherit from stop
+    visibility: Optional[Visibility] = None  # explicit override; default = inherit from trip
 
 
 @router.post("/assign", response_model=dict)
@@ -60,7 +61,8 @@ async def assign_media_admin(
     if not stop:
         raise HTTPException(status_code=404, detail="Stop not found")
 
-    inherited = req.visibility if req.visibility is not None else stop.visibility
+    trip = await session.get(Trip, stop.trip_id)
+    inherited = req.visibility if req.visibility is not None else (trip.visibility if trip else Visibility.PRIVATE)
 
     assigned = 0
     for mid in req.media_ids:
@@ -68,7 +70,7 @@ async def assign_media_admin(
         if not asset:
             continue
         asset.stop_id = req.stop_id
-        # Inherit from parent stop unless an explicit visibility override was passed.
+        # Inherit from parent trip unless an explicit visibility override was passed.
         # Effective visibility at read time is still min(self, parent), enforced by
         # the streaming endpoint and visibility service.
         asset.visibility = inherited
@@ -86,6 +88,17 @@ ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
 os.makedirs(ORIGINALS_PATH, exist_ok=True)
 
 TUS_VERSION = "1.0.0"
+DEFAULT_MAX_UPLOAD_BYTES = 250 * 1024 * 1024
+MAX_UPLOAD_BYTES = int(os.getenv("GOODPATH_MAX_UPLOAD_BYTES", str(DEFAULT_MAX_UPLOAD_BYTES)))
+ALLOWED_UPLOAD_MIME_TYPES = {
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "video/mp4",
+    "video/quicktime",
+}
 
 
 def get_metadata(req: Request) -> dict:
@@ -127,9 +140,16 @@ async def create_upload(
 ):
     if upload_length is None:
         raise HTTPException(status_code=400, detail="Upload-Length required")
+    if upload_length < 1:
+        raise HTTPException(status_code=400, detail="Upload-Length must be positive")
+    if upload_length > MAX_UPLOAD_BYTES:
+        raise HTTPException(status_code=413, detail="Upload too large")
 
     file_id = str(uuid.uuid4())
     metadata = get_metadata(request)
+    mime = metadata.get("filetype", "application/octet-stream").lower()
+    if mime not in ALLOWED_UPLOAD_MIME_TYPES:
+        raise HTTPException(status_code=415, detail=f"Unsupported media type: {mime}")
 
     state = {
         "upload_length": upload_length,
@@ -205,6 +225,8 @@ async def patch_upload(
 
     with open(bin_path, "ab") as f:
         async for chunk in request.stream():
+            if state["offset"] + len(chunk) > state["upload_length"]:
+                raise HTTPException(status_code=413, detail="Upload exceeds declared length")
             f.write(chunk)
             state["offset"] += len(chunk)
 
@@ -307,4 +329,5 @@ async def delete_media_asset(
         raise HTTPException(status_code=404, detail="Asset not found")
     await session.delete(asset)
     await session.commit()
+    delete_media_asset_files(asset)
     return {"ok": True}

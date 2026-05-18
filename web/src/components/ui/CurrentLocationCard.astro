@@ -12,9 +12,10 @@ interface Props {
   nights?: number;
   note?: string;
   stopType?: string;
+  label?: string;
 }
 
-const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, arrivalDate, nights, note, stopType } = Astro.props;
+const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, arrivalDate, nights, note, stopType, label = 'Currently At' } = Astro.props;
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -36,7 +37,7 @@ function daysAgo(dateStr?: string) {
 <div class="card-hero" id="current-location">
   <div class="flex items-center gap-3 mb-4">
     <span class="pulse-dot"></span>
-    <span class="eyebrow">Currently At</span>
+    <span class="eyebrow">{label}</span>
     {stopType && <span class="badge badge-active ml-auto">{stopType}</span>}
   </div>
 

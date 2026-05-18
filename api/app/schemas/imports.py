@@ -67,6 +67,7 @@ class ImportApplyResponse(BaseModel):
     trip_id: uuid.UUID
     trip_slug: str
     counts: dict = {}  # { added, updated, removed, unchanged }
+    stop_ids: List[uuid.UUID] = []
     planned_stop_ids: List[uuid.UUID] = []
 
 

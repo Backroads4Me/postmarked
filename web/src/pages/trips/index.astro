@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import { apiUrl } from '../../lib/api.js';
+import { loadSiteText, sectionText } from '../../lib/siteText.js';
 
 let trips = [];
 try {
@@ -18,6 +19,7 @@ function formatDate(dateStr) {
 
 function getStatusBadge(status) {
   const map = {
+    draft: 'badge-draft',
     active: 'badge-active',
     published: 'badge-published',
     planned: 'badge-planned',
@@ -31,16 +33,25 @@ function coverSrc(trip) {
   if (cover?.processing_state !== 'ready' || !cover?.derivative_paths?.webp) return null;
   return `/media/${cover.id}/webp`;
 }
+
+const siteText = await loadSiteText();
+const headerText = sectionText(siteText, 'trips.header', {
+  label: 'Journeys',
+  heading: 'All Trips',
+  body: 'Each trip is a chapter in our RV story — from coast to coast.',
+});
 ---
 
 <Layout title="Trips — Goodpath">
   <main class="frame py-8 md:py-12">
     <section class="mb-8">
-      <div class="label mb-2">Journeys</div>
-      <h1 class="display text-3xl md:text-4xl">All Trips</h1>
-      <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
-        Each trip is a chapter in our RV story — from coast to coast.
-      </p>
+      {headerText.label && <div class="label mb-2">{headerText.label}</div>}
+      <h1 class="display text-3xl md:text-4xl">{headerText.heading}</h1>
+      {headerText.body && (
+        <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+          {headerText.body}
+        </p>
+      )}
     </section>
 
     {trips.length > 0 ? (

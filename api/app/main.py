@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
 from app.db import async_session_maker
-from app.routers import journey, media, profiles, search, social, stops, trips
+from app.routers import journey, media, profiles, search, site_text, social, stops, trips
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 
@@ -101,7 +101,6 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
                 content={"detail": f"Origin not allowed: {origin}"},
             )
         return await call_next(request)
-        return await call_next(request)
 
 
 app = FastAPI(title="Goodpath API", description="Self-hosted RV travel journal API")
@@ -144,6 +143,7 @@ app.include_router(journey.router, prefix="/api")
 app.include_router(profiles.router, prefix="/api")
 app.include_router(social.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
+app.include_router(site_text.router, prefix="/api")
 
 # Media streaming is mounted at the root so a deployment proxy or the Astro
 # middleware can route /media/* directly to the API.
@@ -157,6 +157,7 @@ from app.routers.admin import (
     pois as admin_pois,
     posts as admin_posts,
     stops as admin_stops,
+    site_text as admin_site_text,
     trips as admin_trips,
     users as admin_users,
 )
@@ -168,6 +169,7 @@ app.include_router(admin_media.router, prefix="/api/admin")
 app.include_router(admin_posts.router, prefix="/api/admin")
 app.include_router(admin_imports.router, prefix="/api/admin")
 app.include_router(admin_users.router, prefix="/api/admin")
+app.include_router(admin_site_text.router, prefix="/api/admin")
 
 
 class HealthCheck(BaseModel):

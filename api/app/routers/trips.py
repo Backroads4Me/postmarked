@@ -6,7 +6,7 @@ from sqlalchemy.orm import selectinload, with_loader_criteria
 
 from app.db import get_async_session
 from app.models.content import Trip, Stop
-from app.models.enums import Visibility
+from app.models.enums import StopStatus, TripStatus, Visibility
 from app.schemas.trip import TripOut, TripDetailOut
 from app.auth.auth_config import fastapi_users_app
 
@@ -18,6 +18,10 @@ def _is_admin(user) -> bool:
     return bool(user and getattr(getattr(user, "role", None), "value", None) == "admin")
 
 
+def _public_trip_status_filter():
+    return Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED])
+
+
 @router.get("", response_model=List[TripOut])
 async def list_trips(
     session: AsyncSession = Depends(get_async_session),
@@ -25,7 +29,7 @@ async def list_trips(
 ):
     query = select(Trip).options(selectinload(Trip.cover_media))
     if not _is_admin(user):
-        query = query.where(Trip.visibility == Visibility.PUBLIC)
+        query = query.where(Trip.visibility == Visibility.PUBLIC, _public_trip_status_filter())
 
     result = await session.execute(query)
     return result.scalars().all()
@@ -46,9 +50,9 @@ async def get_trip(
     )
 
     if not _is_admin(user):
-        query = query.where(Trip.visibility == Visibility.PUBLIC)
+        query = query.where(Trip.visibility == Visibility.PUBLIC, _public_trip_status_filter())
         query = query.options(
-            with_loader_criteria(Stop, Stop.visibility == Visibility.PUBLIC),
+            with_loader_criteria(Stop, Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED])),
         )
 
     result = await session.execute(query)

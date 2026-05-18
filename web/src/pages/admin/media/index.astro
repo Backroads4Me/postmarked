@@ -52,11 +52,16 @@ try {
                 <div class="text-xs font-mono text-dim">{asset.id}</div>
                 <div class="text-xs text-dim font-mono tracking-widest uppercase mt-0.5">
                   {asset.kind} ·
-                  <span style={asset.processing_state === 'failed' ? 'color: var(--sunset);' : asset.processing_state === 'done' ? 'color: var(--forest);' : ''}>
+                  <span style={asset.processing_state === 'failed' ? 'color: var(--sunset);' : asset.processing_state === 'ready' ? 'color: var(--forest);' : ''}>
                     {asset.processing_state}
                   </span>
                   {asset.width && ` · ${asset.width}×${asset.height}`}
                 </div>
+                {asset.error_message && (
+                  <div class="text-xs text-muted mt-1 max-w-xl" style="color: var(--sunset);">
+                    {asset.error_message}
+                  </div>
+                )}
               </div>
             </div>
 

@@ -80,7 +80,7 @@ function toDatetimeLocal(iso) {
       </div>
 
       {isActivity && (
-        <div class="grid grid-cols-2 gap-4">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="flex flex-col gap-2">
             <label class="text-sm font-bold" for="activity_type">Activity Type</label>
             <select id="activity_type" name="activity_type" class="bg-surface-2 border border-line p-3">
@@ -108,7 +108,7 @@ function toDatetimeLocal(iso) {
         </div>
       )}
 
-      <div class="grid grid-cols-2 gap-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="stop_id">Stop</label>
           <select id="stop_id" name="stop_id" class="bg-surface-2 border border-line p-3">
@@ -148,7 +148,7 @@ function toDatetimeLocal(iso) {
       <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
       <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2">Saved!</div>
 
-      <div class="flex gap-3 items-center mt-2">
+      <div class="flex flex-wrap gap-3 items-center mt-2">
         <button type="submit" class="btn">Save</button>
         <button type="button" id="delete-btn" class="btn btn-sm"
           style="border-color: rgba(212,107,92,.55); color: var(--sunset);">
@@ -172,25 +172,40 @@ function toDatetimeLocal(iso) {
         const hint = document.getElementById('poi-hint');
         if (!poiSelect) return;
 
-        if (!stopId) {
-          poiSelect.innerHTML = '<option value="">No place linked</option>';
-          if (hint) hint.textContent = '';
-          return;
-        }
+	        if (!stopId) {
+	          resetPoiOptions(poiSelect, []);
+	          if (hint) hint.textContent = '';
+	          return;
+	        }
 
         try {
-          const res = await fetch(`/api/admin/stops/${stopId}/pois`, { credentials: 'include' });
-          const pois = res.ok ? await res.json() : [];
-          poiSelect.innerHTML = '<option value="">No place linked</option>' +
-            pois.map(p => `<option value="${p.id}">${p.label} (${p.poi_type})</option>`).join('');
-          if (hint) hint.textContent = pois.length === 0 ? 'No POIs for this stop. Add them in the Stops admin.' : '';
-        } catch {
-          if (hint) hint.textContent = 'Failed to load POIs';
+	          const res = await fetch(`/api/admin/stops/${stopId}/pois`, { credentials: 'include' });
+	          const pois = res.ok ? await res.json() : [];
+	          resetPoiOptions(poiSelect, pois);
+	          if (hint) hint.textContent = pois.length === 0 ? 'No POIs for this stop. Add them in the Stops admin.' : '';
+	        } catch {
+	          if (hint) hint.textContent = 'Failed to load POIs';
         }
-      });
-    }
+	      });
+	    }
 
-    form.addEventListener('submit', async (e) => {
+	    function resetPoiOptions(select, pois) {
+	      select.replaceChildren();
+
+	      const empty = document.createElement('option');
+	      empty.value = '';
+	      empty.textContent = 'No place linked';
+	      select.appendChild(empty);
+
+	      for (const poi of pois) {
+	        const option = document.createElement('option');
+	        option.value = poi.id;
+	        option.textContent = `${poi.label} (${poi.poi_type})`;
+	        select.appendChild(option);
+	      }
+	    }
+	
+	    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
       const id = formData.get('id');

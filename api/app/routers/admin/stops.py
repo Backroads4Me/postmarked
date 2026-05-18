@@ -36,6 +36,7 @@ async def create_stop_admin(
     trip = await session.get(Trip, data["trip_id"])
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
+    data["visibility"] = trip.visibility
     stop = Stop(**data, location=f"POINT({lon} {lat})", timezone_id=timezone_for_coords(lat, lon))
     session.add(stop)
     try:
@@ -64,6 +65,7 @@ async def update_stop_admin(
         raise HTTPException(status_code=404, detail="Stop not found")
 
     update_data = stop_in.model_dump(exclude_unset=True)
+    update_data.pop("visibility", None)
 
     # Lat/lon are not direct columns; rebuild the PostGIS POINT.
     new_lat = update_data.pop("latitude", None)

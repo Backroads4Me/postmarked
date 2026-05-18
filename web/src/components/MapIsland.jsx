@@ -1,7 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import maplibregl from 'maplibre-gl';
-import { Protocol } from 'pmtiles';
-import 'maplibre-gl/dist/maplibre-gl.css';
 import { useStore } from '@nanostores/react';
 import { urlState } from '../stores/urlState';
 
@@ -11,20 +8,7 @@ const GOOGLE_MAPS_MAP_ID = import.meta.env.PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MA
 
 let protocolRegistered = false;
 let googleMapsPromise = null;
-
-const GOOGLE_DARK_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#161b22' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#101419' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#dcd5c6' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#2e3848' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry', stylers: [{ color: '#141c26' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#1d232c' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#173124' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#242e40' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#101419' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#35516a' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a1016' }] },
-];
+let mapLibrePromise = null;
 
 // CartoDB Dark Matter: no-key fallback when MapLibre is selected and PMTiles are absent.
 const REMOTE_FALLBACK_STYLE = {
@@ -66,6 +50,7 @@ const PMTILES_STYLE = {
 export default function MapIsland({ stops, activeStopId, onStopClick }) {
   const mapContainer = useRef(null);
   const mapRef = useRef(null);
+  const mapLibreRef = useRef(null);
   const providerRef = useRef(null);
   const markersRef = useRef([]);
   const routeRef = useRef(null);
@@ -121,7 +106,6 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
             streetViewControl: false,
             fullscreenControl: false,
             backgroundColor: '#101419',
-            ...(GOOGLE_MAPS_MAP_ID === 'DEMO_MAP_ID' ? {} : { styles: GOOGLE_DARK_STYLE }),
           });
 
           providerRef.current = 'google';
@@ -154,15 +138,19 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
       return;
     }
 
-    if (!protocolRegistered) {
-      const protocol = new Protocol();
-      maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
-      protocolRegistered = true;
-    }
-
     if (!mapRef.current) {
       let cancelled = false;
       const createMap = async () => {
+        const maplibregl = await loadMapLibre();
+        mapLibreRef.current = maplibregl;
+
+        if (!protocolRegistered) {
+          const { Protocol } = await import('pmtiles');
+          const protocol = new Protocol();
+          maplibregl.addProtocol('pmtiles', protocol.tile.bind(protocol));
+          protocolRegistered = true;
+        }
+
         let style = REMOTE_FALLBACK_STYLE;
         let fallbackOnly = false;
         try {
@@ -224,6 +212,8 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
     }
 
     if (provider !== 'maplibre') return;
+    const maplibregl = mapLibreRef.current;
+    if (!maplibregl) return;
 
     const addMarkers = () => {
       markersRef.current.forEach(m => m.remove());
@@ -623,6 +613,17 @@ function loadGoogleMaps(apiKey) {
   });
 
   return googleMapsPromise;
+}
+
+function loadMapLibre() {
+  if (mapLibrePromise) return mapLibrePromise;
+
+  mapLibrePromise = Promise.all([
+    import('maplibre-gl'),
+    import('maplibre-gl/dist/maplibre-gl.css'),
+  ]).then(([module]) => module.default);
+
+  return mapLibrePromise;
 }
 
 function removeGoogleMarker(marker) {

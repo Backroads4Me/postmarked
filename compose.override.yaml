@@ -28,7 +28,9 @@ services:
   worker:
     volumes:
       - ./api:/app
-    command: watchmedo auto-restart --directory=./ --pattern=*.py --recursive -- celery -A app.tasks worker -l info
+    # Keep the dev worker stable. File-watch auto-restart can leave the
+    # container running without an active Celery child after large file changes.
+    command: celery -A app.tasks worker -l info
 
   beat:
     volumes:

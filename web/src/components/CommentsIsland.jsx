@@ -17,6 +17,8 @@ export default function CommentsIsland({ targetKind, targetId }) {
   const [draft, setDraft] = useState("");
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState(null);
+  const [viewer, setViewer] = useState(undefined);
+  const [returnTo, setReturnTo] = useState("/");
 
   async function load() {
     setLoading(true);
@@ -43,6 +45,29 @@ export default function CommentsIsland({ targetKind, targetId }) {
   useEffect(() => {
     if (targetId) load();
   }, [targetId, targetKind]);
+
+  useEffect(() => {
+    setReturnTo(window.location.pathname + window.location.search);
+
+    async function loadViewer() {
+      try {
+        const res = await fetch("/api/users/me", { credentials: "include" });
+        if (res.status === 401 || res.status === 403) {
+          setViewer(null);
+          return;
+        }
+        if (!res.ok) {
+          setViewer(null);
+          return;
+        }
+        setViewer(await res.json());
+      } catch {
+        setViewer(null);
+      }
+    }
+
+    loadViewer();
+  }, []);
 
   async function submit(ev) {
     ev.preventDefault();
@@ -88,6 +113,18 @@ export default function CommentsIsland({ targetKind, targetId }) {
       return d || "";
     }
   }
+
+  const viewerIsApproved =
+    viewer?.role === "admin" || viewer?.approval_state === "approved";
+  const authKnown = viewer !== undefined;
+  const canComment = Boolean(viewerIsApproved);
+  const loginHref = `/auth/login?next=${encodeURIComponent(returnTo)}`;
+  const disabledReason =
+    authKnown && !viewer
+      ? "Sign in or create an account to leave a comment."
+      : authKnown && viewer && !viewerIsApproved
+        ? "Your account is pending approval before you can comment."
+        : "";
 
   return (
     <section
@@ -141,16 +178,34 @@ export default function CommentsIsland({ targetKind, targetId }) {
       )}
 
       <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <label htmlFor={`comment-${targetId}`} className="label">
-          Add a comment
-        </label>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <label htmlFor={`comment-${targetId}`} className="label">
+            Add a comment
+          </label>
+          {authKnown && !viewer && (
+            <div style={{ display: "flex", gap: 12, fontSize: 12 }}>
+              <a href={loginHref} style={{ color: "var(--ember)", textDecoration: "none" }}>
+                Sign in
+              </a>
+              <a href="/auth/register" style={{ color: "var(--muted)", textDecoration: "none" }}>
+                Create account
+              </a>
+            </div>
+          )}
+        </div>
+        {disabledReason && (
+          <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--muted)" }}>
+            {disabledReason}
+          </div>
+        )}
         <textarea
           id={`comment-${targetId}`}
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           rows={3}
           maxLength={2000}
-          placeholder="Sign in to leave a comment"
+          disabled={authKnown && !canComment}
+          placeholder={canComment ? "Share a note…" : "Comments are available after sign-in"}
           style={{
             width: "100%",
             padding: "10px 12px",
@@ -161,6 +216,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
             fontSize: 14,
             fontFamily: "var(--sans)",
             resize: "vertical",
+            opacity: authKnown && !canComment ? 0.72 : 1,
           }}
         />
         {postError && (
@@ -171,7 +227,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
           <button
             type="submit"
             className="btn"
-            disabled={posting || !draft.trim()}
+            disabled={posting || !draft.trim() || !canComment}
             style={{ minHeight: 36 }}
           >
             {posting ? "Posting…" : "Post comment"}

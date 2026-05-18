@@ -10,8 +10,8 @@ from sqlalchemy.orm import selectinload
 
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
-from app.models.content import MediaAsset, PlannedStop, Post, Stop, Trip
-from app.models.enums import MediaProcessingState, PlannedStopImportState, StopStatus, TripStatus, Visibility
+from app.models.content import PlannedStop, Post, Stop, Trip
+from app.models.enums import PlannedStopImportState, StopStatus, TripStatus, Visibility
 from app.schemas.journey import (
     HomeOut,
     PublicPlannedStopSummary,
@@ -22,6 +22,7 @@ from app.schemas.journey import (
     RecentUpdate,
     TimelineOut,
 )
+from app.services.visibility import visible_ready_cover_media, visible_ready_media
 
 router = APIRouter(tags=["journey"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
@@ -34,7 +35,15 @@ def _is_admin(user) -> bool:
 def _public_only(query, model, user):
     if _is_admin(user):
         return query
-    return query.where(model.visibility == Visibility.PUBLIC)
+    if model is Trip:
+        return query.where(
+            Trip.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+        )
+    if model is Stop:
+        return query.where(Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]))
+    query = query.where(model.visibility == Visibility.PUBLIC)
+    return query
 
 
 async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID, tuple[float, float]]:
@@ -53,27 +62,14 @@ async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID
     return {row.id: (row.latitude, row.longitude) for row in result.all()}
 
 
-def _visible_media(media: list[MediaAsset], user) -> list[MediaAsset]:
-    if _is_admin(user):
-        return media
-    return [asset for asset in media if asset.visibility == Visibility.PUBLIC]
-
-
-def _visible_cover_media(asset: Optional[MediaAsset], user) -> Optional[MediaAsset]:
-    if not asset:
-        return None
-    if asset.processing_state != MediaProcessingState.READY:
-        return None
-    if _is_admin(user) or asset.visibility == Visibility.PUBLIC:
-        return asset
-    return None
-
-
 def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]], user) -> Optional[PublicStopSummary]:
     if not stop:
         return None
-    if not _is_admin(user) and stop.visibility != Visibility.PUBLIC:
-        return None
+    if not _is_admin(user):
+        if stop.status in [StopStatus.DRAFT, StopStatus.ARCHIVED]:
+            return None
+        if stop.trip and stop.trip.status in [TripStatus.DRAFT, TripStatus.ARCHIVED]:
+            return None
 
     latitude, longitude = coords.get(stop.id, (None, None))
     return PublicStopSummary(
@@ -98,14 +94,14 @@ def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]]
         miles_from_previous=stop.miles_from_previous,
         estimated_travel_time=stop.estimated_travel_time,
         public_note=stop.public_note,
-        cover_media=_visible_cover_media(stop.cover_media, user),
+        cover_media=visible_ready_cover_media(stop.cover_media, user),
     )
 
 
 def _trip_summary_out(trip: Optional[Trip], stops: list[Stop], user=None) -> Optional[PublicTripSegmentSummary]:
     if not trip:
         return None
-    completed_statuses = {StopStatus.ACTIVE, StopStatus.PUBLISHED, StopStatus.ARCHIVED}
+    completed_statuses = {StopStatus.ACTIVE, StopStatus.PUBLISHED}
     return PublicTripSegmentSummary(
         id=trip.id,
         slug=trip.slug,
@@ -117,7 +113,7 @@ def _trip_summary_out(trip: Optional[Trip], stops: list[Stop], user=None) -> Opt
         total_distance_meters=trip.total_distance_meters,
         stops_completed=sum(1 for stop in stops if stop.status in completed_statuses),
         stops_total=len(stops),
-        cover_media=_visible_cover_media(trip.cover_media, user),
+        cover_media=visible_ready_cover_media(trip.cover_media, user),
     )
 
 
@@ -131,12 +127,12 @@ async def _post_out(post: Post, coords: dict[uuid.UUID, tuple[float, float]], us
         posted_at=post.posted_at,
         is_featured=post.is_featured,
         stop=stop,
-        media=_visible_media(post.media, user),
+        media=visible_ready_media(post.media, user),
     )
 
 
 def _post_to_update(post: Post, user) -> RecentUpdate:
-    visible = _visible_media(post.media, user)
+    visible = visible_ready_media(post.media, user)
     return RecentUpdate(
         kind="post",
         id=post.id,
@@ -172,7 +168,7 @@ def _stop_to_update(stop: Stop, user) -> RecentUpdate:
         stop_slug=stop.slug,
         place_name=stop.place_name,
         stop_type=stop.stop_type,
-        cover_media=_visible_cover_media(stop.cover_media, user),
+        cover_media=visible_ready_cover_media(stop.cover_media, user),
     )
 
 
@@ -183,10 +179,16 @@ async def get_home(
 ):
     stops_query = (
         select(Stop)
+        .join(Trip, Stop.trip_id == Trip.id)
         .options(selectinload(Stop.cover_media), selectinload(Stop.trip))
         .order_by(Stop.start_date.asc())
     )
     stops_query = _public_only(stops_query, Stop, user)
+    if not _is_admin(user):
+        stops_query = stops_query.where(
+            Trip.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+        )
     stops = list((await session.execute(stops_query)).scalars().all())
     coords = await _coordinates_for_stops(session, stops)
 
@@ -206,6 +208,7 @@ async def get_home(
 
     posts_query = (
         select(Post)
+        .join(Trip, Post.trip_id == Trip.id)
         .options(
             selectinload(Post.stop).selectinload(Stop.cover_media),
             selectinload(Post.media),
@@ -214,6 +217,11 @@ async def get_home(
         .limit(8)
     )
     posts_query = _public_only(posts_query, Post, user)
+    if not _is_admin(user):
+        posts_query = posts_query.where(
+            Trip.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+        )
     posts = list((await session.execute(posts_query)).scalars().all())
     post_stop_coords = await _coordinates_for_stops(session, [p.stop for p in posts if p.stop])
     coords.update(post_stop_coords)
@@ -221,7 +229,13 @@ async def get_home(
     active_trip = None
     active_trip_stops: list[Stop] = []
     if current_stop:
-        active_trip = await session.get(Trip, current_stop.trip_id, options=[selectinload(Trip.cover_media)])
+        active_trip = (
+            await session.execute(
+                select(Trip)
+                .where(Trip.id == current_stop.trip_id)
+                .options(selectinload(Trip.cover_media))
+            )
+        ).scalars().first()
         active_trip_stops = [s for s in stops if s.trip_id == current_stop.trip_id]
     if not active_trip:
         trip_query = select(Trip).where(Trip.status == TripStatus.ACTIVE).options(selectinload(Trip.cover_media))
@@ -249,7 +263,8 @@ async def get_home(
     )
     if not _is_admin(user):
         planned_query = planned_query.join(Trip, PlannedStop.trip_id == Trip.id).where(
-            Trip.visibility == Visibility.PUBLIC
+            Trip.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
         )
     planned_rows = (await session.execute(planned_query)).scalars().all()
     upcoming_planned = [
@@ -303,9 +318,12 @@ async def get_timeline(
         stops_query = stops_query.join(Trip, Stop.trip_id == Trip.id).where(Trip.slug == trip_slug)
     if not _is_admin(user):
         stops_query = stops_query.where(
-            Stop.visibility == Visibility.PUBLIC,
             Stop.status.in_([StopStatus.PUBLISHED, StopStatus.ACTIVE]),
         )
+        if trip_slug:
+            stops_query = stops_query.where(Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]))
+        else:
+            stops_query = stops_query.join(Trip, Stop.trip_id == Trip.id).where(Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]))
     stops = (await session.execute(stops_query)).scalars().all()
 
     posts_query = (
@@ -322,6 +340,10 @@ async def get_timeline(
         posts_query = posts_query.join(Trip, Post.trip_id == Trip.id).where(Trip.slug == trip_slug)
     if not _is_admin(user):
         posts_query = posts_query.where(Post.visibility == Visibility.PUBLIC)
+        if trip_slug:
+            posts_query = posts_query.where(Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]))
+        else:
+            posts_query = posts_query.join(Trip, Post.trip_id == Trip.id).where(Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]))
     posts = (await session.execute(posts_query)).scalars().all()
 
     merged: list[RecentUpdate] = [_stop_to_update(s, user) for s in stops] + [
@@ -351,6 +373,11 @@ async def list_trip_segments(
 
     stop_query = select(Stop)
     stop_query = _public_only(stop_query, Stop, user)
+    if not _is_admin(user):
+        stop_query = stop_query.join(Trip, Stop.trip_id == Trip.id).where(
+            Trip.visibility == Visibility.PUBLIC,
+            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+        )
     stops = list((await session.execute(stop_query)).scalars().all())
 
     return [_trip_summary_out(trip, [s for s in stops if s.trip_id == trip.id], user) for trip in trips]
@@ -380,7 +407,7 @@ async def get_trip_segment(
         ),
     )
     if not _is_admin(user):
-        stops = [s for s in stops if s.visibility == Visibility.PUBLIC]
+        stops = [s for s in stops if s.status not in [StopStatus.DRAFT, StopStatus.ARCHIVED]]
     coords = await _coordinates_for_stops(session, stops)
 
     posts_query = (

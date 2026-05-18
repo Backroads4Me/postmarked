@@ -36,8 +36,8 @@ class TripCreate(BaseModel):
     summary: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
-    status: TripStatus = TripStatus.PLANNED
-    visibility: Visibility = Visibility.PUBLIC
+    status: TripStatus = TripStatus.DRAFT
+    visibility: Visibility = Visibility.PRIVATE
 
 class TripUpdate(BaseModel):
     slug: Optional[str] = None

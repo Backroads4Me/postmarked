@@ -312,6 +312,11 @@
     color: var(--sky);
     border-color: rgba(111,163,196,.3);
   }
+  .badge-draft {
+    background: rgba(154,154,159,.15);
+    color: var(--muted);
+    border-color: rgba(154,154,159,.3);
+  }
   .badge-published {
     background: rgba(138,171,126,.15);
     color: var(--sage);

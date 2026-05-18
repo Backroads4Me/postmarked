@@ -71,6 +71,24 @@ class Trip(Base):
     )
 
 
+class SiteTextSection(Base):
+    __tablename__ = "site_text_section"
+    __table_args__ = (
+        UniqueConstraint("page_key", "section_key", name="uq_site_text_section_key"),
+    )
+
+    id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
+    page_key: Mapped[str] = mapped_column(String, nullable=False, index=True)
+    section_key: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    heading: Mapped[str] = mapped_column(String, nullable=False)
+    body: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    cta_label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    cta_href: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    sort_order: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
+
+
 class Stop(Base):
     __tablename__ = "stop"
     __table_args__ = (

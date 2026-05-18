@@ -5,6 +5,7 @@ class Visibility(str, enum.Enum):
     PRIVATE = "private"
 
 class TripStatus(str, enum.Enum):
+    DRAFT = "draft"
     PLANNED = "planned"
     ACTIVE = "active"
     COMPLETED = "completed"
@@ -12,6 +13,7 @@ class TripStatus(str, enum.Enum):
     ARCHIVED = "archived"
 
 class StopStatus(str, enum.Enum):
+    DRAFT = "draft"
     PLANNED = "planned"
     ACTIVE = "active"
     PUBLISHED = "published"

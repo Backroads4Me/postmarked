@@ -1,5 +1,6 @@
 import os
 import uuid
+import logging
 from celery import Celery
 import subprocess
 from PIL import Image, ExifTags
@@ -10,6 +11,8 @@ from sqlalchemy import select
 
 from app.models.content import MediaAsset
 from app.models.enums import MediaKind, MediaProcessingState, Visibility
+
+logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 DATABASE_URL_SYNC = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/goodpath")
@@ -89,10 +92,6 @@ def process_media_asset(asset_id: str):
                     img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
                     img.save(thumb_path, format="WEBP", quality=80)
                     
-                    # Generate Blurhash
-                    img.thumbnail((32, 32))
-                    asset.blurhash = blurhash.encode(img, x_components=4, y_components=3)
-                    
                     # Attempt dominant color
                     img.thumbnail((1, 1))
                     color = img.getpixel((0,0))
@@ -100,13 +99,17 @@ def process_media_asset(asset_id: str):
                         asset.dominant_color = f"#{color:06x}"
                     else:
                         asset.dominant_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
+
+                    # Generate Blurhash last: blurhash-python closes the image object.
+                    img.thumbnail((32, 32))
+                    asset.blurhash = blurhash.encode(img, x_components=4, y_components=3)
                         
                     asset.derivative_paths = {"webp": f"/media/{asset.id}/webp"}
                     asset.processing_state = MediaProcessingState.READY
                     asset.error_message = None
             except Exception as e:
                 asset.error_message = f"Image processing failed: {e}"
-                print(asset.error_message)
+                logger.exception("Image processing failed for media asset %s", asset.id)
                 asset.processing_state = MediaProcessingState.FAILED
 
         # Video processing 
@@ -141,7 +144,7 @@ def process_media_asset(asset_id: str):
 
             except Exception as e:
                 asset.error_message = f"Video processing failed: {e}"
-                print(asset.error_message)
+                logger.exception("Video processing failed for media asset %s", asset.id)
                 asset.processing_state = MediaProcessingState.FAILED
 
         db.commit()
@@ -242,7 +245,7 @@ def dispatch_weekly_digest():
                 delivery_status="SENT",
             )
             db.add(log_entry)
-            print(f"[DIGEST MOCK] Would have sent digest email to {user.email}")
+            logger.info("[DIGEST MOCK] Would have sent digest email to user %s", user.id)
             
         db.commit()
     finally:

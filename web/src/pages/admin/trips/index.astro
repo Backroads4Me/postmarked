@@ -21,8 +21,19 @@ try {
   console.error("Failed to load admin trips", e);
 }
 
-const activeTrips = trips.filter(t => t.status !== 'planned');
+const draftTrips = trips.filter(t => t.status === 'draft');
+const activeTrips = trips.filter(t => t.status !== 'draft' && t.status !== 'planned');
 const plannedTrips = trips.filter(t => t.status === 'planned');
+
+function statusBadge(status) {
+  return status === 'draft'
+    ? 'badge-draft'
+    : status === 'active'
+      ? 'badge-active'
+      : status === 'published'
+        ? 'badge-published'
+        : 'badge-planned';
+}
 ---
 
 <AdminLayout title="Manage Trips">
@@ -34,6 +45,46 @@ const plannedTrips = trips.filter(t => t.status === 'planned');
     <a href="/admin/trips/new" class="btn">New Trip</a>
   </div>
 
+  {draftTrips.length > 0 && (
+    <section class="mb-6">
+      <div class="label mb-2">Drafts</div>
+      <div class="bg-surface-2 border border-line rounded">
+        <div class="divide-y divide-line">
+          {draftTrips.map(trip => (
+            <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4" data-trip-row={trip.id}>
+              <div>
+                <div class="flex items-center gap-2 mb-1">
+                  <span class="font-bold text-lg">{trip.title}</span>
+                  <span class="badge badge-draft text-[9px]">draft</span>
+                  <span class={`badge text-[9px] ${trip.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
+                    {trip.visibility}
+                  </span>
+                </div>
+                <div class="text-xs text-dim font-mono tracking-widest">
+                  {trip.slug}
+                  {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                  {trip.end_date && ` – ${new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                </div>
+              </div>
+              <div class="flex gap-2">
+                <a href={`/admin/trips/${trip.id}`} class="btn ghost btn-sm">Edit</a>
+                <button
+                  type="button"
+                  class="btn btn-sm js-delete-trip"
+                  data-trip-id={trip.id}
+                  data-trip-title={trip.title}
+                  style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
   <div class="bg-surface-2 border border-line rounded" id="trips-list">
     {activeTrips.length > 0 ? (
       <div class="divide-y divide-line">
@@ -42,7 +93,7 @@ const plannedTrips = trips.filter(t => t.status === 'planned');
             <div>
               <div class="flex items-center gap-2 mb-1">
                 <span class="font-bold text-lg">{trip.title}</span>
-                <span class={`badge text-[9px] ${trip.status === 'active' ? 'badge-active' : trip.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
+                <span class={`badge text-[9px] ${statusBadge(trip.status)}`}>
                   {trip.status}
                 </span>
               </div>

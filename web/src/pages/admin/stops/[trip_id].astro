@@ -7,11 +7,13 @@ const cookie = Astro.request.headers.get('cookie');
 
 let trip = null;
 let stops = [];
+let plannedStops = [];
 
 try {
-  const [tripsRes, stopsRes] = await Promise.all([
+  const [tripsRes, stopsRes, plannedRes] = await Promise.all([
     fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} }),
     fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl(`/api/admin/imports/planned-stops/${trip_id}`), { headers: cookie ? { cookie } : {} }),
   ]);
 
   if (tripsRes.status === 401 || tripsRes.status === 403) return Astro.redirect('/auth/login');
@@ -23,6 +25,9 @@ try {
   if (stopsRes.ok) {
     const all = await stopsRes.json();
     stops = all.filter(s => s.trip_id === trip_id);
+  }
+  if (plannedRes.ok) {
+    plannedStops = await plannedRes.json();
   }
 } catch (e) {
   console.error(e);
@@ -37,7 +42,7 @@ function formatDate(d) {
 ---
 
 <AdminLayout title={`Stops — ${trip.title}`}>
-  <div class="mb-8 flex justify-between items-start">
+  <div class="mb-8 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-start">
     <div>
       <a href="/admin/stops" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-3 inline-block">← All Trips</a>
       <div class="label mb-1">Stops</div>
@@ -110,11 +115,12 @@ function formatDate(d) {
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Status</label>
         <select name="status" class="bg-surface-2 border border-line p-2 text-sm">
+          <option value="draft">Draft</option>
           <option value="active">Active</option>
           <option value="planned">Planned</option>
-          <option value="published">Published</option>
           <option value="archived">Archived</option>
         </select>
+        <span class="text-xs text-dim">Draft and archived stops stay admin-only. Other stops follow the trip visibility.</span>
       </div>
 
       <div class="md:col-span-2">
@@ -128,8 +134,8 @@ function formatDate(d) {
   </div>
 
   {stops.length > 0 ? (
-    <div class="card-flat" style="padding: 0; overflow: hidden;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+    <div class="card-flat overflow-x-auto" style="padding: 0;">
+      <table style="width: 100%; min-width: 680px; border-collapse: collapse; font-size: 13px;">
         <thead>
           <tr style="border-bottom: 1px solid var(--line);">
             <th class="label" style="padding: 10px 16px; text-align: left;">Title</th>
@@ -153,7 +159,7 @@ function formatDate(d) {
                 <span class="text-xs text-muted">{stop.stop_type || '—'}</span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.status === 'active' ? 'badge-active' : stop.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
+                <span class={`badge text-[9px] ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'active' ? 'badge-active' : stop.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
                   {stop.status}
                 </span>
               </td>
@@ -173,6 +179,48 @@ function formatDate(d) {
                     Delete
                   </button>
                 </div>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  ) : plannedStops.length > 0 ? (
+    <div class="card-flat overflow-x-auto" style="padding: 0;">
+      <div class="p-4 bg-surface-1" style="border-bottom: 1px solid var(--line);">
+        <div class="label">Imported itinerary</div>
+        <p class="text-xs text-muted mt-1">
+          Legacy import rows: {plannedStops.length} stop{plannedStops.length === 1 ? '' : 's'} imported before Excel imports created normal stops.
+        </p>
+      </div>
+      <table style="width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px;">
+        <thead>
+          <tr style="border-bottom: 1px solid var(--line);">
+            <th class="label" style="padding: 10px 16px; text-align: left;">Name</th>
+            <th class="label" style="padding: 10px 12px; text-align: center;">Arrival</th>
+            <th class="label" style="padding: 10px 12px; text-align: center;">Departure</th>
+            <th class="label" style="padding: 10px 12px; text-align: center;">Nights</th>
+            <th class="label" style="padding: 10px 12px; text-align: center;">State</th>
+          </tr>
+        </thead>
+        <tbody>
+          {plannedStops.map(stop => (
+            <tr style="border-bottom: 1px solid var(--line-soft);">
+              <td style="padding: 10px 16px;">
+                <div style="color: var(--paper); font-weight: 600;">{stop.name}</div>
+                {stop.address && <span class="coord block mt-0.5">{stop.address}</span>}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
+                {formatDate(stop.arrival_date)}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
+                {formatDate(stop.departure_date)}
+              </td>
+              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
+                {stop.nights ?? '—'}
+              </td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span class="badge badge-planned text-[9px]">{stop.import_state}</span>
               </td>
             </tr>
           ))}

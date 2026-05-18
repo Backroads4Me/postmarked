@@ -5,6 +5,7 @@ import StopCard from '../components/ui/StopCard.astro';
 import PostCard from '../components/ui/PostCard.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
+import { loadSiteText, sectionText } from '../lib/siteText.js';
 
 // Fetch home data
 let homeData = null;
@@ -32,9 +33,26 @@ const updates = [
 });
 const nextStop = homeData?.next_stop;
 const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
-const completedStops = activeTrip?.stops_completed ?? 0;
-const totalStops = activeTrip?.stops_total ?? homeData?.recent_stops?.length ?? 0;
-const remainingStops = Math.max(totalStops - completedStops, 0);
+const siteText = await loadSiteText();
+const currentText = sectionText(siteText, 'home.current', {
+  label: 'Currently At',
+  heading: 'Current Location',
+});
+const homeHeroText = sectionText(siteText, 'home.hero', {
+  label: 'Welcome to Goodpath',
+  heading: 'Our RV Adventure',
+  body: "A family travel journal — where we are, where we've been, and where we're headed.",
+});
+const plannedText = sectionText(siteText, 'home.planned', {
+  label: 'From the trip plan',
+  heading: 'Up Next',
+});
+const updatesText = sectionText(siteText, 'home.updates', {
+  label: 'Recent',
+  heading: 'Latest Updates',
+  cta_label: 'View All',
+  cta_href: '/timeline',
+});
 ---
 
 <Layout title="Goodpath — Where Are We Now?">
@@ -61,48 +79,21 @@ const remainingStops = Math.max(totalStops - completedStops, 0);
           nights={current.nights}
           note={current.public_note}
           stopType={current.stop_type}
+          label={currentText.label || 'Currently At'}
         />
       ) : (
         <div class="card-hero">
           <div class="flex items-center gap-3 mb-4">
             <span class="brand-mark" aria-hidden="true"></span>
-            <span class="eyebrow">Welcome to Goodpath</span>
+            {homeHeroText.label && <span class="eyebrow">{homeHeroText.label}</span>}
           </div>
           <h2 class="display text-3xl md:text-4xl mb-3">
-            Our RV Adventure
+            {homeHeroText.heading}
           </h2>
-          <p class="lede text-sm">
-            A family travel journal — where we are, where we've been, and where we're headed.
-          </p>
+          {homeHeroText.body && <p class="lede text-sm">{homeHeroText.body}</p>}
         </div>
       )}
     </section>
-
-    {/* ── Stats Bar ──────────────────────────────────────────── */}
-    {homeData && (
-      <section class="metric-strip mb-10" id="stats-bar" aria-label="Journey snapshot">
-        <div class="card-flat metric">
-          <span class="label">Completed</span>
-          <span class="display text-3xl text-ember">{completedStops}</span>
-        </div>
-        <div class="card-flat metric">
-          <span class="label">Remaining</span>
-          <span class="display text-3xl">{remainingStops}</span>
-        </div>
-        {activeTrip && (
-          <a href={`/trips/${activeTrip.slug}`} class="card-flat metric hover:border-ember transition-colors">
-            <span class="badge badge-active text-[10px] self-start">Active</span>
-            <span class="text-sm text-paper-2 line-clamp-2">{activeTrip.title}</span>
-          </a>
-        )}
-        {nextStop && (
-          <div class="card-flat metric">
-            <span class="badge badge-planned text-[10px] self-start">Next</span>
-            <span class="text-sm text-paper-2 line-clamp-2">{nextStop.title}</span>
-          </div>
-        )}
-      </section>
-    )}
 
     {/* ── Next Stop ──────────────────────────────────────────── */}
     {nextStop && (
@@ -130,8 +121,9 @@ const remainingStops = Math.max(totalStops - completedStops, 0);
       <section class="mb-10 section-band" id="upcoming-planned">
         <div class="flex items-center justify-between mb-4">
           <div>
-            <div class="label mb-1">From the trip plan</div>
-            <h2 class="display text-2xl">Up Next</h2>
+            {plannedText.label && <div class="label mb-1">{plannedText.label}</div>}
+            <h2 class="display text-2xl">{plannedText.heading}</h2>
+            {plannedText.body && <p class="text-sm text-muted mt-1">{plannedText.body}</p>}
           </div>
         </div>
         <div class="grid gap-3">
@@ -165,12 +157,15 @@ const remainingStops = Math.max(totalStops - completedStops, 0);
     <section id="recent-updates">
       <div class="flex items-center justify-between mb-6">
         <div>
-          <div class="label mb-1">Recent</div>
-          <h2 class="display text-2xl">Latest Updates</h2>
+          {updatesText.label && <div class="label mb-1">{updatesText.label}</div>}
+          <h2 class="display text-2xl">{updatesText.heading}</h2>
+          {updatesText.body && <p class="text-sm text-muted mt-1">{updatesText.body}</p>}
         </div>
-        <a href="/timeline" class="btn btn-sm btn-ghost" aria-label="View all timeline updates">
-          View All
-        </a>
+        {updatesText.cta_label && updatesText.cta_href && (
+          <a href={updatesText.cta_href} class="btn btn-sm btn-ghost" aria-label="View all timeline updates">
+            {updatesText.cta_label}
+          </a>
+        )}
       </div>
 
       {updates.length > 0 ? (

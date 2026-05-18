@@ -10,6 +10,7 @@ class MediaAssetBase(BaseResponse):
     id: uuid.UUID
     kind: MediaKind
     processing_state: MediaProcessingState
+    error_message: Optional[str] = None
     
     width: Optional[int] = None
     height: Optional[int] = None

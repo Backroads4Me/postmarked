@@ -6,7 +6,7 @@ from typing import List
 from app.db import get_async_session
 from app.models.content import Trip, Stop
 from app.schemas.search import SearchResult
-from app.models.enums import Visibility
+from app.models.enums import StopStatus, TripStatus, Visibility
 
 router = APIRouter(prefix="/search", tags=["search"])
 
@@ -23,6 +23,7 @@ async def global_search(
     # 1. Search Trips
     query_trips = select(Trip).where(
         Trip.visibility == Visibility.PUBLIC,
+        Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
         or_(
             Trip.title.ilike(f"%{q}%"),
             Trip.summary.ilike(f"%{q}%")
@@ -39,8 +40,10 @@ async def global_search(
         ))
 
     # 2. Search Stops
-    query_stops = select(Stop).where(
-        Stop.visibility == Visibility.PUBLIC,
+    query_stops = select(Stop).join(Trip, Stop.trip_id == Trip.id).where(
+        Trip.visibility == Visibility.PUBLIC,
+        Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
+        Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]),
         or_(
             Stop.title.ilike(f"%{q}%"),
             Stop.summary.ilike(f"%{q}%")
