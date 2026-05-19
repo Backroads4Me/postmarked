@@ -30,6 +30,7 @@ services:
       dockerfile: Dockerfile
     volumes:
       - ./api:/app
+    command: celery -A app.tasks beat -l info
 
   web:
     build:
