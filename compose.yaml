@@ -22,7 +22,7 @@ services:
       dockerfile: Dockerfile
     command: ["alembic", "upgrade", "head"]
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
       - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
       - APP_ENV=${APP_ENV:-dev}
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
@@ -39,7 +39,7 @@ services:
       context: ./api
       dockerfile: Dockerfile
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
       - APP_ENV=${APP_ENV:-dev}
@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile
     command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
       - PYTHONPATH=/app
@@ -93,7 +93,7 @@ services:
       dockerfile: Dockerfile
     command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
+      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
       - REDIS_URL=redis://redis:6379/0
       - PYTHONPATH=/app
     depends_on:
@@ -120,7 +120,7 @@ services:
     environment:
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-goodpath}
+      - POSTGRES_DB=${POSTGRES_DB:-postmarked}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
