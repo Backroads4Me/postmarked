@@ -19,7 +19,7 @@ def _is_admin(user) -> bool:
 
 
 def _public_trip_status_filter():
-    return Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED])
+    return Trip.status == TripStatus.PUBLISHED
 
 
 @router.get("", response_model=List[TripOut])
@@ -28,8 +28,9 @@ async def list_trips(
     user=Depends(current_user_optional),
 ):
     query = select(Trip).options(selectinload(Trip.cover_media))
-    if not _is_admin(user):
-        query = query.where(Trip.visibility == Visibility.PUBLIC, _public_trip_status_filter())
+    query = query.where(_public_trip_status_filter())
+    if not user:
+        query = query.where(Trip.visibility == Visibility.PUBLIC)
 
     result = await session.execute(query)
     return result.scalars().all()
@@ -49,11 +50,12 @@ async def get_trip(
         selectinload(Trip.stops).selectinload(Stop.cover_media),
     )
 
-    if not _is_admin(user):
-        query = query.where(Trip.visibility == Visibility.PUBLIC, _public_trip_status_filter())
-        query = query.options(
-            with_loader_criteria(Stop, Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED])),
-        )
+    query = query.where(_public_trip_status_filter())
+    stop_criteria = Stop.status == StopStatus.PUBLISHED
+    if not user:
+        query = query.where(Trip.visibility == Visibility.PUBLIC)
+        stop_criteria = stop_criteria & (Stop.visibility == Visibility.PUBLIC)
+    query = query.options(with_loader_criteria(Stop, stop_criteria))
 
     result = await session.execute(query)
     trip = result.scalars().first()

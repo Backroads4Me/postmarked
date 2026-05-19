@@ -16,6 +16,7 @@ from app.models.enums import (
     PlannedStopImportState,
     POIType,
     PostType,
+    PostStatus,
     StopStatus,
     StopType,
     TripStatus,
@@ -35,7 +36,7 @@ class Trip(Base):
     start_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     end_date: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
 
-    status: Mapped[TripStatus] = mapped_column(default=TripStatus.PLANNED)
+    status: Mapped[TripStatus] = mapped_column(default=TripStatus.DRAFT)
     visibility: Mapped[Visibility] = mapped_column(default=Visibility.PRIVATE)
 
     cover_media_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("media_asset.id", ondelete="SET NULL", use_alter=True), nullable=True)
@@ -114,7 +115,7 @@ class Stop(Base):
 
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
 
-    status: Mapped[StopStatus] = mapped_column(default=StopStatus.PLANNED)
+    status: Mapped[StopStatus] = mapped_column(default=StopStatus.DRAFT)
     stop_type: Mapped[StopType] = mapped_column(default=StopType.OTHER)
     visibility: Mapped[Visibility] = mapped_column(default=Visibility.PRIVATE)
 
@@ -234,6 +235,10 @@ class Post(Base):
     body: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     posted_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     visibility: Mapped[Visibility] = mapped_column(default=Visibility.PRIVATE)
+    status: Mapped[PostStatus] = mapped_column(
+        SAEnum(PostStatus, values_callable=lambda x: [e.value for e in x], name="poststatus", create_type=False),
+        default=PostStatus.DRAFT,
+    )
     is_featured: Mapped[bool] = mapped_column(Boolean, default=False)
 
     post_type: Mapped[PostType] = mapped_column(

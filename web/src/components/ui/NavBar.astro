@@ -4,6 +4,8 @@
  * Desktop: top horizontal bar. Mobile: bottom tab bar.
  */
 
+import ThemeToggle from './ThemeToggle.astro';
+
 const { pathname } = Astro.url;
 
 const navItems = [
@@ -47,6 +49,7 @@ function isActive(href: string) {
         <span>{item.label}</span>
       </a>
     ))}
+    <ThemeToggle class="theme-toggle--desktop" />
   </div>
 </nav>
 
@@ -61,4 +64,5 @@ function isActive(href: string) {
       <span>{item.label}</span>
     </a>
   ))}
+  <ThemeToggle class="theme-toggle--mobile" />
 </nav>

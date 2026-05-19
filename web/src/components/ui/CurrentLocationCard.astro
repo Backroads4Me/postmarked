@@ -8,14 +8,14 @@ interface Props {
   tripTitle: string;
   tripSlug: string;
   placeName?: string;
+  summary?: string;
   arrivalDate?: string;
   nights?: number;
   note?: string;
-  stopType?: string;
   label?: string;
 }
 
-const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, arrivalDate, nights, note, stopType, label = 'Currently At' } = Astro.props;
+const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, summary, arrivalDate, nights, note, label = 'Currently At' } = Astro.props;
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -32,41 +32,60 @@ function daysAgo(dateStr?: string) {
   if (diff === 1) return '1 day ago';
   return `${diff} days ago`;
 }
+
+function cityStateFromAddress(address?: string) {
+  if (!address) return '';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 3) return '';
+
+  const city = parts.at(-2);
+  const stateZip = parts.at(-1) || '';
+  const state = stateZip.match(/^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/)?.[1];
+  if (!city || !state) return '';
+
+  return `${city}, ${state}`;
+}
+
+const cityStateLabel = cityStateFromAddress(summary);
+const primaryTitle = cityStateLabel || stopTitle;
+const secondaryTitle = cityStateLabel ? stopTitle : placeName && placeName !== stopTitle ? placeName : '';
 ---
 
 <div class="card-hero" id="current-location">
   <div class="flex items-center gap-3 mb-4">
     <span class="pulse-dot"></span>
-    <span class="eyebrow">{label}</span>
-    {stopType && <span class="badge badge-active ml-auto">{stopType}</span>}
+    {label && <span class="eyebrow">{label}</span>}
   </div>
 
   <h2 class="display text-3xl md:text-4xl mb-2">
     <a href={`/trips/${tripSlug}`} class="hover:text-ember-2 transition-colors">
-      {stopTitle}
+      {primaryTitle}
     </a>
   </h2>
 
-  {placeName && (
-    <p class="coord mb-4">{placeName}</p>
+  {secondaryTitle && (
+    <p class="coord mb-1">{secondaryTitle}</p>
+  )}
+  {cityStateLabel && summary && (
+    <p class="text-sm text-muted mb-4">{summary}</p>
   )}
 
   <div class="flex flex-wrap gap-4 text-sm">
     {arrivalDate && (
       <div class="flex flex-col">
-        <span class="label mb-1">Arrived</span>
-        <span class="text-paper-2">{formatDate(arrivalDate)}</span>
+        <span class="current-meta-label mb-1">Arrived</span>
+        <span class="current-meta-value">{formatDate(arrivalDate)}</span>
       </div>
     )}
     {nights && nights > 0 && (
       <div class="flex flex-col">
-        <span class="label mb-1">Staying</span>
-        <span class="text-paper-2">{nights} night{nights !== 1 ? 's' : ''}</span>
+        <span class="current-meta-label mb-1">Staying</span>
+        <span class="current-meta-value">{nights} night{nights !== 1 ? 's' : ''}</span>
       </div>
     )}
     <div class="flex flex-col">
-      <span class="label mb-1">Trip</span>
-      <a href={`/trips/${tripSlug}`} class="text-ember hover:text-ember-2 transition-colors">
+      <span class="current-meta-label mb-1">Trip</span>
+      <a href={`/trips/${tripSlug}`} class="current-meta-value hover:text-ember-2 transition-colors">
         {tripTitle}
       </a>
     </div>

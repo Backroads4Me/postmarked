@@ -120,11 +120,24 @@ function toDatetimeLocal(iso) {
         </div>
 
         <div class="flex flex-col gap-2">
+          <label class="text-sm font-bold" for="status">Status</label>
+          <select id="status" name="status" class="bg-surface-2 border border-line p-3">
+            {['draft','published','unpublished','archived'].map(status => (
+              <option value={status} selected={post.status === status}>{status}</option>
+            ))}
+          </select>
+          <span class="text-xs text-dim">Only published posts appear outside admin pages.</span>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="visibility">Visibility</label>
           <select id="visibility" name="visibility" class="bg-surface-2 border border-line p-3">
-            <option value="public" selected={post.visibility === 'public'}>Public</option>
-            <option value="private" selected={post.visibility === 'private'}>Private</option>
+            <option value="private" selected={post.visibility === 'private'}>Private — logged-in users</option>
+            <option value="public" selected={post.visibility === 'public'}>Public — anyone</option>
           </select>
+          <span class="text-xs text-dim">Visibility applies after the post is published.</span>
         </div>
       </div>
 
@@ -218,6 +231,7 @@ function toDatetimeLocal(iso) {
         title: formData.get('title'),
         body: formData.get('body') || null,
         stop_id: formData.get('stop_id') || null,
+        status: formData.get('status'),
         visibility: formData.get('visibility'),
       };
 

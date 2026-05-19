@@ -43,9 +43,9 @@ class StopCreate(BaseModel):
     longitude: float = Field(ge=-180, le=180)
     start_date: datetime
     end_date: Optional[datetime] = None
-    status: StopStatus = StopStatus.ACTIVE
+    status: StopStatus = StopStatus.DRAFT
     stop_type: StopType = StopType.BOONDOCKING
-    visibility: Visibility = Visibility.PUBLIC
+    visibility: Visibility = Visibility.PRIVATE
     sort_order: int = 1
     place_name: Optional[str] = None
 
@@ -63,3 +63,11 @@ class StopUpdate(BaseModel):
     sort_order: Optional[int] = None
     place_name: Optional[str] = None
     body: Optional[str] = None
+
+
+class StopBulkUpdate(BaseModel):
+    stop_ids: List[uuid.UUID] = Field(min_length=1)
+    status: Optional[StopStatus] = None
+    stop_type: Optional[StopType] = None
+    visibility: Optional[Visibility] = None
+    delete: bool = False

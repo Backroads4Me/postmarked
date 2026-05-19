@@ -38,21 +38,57 @@ const currentText = sectionText(siteText, 'home.current', {
   label: 'Currently At',
   heading: 'Current Location',
 });
-const homeHeroText = sectionText(siteText, 'home.hero', {
+const homeHeaderText = sectionText(siteText, 'home.header', {
   label: 'Welcome to Goodpath',
   heading: 'Our RV Adventure',
   body: "A family travel journal — where we are, where we've been, and where we're headed.",
+});
+const nextText = sectionText(siteText, 'home.next', {
+  label: 'Next Up',
+  heading: 'Next Up',
 });
 const plannedText = sectionText(siteText, 'home.planned', {
   label: 'From the trip plan',
   heading: 'Up Next',
 });
 const updatesText = sectionText(siteText, 'home.updates', {
-  label: 'Recent',
+  label: null,
   heading: 'Latest Updates',
   cta_label: 'View All',
   cta_href: '/timeline',
 });
+
+function cityStateFromAddress(address) {
+  if (!address) return '';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 3) return '';
+
+  const city = parts.at(-2);
+  const stateZip = parts.at(-1) || '';
+  const state = stateZip.match(/^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/)?.[1];
+  if (!city || !state) return '';
+
+  return `${city}, ${state}`;
+}
+
+function stopCityState(stop) {
+  return cityStateFromAddress(stop?.summary || stop?.address || '') || '';
+}
+
+function formatStopDate(dateStr) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+const nextCityState = stopCityState(nextStop);
+const nextPrimaryTitle = nextStop ? nextCityState || nextStop.title : '';
+const nextSecondaryTitle = nextStop
+  ? nextCityState
+    ? nextStop.title
+    : nextStop.place_name && nextStop.place_name !== nextStop.title
+      ? nextStop.place_name
+      : ''
+  : '';
 ---
 
 <Layout title="Goodpath — Where Are We Now?">
@@ -66,6 +102,16 @@ const updatesText = sectionText(siteText, 'home.updates', {
       </section>
     )}
 
+    <section class="mb-8" id="home-header">
+      {homeHeaderText.label && <div class="label mb-2">{homeHeaderText.label}</div>}
+      <h1 class="display text-3xl md:text-4xl">{homeHeaderText.heading}</h1>
+      {homeHeaderText.body && (
+        <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+          {homeHeaderText.body}
+        </p>
+      )}
+    </section>
+
     {/* ── Hero: Current Location ─────────────────────────────── */}
     <section class="mb-10" id="current-location-section">
       {current ? (
@@ -75,22 +121,22 @@ const updatesText = sectionText(siteText, 'home.updates', {
           tripTitle={activeTrip?.title || 'Current Trip'}
           tripSlug={activeTrip?.slug || ''}
           placeName={current.place_name}
+          summary={current.summary}
           arrivalDate={current.start_date}
           nights={current.nights}
           note={current.public_note}
-          stopType={current.stop_type}
-          label={currentText.label || 'Currently At'}
+          label={currentText.label}
         />
       ) : (
         <div class="card-hero">
           <div class="flex items-center gap-3 mb-4">
             <span class="brand-mark" aria-hidden="true"></span>
-            {homeHeroText.label && <span class="eyebrow">{homeHeroText.label}</span>}
+            {currentText.label && <span class="eyebrow">{currentText.label}</span>}
           </div>
           <h2 class="display text-3xl md:text-4xl mb-3">
-            {homeHeroText.heading}
+            {currentText.heading}
           </h2>
-          {homeHeroText.body && <p class="lede text-sm">{homeHeroText.body}</p>}
+          {currentText.body && <p class="lede text-sm">{currentText.body}</p>}
         </div>
       )}
     </section>
@@ -98,20 +144,42 @@ const updatesText = sectionText(siteText, 'home.updates', {
     {/* ── Next Stop ──────────────────────────────────────────── */}
     {nextStop && (
       <section class="mb-10" id="next-stop-section">
-        <div class="card">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="inline-symbol" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m14.5 9.5-1.8 4.8-4.8 1.8 1.8-4.8 4.8-1.8Z"/></svg>
-            </span>
-            <span class="eyebrow">Next Up</span>
+        <div class="card-hero">
+          <div class="flex items-center gap-3 mb-4">
+            <span class="brand-mark" aria-hidden="true"></span>
+            {nextText.label && <span class="eyebrow">{nextText.label}</span>}
           </div>
-          <h3 class="display text-xl mb-1">{nextStop.title}</h3>
-          {nextStop.place_name && <p class="coord">{nextStop.place_name}</p>}
-          {nextStop.start_date && (
-            <p class="text-sm text-muted mt-2">
-              Arriving {new Date(nextStop.start_date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
-            </p>
+          <h3 class="display text-3xl md:text-4xl mb-2">
+            <a href={`/trips/${nextStop.trip_slug}/stops/${nextStop.slug}`} class="hover:text-ember-2 transition-colors">
+              {nextPrimaryTitle}
+            </a>
+          </h3>
+          {nextSecondaryTitle && (
+            <p class="coord mb-1">{nextSecondaryTitle}</p>
           )}
+          {nextCityState && nextStop.summary && (
+            <p class="text-sm text-muted mb-4">{nextStop.summary}</p>
+          )}
+          <div class="flex flex-wrap gap-4 text-sm">
+            {nextStop.start_date && (
+              <div class="flex flex-col">
+                <span class="current-meta-label mb-1">Arriving</span>
+                <span class="current-meta-value">{formatStopDate(nextStop.start_date)}</span>
+              </div>
+            )}
+            {nextStop.nights && nextStop.nights > 0 && (
+              <div class="flex flex-col">
+                <span class="current-meta-label mb-1">Staying</span>
+                <span class="current-meta-value">{nextStop.nights} night{nextStop.nights !== 1 ? 's' : ''}</span>
+              </div>
+            )}
+            <div class="flex flex-col">
+              <span class="current-meta-label mb-1">Trip</span>
+              <a href={`/trips/${nextStop.trip_slug}`} class="current-meta-value hover:text-ember-2 transition-colors">
+                {nextStop.trip_title || activeTrip?.title || 'Current Trip'}
+              </a>
+            </div>
+          </div>
         </div>
       </section>
     )}
@@ -140,8 +208,18 @@ const updatesText = sectionText(siteText, 'home.updates', {
                   <span class="label">{p.nights} night{p.nights !== 1 ? 's' : ''}</span>
                 )}
               </div>
-              <h3 class="display text-lg">{p.name}</h3>
-              {p.address && <p class="coord text-xs mt-1">{p.address}</p>}
+              {cityStateFromAddress(p.address) ? (
+                <>
+                  <h3 class="display text-lg">{cityStateFromAddress(p.address)}</h3>
+                  <p class="coord text-xs mt-1">{p.name}</p>
+                  <p class="text-xs text-muted mt-1">{p.address}</p>
+                </>
+              ) : (
+                <>
+                  <h3 class="display text-lg">{p.name}</h3>
+                  {p.address && <p class="coord text-xs mt-1">{p.address}</p>}
+                </>
+              )}
               {p.miles_from_previous && (
                 <p class="text-xs text-dim mt-1">
                   ~{Math.round(p.miles_from_previous)} mi from previous
@@ -183,13 +261,14 @@ const updatesText = sectionText(siteText, 'home.updates', {
             ) : (
               <StopCard
                 title={item.title}
+                displayTitle={stopCityState(item) || item.title}
+                detailTitle={stopCityState(item) ? item.title : item.place_name}
                 slug={item.slug}
                 tripSlug={item.trip_slug}
                 summary={item.summary}
                 date={item.start_date}
                 tripTitle={item.trip_title}
                 placeName={item.place_name}
-                stopType={item.stop_type}
               />
             )
           ))}

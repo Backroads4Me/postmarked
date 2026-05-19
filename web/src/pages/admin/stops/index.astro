@@ -18,11 +18,13 @@ try {
 function statusBadge(status) {
   return status === 'draft'
     ? 'badge-draft'
-    : status === 'active'
-      ? 'badge-active'
-      : status === 'published'
+    : status === 'published'
         ? 'badge-published'
-        : 'badge-planned';
+        : status === 'unpublished'
+          ? 'badge-unpublished'
+        : status === 'archived'
+          ? 'badge-private'
+          : 'badge-planned';
 }
 ---
 

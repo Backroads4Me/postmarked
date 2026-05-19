@@ -7,7 +7,7 @@ from typing import List, Optional
 
 from pydantic import BaseModel, Field, model_validator
 
-from app.models.enums import ActivityType, PostType
+from app.models.enums import ActivityType, PostStatus, PostType
 from app.schemas.common import BaseResponse
 from app.schemas.media import MediaAssetOut
 from app.schemas.poi import POIOut
@@ -20,6 +20,7 @@ class PostOut(BaseResponse):
     slug: str
     posted_at: datetime
     visibility: str
+    status: PostStatus = PostStatus.DRAFT
     stop_id: Optional[uuid.UUID] = None
     trip_id: Optional[uuid.UUID] = None
 
@@ -44,7 +45,8 @@ class PostCreate(BaseModel):
     body: Optional[str] = Field(default=None, max_length=10000)
     stop_id: Optional[uuid.UUID] = None
     trip_id: Optional[uuid.UUID] = None
-    visibility: str = "public"
+    visibility: str = "private"
+    status: PostStatus = PostStatus.DRAFT
     posted_at: Optional[datetime] = None
     # IDs of MediaAsset rows to attach (from a prior TUS upload).
     media_ids: List[uuid.UUID] = Field(default_factory=list)
@@ -68,6 +70,7 @@ class PostUpdate(BaseModel):
     body: Optional[str] = Field(default=None, max_length=10000)
     stop_id: Optional[uuid.UUID] = None
     visibility: Optional[str] = None
+    status: Optional[PostStatus] = None
 
     post_type: Optional[PostType] = None
     activity_type: Optional[ActivityType] = None

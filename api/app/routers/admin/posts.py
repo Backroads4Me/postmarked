@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.content import MediaAsset, PointOfInterest, Post, Stop
-from app.models.enums import StopStatus, Visibility
+from app.models.enums import PostStatus, StopStatus, Visibility
 from app.models.user import User
 from app.schemas.post import PostCreate, PostOut, PostUpdate
 from app.services.audit import log_audit_event
@@ -70,6 +70,12 @@ async def create_post(
     visibility = Visibility(post_in.visibility)
     slug = await _unique_post_slug(session, post_in.title)
 
+    stop = None
+    if post_in.stop_id:
+        stop = await session.get(Stop, post_in.stop_id)
+        if not stop:
+            raise HTTPException(status_code=422, detail="stop_id does not exist")
+
     # Validate poi_id belongs to the given stop
     if post_in.poi_id and post_in.stop_id:
         poi = await session.get(PointOfInterest, post_in.poi_id)
@@ -77,13 +83,14 @@ async def create_post(
             raise HTTPException(status_code=422, detail="poi_id does not belong to the given stop")
 
     post = Post(
-        trip_id=post_in.trip_id,
+        trip_id=post_in.trip_id or (stop.trip_id if stop else None),
         stop_id=post_in.stop_id,
         slug=slug,
         title=post_in.title,
         body=post_in.body,
         posted_at=posted_at,
         visibility=visibility,
+        status=post_in.status,
         post_type=post_in.post_type,
         activity_type=post_in.activity_type,
         summary=post_in.summary,
@@ -114,9 +121,13 @@ async def create_post(
 
     await log_audit_event(session, user.id, "CREATE", "Post", post.id)
     await session.commit()
-    await session.refresh(post)
-    await session.refresh(post, ["poi"])
-    return post
+
+    result = await session.execute(
+        select(Post)
+        .where(Post.id == post.id)
+        .options(selectinload(Post.media), selectinload(Post.poi))
+    )
+    return result.scalars().one()
 
 
 @router.patch("/posts/{post_id}", response_model=PostOut)
@@ -138,6 +149,8 @@ async def update_post(
     update_data = post_in.model_dump(exclude_unset=True)
     if "visibility" in update_data:
         update_data["visibility"] = Visibility(update_data["visibility"])
+    if "status" in update_data and update_data["status"] == PostStatus.PUBLISHED:
+        post.posted_at = post.posted_at or datetime.now(timezone.utc)
     for key, value in update_data.items():
         setattr(post, key, value)
 
@@ -191,7 +204,8 @@ async def set_current_stop(
         .values(status=StopStatus.PUBLISHED)
     )
     stop.is_current = True
-    stop.status = StopStatus.ACTIVE
+    if stop.status != StopStatus.ARCHIVED:
+        stop.status = StopStatus.PUBLISHED
 
     await log_audit_event(session, user.id, "SET_CURRENT_STOP", "Stop", stop.id)
     await session.commit()

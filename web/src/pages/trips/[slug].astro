@@ -30,9 +30,6 @@ const posts = trip.posts || [];
 const stopsWithCoords = stops.filter(s => s.latitude != null && s.longitude != null);
 const photoCount = posts.reduce((n, p) => n + (p.media?.length || 0), 0);
 const milesTotal = stops.reduce((n, s) => n + (s.miles_from_previous || 0), 0);
-const cover = trip.cover_media?.processing_state === 'ready' && trip.cover_media?.derivative_paths?.webp
-  ? trip.cover_media
-  : null;
 
 function fmtDate(d) {
   if (!d) return '';
@@ -50,9 +47,6 @@ function fmtRange(start, end) {
   return `${fmtDate(start)} – ${fmtDate(end)}`;
 }
 
-function statusClass(s) {
-  return s === 'draft' ? 'badge-draft' : s === 'active' ? 'badge-active' : s === 'published' ? 'badge-published' : s === 'planned' ? 'badge-planned' : '';
-}
 ---
 
 <Layout title={`${trip.title} — Goodpath`}>
@@ -63,7 +57,6 @@ function statusClass(s) {
     <section class="mb-8">
       <a href="/trips" class="label">← All trips</a>
       <div class="flex items-center gap-2 mt-3 mb-2">
-        <span class={`badge text-[10px] ${statusClass(trip.status)}`}>{trip.status}</span>
         {trip.start_date && <span class="label">{fmtRange(trip.start_date, trip.end_date)}</span>}
       </div>
       <h1 class="display text-3xl md:text-5xl">{trip.title}</h1>
@@ -71,15 +64,10 @@ function statusClass(s) {
         <p class="lede mt-3 text-base" style="font-family: var(--sans);">{trip.summary}</p>
       )}
 
-      {cover && (
-        <figure class="mt-6 overflow-hidden rounded-lg border border-line bg-surface-2">
-          <img
-            src={`/media/${cover.id}/webp`}
-            alt={cover.alt_text || ''}
-            class="w-full object-cover"
-            style="aspect-ratio: 16 / 7;"
-          />
-        </figure>
+      {stopsWithCoords.length > 0 && (
+        <section class="mt-6" id="trip-map" style="height: 360px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
+          <MapIsland client:load stops={stopsWithCoords} />
+        </section>
       )}
 
       <div class="flex gap-6 md:gap-10 mt-6 flex-wrap">
@@ -99,13 +87,6 @@ function statusClass(s) {
         )}
       </div>
     </section>
-
-    {/* ── Mini map ─────────────────────────────────────────── */}
-    {stopsWithCoords.length > 0 && (
-      <section class="mb-10" id="trip-map" style="height: 320px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
-        <MapIsland client:load stops={stopsWithCoords} />
-      </section>
-    )}
 
     {/* ── Body ─────────────────────────────────────────────── */}
     {trip.body && (

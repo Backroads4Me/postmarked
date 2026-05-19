@@ -6,6 +6,7 @@ from typing import List
 
 from app.db import get_async_session
 from app.models.content import MediaAsset, Trip, Stop, PlannedStop
+from app.models.enums import Visibility
 from app.schemas.trip import TripOut, TripCreate, TripUpdate
 from app.auth.dependencies import current_admin_user
 from app.models.user import User
@@ -77,7 +78,7 @@ async def update_trip_admin(
     if old_cover_asset is not None:
         await session.delete(old_cover_asset)
 
-    if "visibility" in update_data and trip.visibility != old_visibility:
+    if "visibility" in update_data and trip.visibility == Visibility.PRIVATE and trip.visibility != old_visibility:
         await session.execute(
             update(Stop)
             .where(Stop.trip_id == trip.id)

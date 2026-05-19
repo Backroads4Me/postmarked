@@ -22,17 +22,18 @@ try {
 }
 
 const draftTrips = trips.filter(t => t.status === 'draft');
-const activeTrips = trips.filter(t => t.status !== 'draft' && t.status !== 'planned');
-const plannedTrips = trips.filter(t => t.status === 'planned');
+const activeTrips = trips.filter(t => t.status !== 'draft');
 
 function statusBadge(status) {
   return status === 'draft'
     ? 'badge-draft'
-    : status === 'active'
-      ? 'badge-active'
-      : status === 'published'
+    : status === 'published'
         ? 'badge-published'
-        : 'badge-planned';
+        : status === 'unpublished'
+          ? 'badge-unpublished'
+        : status === 'archived'
+          ? 'badge-private'
+          : 'badge-planned';
 }
 ---
 
@@ -122,62 +123,9 @@ function statusBadge(status) {
       <div class="p-8 text-center text-muted">No trips found. Create one to get started.</div>
     )}
   </div>
-
-  {plannedTrips.length > 0 && (
-    <div class="mt-6">
-      <button
-        id="toggle-planned"
-        type="button"
-        class="btn btn-sm btn-ghost text-xs"
-      >
-        Show {plannedTrips.length} planned trip{plannedTrips.length !== 1 ? 's' : ''}
-      </button>
-
-      <div id="planned-trips" class="hidden mt-4 bg-surface-2 border border-line rounded">
-        <div class="divide-y divide-line">
-          {plannedTrips.map(trip => (
-            <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4" data-trip-row={trip.id}>
-              <div>
-                <div class="flex items-center gap-2 mb-1">
-                  <span class="font-bold text-lg">{trip.title}</span>
-                  <span class="badge badge-planned text-[9px]">planned</span>
-                </div>
-                <div class="text-xs text-dim font-mono tracking-widest">
-                  {trip.slug}
-                  {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
-                </div>
-              </div>
-              <div class="flex gap-2">
-                <a href={`/admin/trips/${trip.id}`} class="btn ghost btn-sm">Edit</a>
-                <button
-                  type="button"
-                  class="btn btn-sm js-delete-trip"
-                  data-trip-id={trip.id}
-                  data-trip-title={trip.title}
-                  style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
-                >
-                  Delete
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  )}
 </AdminLayout>
 
 <script>
-  document.getElementById('toggle-planned')?.addEventListener('click', (e) => {
-    const btn = e.currentTarget as HTMLButtonElement;
-    const panel = document.getElementById('planned-trips');
-    const hidden = panel?.classList.toggle('hidden');
-    const count = panel?.querySelectorAll('[data-trip-row]').length ?? 0;
-    btn.textContent = hidden
-      ? `Show ${count} planned trip${count !== 1 ? 's' : ''}`
-      : `Hide planned trips`;
-  });
-
   document.querySelectorAll('button.js-delete-trip').forEach((btn) => {
     btn.addEventListener('click', async (event) => {
       const target = event.currentTarget as HTMLButtonElement;

@@ -54,6 +54,8 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
   const providerRef = useRef(null);
   const markersRef = useRef([]);
   const routeRef = useRef(null);
+  const initialViewportSkippedRef = useRef(false);
+  const fittedStopsKeyRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
   const [fallbackReason, setFallbackReason] = useState('');
   const state = useStore(urlState);
@@ -207,7 +209,7 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
     if (!map || !stops || stops.length === 0) return;
 
     if (provider === 'google') {
-      addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, routeRef);
+      addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, routeRef, fittedStopsKeyRef);
       return;
     }
 
@@ -235,29 +237,17 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
         const isActive = activeStopId && stop.id === activeStopId;
         const isCurrent = stop.is_current;
 
-        const el = document.createElement('div');
-        el.className = 'gp-marker';
-        el.style.cssText = `
-          width: ${isActive || isCurrent ? '18px' : '12px'};
-          height: ${isActive || isCurrent ? '18px' : '12px'};
-          border-radius: 50%;
-          background: ${isCurrent ? '#4a9f6e' : isActive ? '#e8893f' : '#6fa3c4'};
-          border: 2px solid ${isCurrent ? '#fff' : isActive ? '#fff' : 'rgba(255,255,255,.4)'};
-          cursor: pointer;
-          transition: all 0.2s;
-          box-shadow: 0 2px 8px rgba(0,0,0,.4);
-        `;
+        const el = createDotMarkerElement({ isActive, isCurrent });
 
         if (isCurrent) {
           const pulse = document.createElement('div');
           pulse.style.cssText = `
             position: absolute;
-            inset: -6px;
+            inset: -5px;
             border-radius: 50%;
             border: 2px solid #4a9f6e;
             animation: pulse-ring 2s ease-out infinite;
           `;
-          el.style.position = 'relative';
           el.appendChild(pulse);
         }
 
@@ -330,7 +320,7 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
       }
 
       if (hasValidCoords) {
-        map.fitBounds(bounds, { padding: 60, maxZoom: 12, duration: 500 });
+        map.fitBounds(bounds, { padding: 36, maxZoom: 12, duration: 500 });
       }
     };
 
@@ -367,6 +357,11 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
     const map = mapRef.current;
     const provider = providerRef.current;
     if (!map || !state.lat || !state.lon || !state.z) return;
+
+    if (!initialViewportSkippedRef.current) {
+      initialViewportSkippedRef.current = true;
+      return;
+    }
 
     const newLat = parseFloat(state.lat);
     const newLon = parseFloat(state.lon);
@@ -513,7 +508,7 @@ function FallbackRoute({ stopPoints, activeStopId, onStopClick }) {
   );
 }
 
-function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, routeRef) {
+function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, routeRef, fittedStopsKeyRef) {
   markersRef.current.forEach(removeGoogleMarker);
   markersRef.current = [];
   if (routeRef.current) {
@@ -535,18 +530,13 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
     bounds.extend(position);
     route.push(position);
 
-    const pin = new google.maps.marker.PinElement({
-      scale: isCurrent ? 1.25 : isActive ? 1.12 : 0.95,
-      background: isCurrent ? '#4a9f6e' : isActive ? '#e8893f' : '#6fa3c4',
-      borderColor: '#ffffff',
-      glyphColor: '#101419',
-    });
+    const markerElement = createDotMarkerElement({ isActive, isCurrent });
 
     const marker = new google.maps.marker.AdvancedMarkerElement({
       map,
       position,
       title: stop.title,
-      content: pin,
+      content: markerElement,
     });
 
     const infoWindow = new google.maps.InfoWindow({
@@ -577,12 +567,45 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
     });
   }
 
-  if (route.length === 1) {
+  const stopsKey = stops
+    .map((stop) => {
+      const coords = readStopCoords(stop);
+      return coords ? `${stop.id || stop.slug}:${coords.lat.toFixed(4)},${coords.lon.toFixed(4)}` : null;
+    })
+    .filter(Boolean)
+    .join('|');
+  const shouldFitRoute = fittedStopsKeyRef.current !== stopsKey;
+
+  if (route.length === 1 && shouldFitRoute) {
     map.setCenter(route[0]);
     map.setZoom(9);
-  } else if (route.length > 1) {
-    map.fitBounds(bounds, 60);
+    fittedStopsKeyRef.current = stopsKey;
+  } else if (route.length > 1 && shouldFitRoute) {
+    map.fitBounds(bounds, 36);
+    fittedStopsKeyRef.current = stopsKey;
   }
+}
+
+function createDotMarkerElement({ isActive, isCurrent }) {
+  const el = document.createElement('button');
+  const size = isCurrent ? 16 : isActive ? 14 : 10;
+  const color = isCurrent ? '#4a9f6e' : isActive ? '#e8893f' : '#1d7f9d';
+  el.type = 'button';
+  el.className = 'gp-dot-marker';
+  el.style.cssText = `
+    width: ${size}px;
+    height: ${size}px;
+    border-radius: 999px;
+    background: ${color};
+    border: 2px solid rgba(255,255,255,.9);
+    cursor: pointer;
+    padding: 0;
+    display: block;
+    position: relative;
+    transition: transform 0.16s ease, box-shadow 0.16s ease;
+    box-shadow: 0 0 0 2px rgba(10,13,17,.32), 0 2px 8px rgba(0,0,0,.35);
+  `;
+  return el;
 }
 
 function loadGoogleMaps(apiKey) {

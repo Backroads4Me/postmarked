@@ -168,13 +168,13 @@ async def seed():
             slug="michigan-ny-2026",
             title="Michigan, NY 2026",
             summary="A live summer route through the Great Lakes and upstate New York.",
-            status=TripStatus.ACTIVE,
+            status=TripStatus.PUBLISHED,
             start_delta=timedelta(days=-5),
         )
 
         # Make the demo data deterministic even after manual testing/imports.
         # Only one stop should be "current", and the active demo trip should
-        # have one active stop followed by future planned stops.
+        # have one current stop followed by future published stops.
         await session.execute(update(Stop).values(is_current=False))
         all_stops = (await session.execute(select(Stop))).scalars().all()
         trip_by_id = {
@@ -186,12 +186,8 @@ async def seed():
             trip = trip_by_id.get(stop.trip_id)
             if trip and stop.journey_id != trip.journey_id:
                 stop.journey_id = trip.journey_id
-            if stop.status == StopStatus.ACTIVE:
-                stop.status = (
-                    StopStatus.PLANNED
-                    if stop.start_date and stop.start_date > now
-                    else StopStatus.PUBLISHED
-                )
+            if stop.status in [StopStatus.ACTIVE, StopStatus.PLANNED]:
+                stop.status = StopStatus.PUBLISHED
 
         stops = [
             await get_or_create_stop(
@@ -228,7 +224,7 @@ async def seed():
                 start_date=datetime.now(timezone.utc) - timedelta(days=5),
                 end_date=datetime.now(timezone.utc) + timedelta(days=2),
                 nights=7,
-                status=StopStatus.ACTIVE,
+                status=StopStatus.PUBLISHED,
                 stop_type=StopType.CAMPGROUND,
                 visibility=Visibility.PUBLIC,
                 sort_order=1,
@@ -248,7 +244,7 @@ async def seed():
                 start_date=datetime.now(timezone.utc) + timedelta(days=3),
                 end_date=datetime.now(timezone.utc) + timedelta(days=7),
                 nights=4,
-                status=StopStatus.PLANNED,
+                status=StopStatus.PUBLISHED,
                 stop_type=StopType.CAMPGROUND,
                 visibility=Visibility.PUBLIC,
                 sort_order=2,

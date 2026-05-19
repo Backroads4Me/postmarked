@@ -26,6 +26,25 @@ const pageLabels = {
   trips: 'Trips',
   timeline: 'Timeline',
 };
+
+const buttonSections = new Set(['home.updates']);
+const sectionFields = {
+  'home.header': ['label', 'heading', 'body'],
+  'home.current': ['label'],
+  'home.next': ['label'],
+  'home.planned': ['label', 'heading', 'body'],
+  'home.updates': ['heading', 'body', 'cta_label', 'cta_href'],
+  'trips.header': ['label', 'heading', 'body'],
+  'timeline.header': ['label', 'heading', 'body'],
+};
+
+function sectionKey(section) {
+  return `${section.page_key}.${section.section_key}`;
+}
+
+function hasField(section, field) {
+  return sectionFields[sectionKey(section)]?.includes(field) ?? false;
+}
 ---
 
 <AdminLayout title="Site Text">
@@ -49,32 +68,48 @@ const pageLabels = {
           <span class="text-xs text-muted font-mono form-status" aria-live="polite"></span>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <label class="grid gap-2 text-sm font-bold">
-            Label
-            <input name="label" value={section.label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
-          </label>
-          <label class="grid gap-2 text-sm font-bold">
-            Heading
-            <input name="heading" value={section.heading || ''} required class="bg-surface-1 border border-line p-3 font-normal" />
-          </label>
-        </div>
+        {!hasField(section, 'label') && <input type="hidden" name="label" value={section.label || ''} />}
+        {!hasField(section, 'heading') && <input type="hidden" name="heading" value={section.heading || ''} />}
+        {!hasField(section, 'body') && <input type="hidden" name="body" value={section.body || ''} />}
+        {!hasField(section, 'cta_label') && <input type="hidden" name="cta_label" value={section.cta_label || ''} />}
+        {!hasField(section, 'cta_href') && <input type="hidden" name="cta_href" value={section.cta_href || ''} />}
 
-        <label class="grid gap-2 text-sm font-bold">
-          Body
-          <textarea name="body" rows="3" class="bg-surface-1 border border-line p-3 font-normal">{section.body || ''}</textarea>
-        </label>
+        {(hasField(section, 'label') || hasField(section, 'heading')) && (
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {hasField(section, 'label') && (
+              <label class="grid gap-2 text-sm font-bold">
+                Label
+                <input name="label" value={section.label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+              </label>
+            )}
+            {hasField(section, 'heading') && (
+              <label class="grid gap-2 text-sm font-bold">
+                Heading
+                <input name="heading" value={section.heading || ''} required class="bg-surface-1 border border-line p-3 font-normal" />
+              </label>
+            )}
+          </div>
+        )}
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {hasField(section, 'body') && (
           <label class="grid gap-2 text-sm font-bold">
-            Button Label
-            <input name="cta_label" value={section.cta_label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+            Body
+            <textarea name="body" rows="3" class="bg-surface-1 border border-line p-3 font-normal">{section.body || ''}</textarea>
           </label>
-          <label class="grid gap-2 text-sm font-bold">
-            Button Link
-            <input name="cta_href" value={section.cta_href || ''} class="bg-surface-1 border border-line p-3 font-normal" />
-          </label>
-        </div>
+        )}
+
+        {buttonSections.has(`${section.page_key}.${section.section_key}`) && (
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label class="grid gap-2 text-sm font-bold">
+              Button Label
+              <input name="cta_label" value={section.cta_label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+            </label>
+            <label class="grid gap-2 text-sm font-bold">
+              Button Link
+              <input name="cta_href" value={section.cta_href || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+            </label>
+          </div>
+        )}
 
         <div>
           <button type="submit" class="btn btn-sm">Save Text</button>

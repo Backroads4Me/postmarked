@@ -44,6 +44,8 @@ if ((lat === '' || lon === '') && stop.location) {
   const m = String(stop.location).match(/POINT\(([-\d.]+)\s+([-\d.]+)\)/);
   if (m) { lon = m[1]; lat = m[2]; }
 }
+
+const tripIsPrivate = trip.visibility === 'private';
 ---
 
 <AdminLayout title={`Edit Stop — ${stop.title}`}>
@@ -112,11 +114,23 @@ if ((lat === '' || lon === '') && stop.location) {
       <div class="flex flex-col gap-1">
         <label class="text-sm font-bold">Status</label>
         <select name="status" class="bg-surface-2 border border-line p-3">
-          {['draft','planned','active','archived'].map(s => (
+          {['draft','published','unpublished','archived'].map(s => (
             <option value={s} selected={stop.status === s}>{s}</option>
           ))}
         </select>
-        <span class="text-xs text-dim">Draft and archived stops stay admin-only. Other stops follow the trip visibility.</span>
+        <span class="text-xs text-dim">Only published stops appear outside admin pages. Visibility applies after publishing.</span>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-sm font-bold">Visibility</label>
+        <select name="visibility" class="bg-surface-2 border border-line p-3" disabled={tripIsPrivate}>
+          <option value="public" selected={stop.visibility === 'public' && !tripIsPrivate}>Public</option>
+          <option value="private" selected={stop.visibility === 'private' || tripIsPrivate}>Private</option>
+        </select>
+        {tripIsPrivate && <input type="hidden" name="visibility" value="private" />}
+        <span class="text-xs text-dim">
+          Private trips force private stops. Public trips can hide individual stops.
+        </span>
       </div>
 
       <div class="flex flex-col gap-1 md:col-span-2">

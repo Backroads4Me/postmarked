@@ -136,7 +136,7 @@ async def _apply_payload_to_stop(
     stop.end_date = _optional_date_to_datetime(payload.get("departure_date"))
     stop.nights = payload.get("nights")
     stop.sort_order = sequence
-    stop.status = StopStatus.PLANNED
+    stop.status = StopStatus.DRAFT
     stop.stop_type = StopType.CAMPGROUND
     stop.visibility = Visibility.PRIVATE
     stop.timezone_id = timezone_for_coords(lat, lon)

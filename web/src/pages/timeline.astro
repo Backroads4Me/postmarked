@@ -8,8 +8,11 @@ import { loadSiteText, sectionText } from '../lib/siteText.js';
 
 let timelineData = null;
 let error = null;
+const showUpcoming = Astro.url.searchParams.get('upcoming') === '1';
 try {
-  const res = await fetch(apiUrl('/api/timeline?limit=50'));
+  const params = new URLSearchParams({ limit: '50' });
+  if (showUpcoming) params.set('include_future_stops', 'true');
+  const res = await fetch(apiUrl(`/api/timeline?${params.toString()}`));
   if (res.ok) {
     timelineData = await res.json();
   } else {
@@ -19,7 +22,9 @@ try {
   error = e?.message || 'Failed to connect';
 }
 
-const updates = timelineData?.updates ?? [];
+const updates = (timelineData?.updates ?? []).toSorted((a, b) => {
+  return new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime();
+});
 
 function groupByMonth(items) {
   const groups = {};
@@ -32,10 +37,16 @@ function groupByMonth(items) {
     }
     groups[key].items.push(item);
   }
-  return Object.values(groups);
+  return Object.values(groups).toSorted((a, b) => {
+    const dateA = new Date(a.items[0]?.posted_at || 0).getTime();
+    const dateB = new Date(b.items[0]?.posted_at || 0).getTime();
+    return dateB - dateA;
+  });
 }
 
 const grouped = groupByMonth(updates);
+const tripTitles = Array.from(new Set(updates.map((item) => item.trip_title).filter(Boolean)));
+const tripContext = tripTitles.length === 1 ? tripTitles[0] : tripTitles.length > 1 ? 'Multiple trips' : null;
 const siteText = await loadSiteText();
 const headerText = sectionText(siteText, 'timeline.header', {
   label: null,
@@ -48,7 +59,24 @@ const headerText = sectionText(siteText, 'timeline.header', {
   <main class="frame py-8 md:py-12">
     <section class="mb-8">
       {headerText.label && <div class="label mb-2">{headerText.label}</div>}
-      <h1 class="display text-3xl md:text-4xl">{headerText.heading}</h1>
+      <div class="flex items-start justify-between gap-4">
+        <div class="flex items-baseline gap-3 min-w-0">
+          <h1 class="display text-3xl md:text-4xl">{headerText.heading}</h1>
+          {tripContext && (
+            <>
+              <span class="display text-3xl md:text-4xl text-muted" aria-hidden="true">—</span>
+              <span class="display text-3xl md:text-4xl text-muted truncate">{tripContext}</span>
+            </>
+          )}
+        </div>
+        <a
+          href={showUpcoming ? '/timeline' : '/timeline?upcoming=1'}
+          class={`btn btn-sm shrink-0 ${showUpcoming ? 'btn-primary' : 'btn-ghost'}`}
+          aria-pressed={showUpcoming ? 'true' : 'false'}
+        >
+          {showUpcoming ? 'Hide upcoming stops' : 'Show upcoming stops'}
+        </a>
+      </div>
       {headerText.body && (
         <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
           {headerText.body}

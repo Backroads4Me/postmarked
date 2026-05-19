@@ -1,5 +1,6 @@
 ---
 import '../styles/global.css';
+import ThemeToggle from '../components/ui/ThemeToggle.astro';
 
 interface Props {
   title?: string;
@@ -33,6 +34,17 @@ function isActive(href: string) {
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#0a0d11" />
   <meta name="robots" content="noindex, nofollow" />
+  <script is:inline>
+    (() => {
+      const root = document.documentElement;
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const storedTheme = localStorage.getItem('goodpath-theme');
+      const resolvedTheme = storedTheme || (media.matches ? 'dark' : 'light');
+
+      root.dataset.theme = resolvedTheme;
+      root.dataset.themePreference = storedTheme || 'system';
+    })();
+  </script>
 </head>
 <body style="padding-bottom: 0;">
   <nav class="admin-top-nav">
@@ -50,7 +62,8 @@ function isActive(href: string) {
         </a>
       ))}
     </div>
-    <a href="/" target="_blank" class="admin-link" style="margin-left: auto;">View Site ↗</a>
+    <ThemeToggle class="theme-toggle--admin" />
+    <a href="/" class="admin-link" style="margin-left: auto;" target="_blank" rel="noopener noreferrer">View Site</a>
   </nav>
   <main class="frame" style="padding-top: 40px; padding-bottom: 80px;">
     <slot />
@@ -68,7 +81,7 @@ function isActive(href: string) {
     gap: 8px;
     padding: 0 24px;
     height: 48px;
-    background: rgba(16,20,25,.95);
+    background: var(--nav-bg-strong);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
     overflow-x: auto;

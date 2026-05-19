@@ -22,7 +22,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset, Post, Stop, Trip
-from app.models.enums import MediaKind
+from app.models.enums import MediaKind, PostStatus, StopStatus, TripStatus
 from app.services.visibility import effective_visibility, is_visible_to_user
 
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
@@ -56,25 +56,40 @@ def _resolve_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
 
 
 async def _parent_visibility(session: AsyncSession, asset: MediaAsset):
-    """Return the visibility of the strongest parent (post > stop > trip), or None."""
+    """Return the strongest parent visibility and whether the parent chain is published."""
     if asset.post_id:
-        post = await session.get(Post, asset.post_id)
-        if post:
-            return post.visibility
+        result = await session.execute(
+            select(Post, Stop.visibility, Stop.status, Trip.visibility, Trip.status)
+            .outerjoin(Stop, Post.stop_id == Stop.id)
+            .outerjoin(Trip, (Post.trip_id == Trip.id) | (Stop.trip_id == Trip.id))
+            .where(Post.id == asset.post_id)
+        )
+        row = result.first()
+        if row:
+            post, stop_vis, stop_status, trip_vis, trip_status = row
+            published = post.status == PostStatus.PUBLISHED
+            if stop_status is not None:
+                published = published and stop_status == StopStatus.PUBLISHED
+            if trip_status is not None:
+                published = published and trip_status == TripStatus.PUBLISHED
+            parent_vis = effective_visibility(stop_vis, trip_vis) if stop_vis is not None else trip_vis
+            return effective_visibility(post.visibility, parent_vis), published
     if asset.stop_id:
         result = await session.execute(
-            select(Trip.visibility)
-            .join(Stop, Stop.trip_id == Trip.id)
+            select(Stop.visibility, Stop.status, Trip.visibility, Trip.status)
+            .select_from(Stop)
+            .outerjoin(Trip, Stop.trip_id == Trip.id)
             .where(Stop.id == asset.stop_id)
         )
-        trip_visibility = result.scalar_one_or_none()
-        if trip_visibility:
-            return trip_visibility
+        row = result.first()
+        if row:
+            stop_vis, stop_status, trip_vis, trip_status = row
+            return effective_visibility(stop_vis, trip_vis), stop_status == StopStatus.PUBLISHED and trip_status == TripStatus.PUBLISHED
     if asset.trip_id:
         trip = await session.get(Trip, asset.trip_id)
         if trip:
-            return trip.visibility
-    return None
+            return trip.visibility, trip.status == TripStatus.PUBLISHED
+    return None, True
 
 
 def _range_response(path: str, mime_type: str, range_header: str, etag: str) -> Response:
@@ -137,7 +152,9 @@ async def get_media(
     if variant not in allowed:
         raise HTTPException(status_code=404, detail="Not found")
 
-    parent_vis = await _parent_visibility(session, asset)
+    parent_vis, parent_published = await _parent_visibility(session, asset)
+    if not parent_published:
+        raise HTTPException(status_code=404, detail="Not found")
     eff_vis = effective_visibility(asset.visibility, parent_vis)
     if not is_visible_to_user(eff_vis, None, user):
         # Deny == 404, not 403, per spec.

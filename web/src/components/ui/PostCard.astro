@@ -26,7 +26,7 @@ interface Props {
   media?: MediaSummary[];
 }
 
-const { title, body, date, tripTitle, placeName, media = [] } = Astro.props;
+const { title, body, date, placeName, media = [] } = Astro.props;
 const photos = (media || []).slice(0, 3);
 
 function formatDate(dateStr?: string) {
@@ -88,6 +88,5 @@ function timeAgo(dateStr?: string) {
 
   <div class="flex items-center gap-3 mt-3 text-xs">
     {placeName && <span class="coord">{placeName}</span>}
-    {tripTitle && <span class="text-dim">{tripTitle}</span>}
   </div>
 </div>

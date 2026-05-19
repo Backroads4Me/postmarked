@@ -9,7 +9,7 @@ from sqlalchemy.orm import selectinload
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset, PointOfInterest, Post, Stop, Trip
-from app.models.enums import PostType, StopStatus, TripStatus, Visibility
+from app.models.enums import PostStatus, PostType, StopStatus, TripStatus, Visibility
 from app.schemas.journey import (
     MediaGPSPoint,
     PublicPOISummary,
@@ -38,10 +38,10 @@ def _is_admin(user) -> bool:
     return bool(user and getattr(getattr(user, "role", None), "value", None) == "admin")
 
 
-def _public_or_admin(query, model, user):
-    if _is_admin(user):
-        return query
-    return query.where(model.visibility == Visibility.PUBLIC)
+def _reader_visible(query, model, user):
+    if not user:
+        return query.where(model.visibility == Visibility.PUBLIC)
+    return query
 
 
 @router.get("/{trip_slug}/stops/{stop_slug}", response_model=PublicStopDetail)
@@ -68,12 +68,12 @@ async def get_stop(
         )
     )
 
-    if not _is_admin(user):
-        query = query.where(
-            Trip.visibility == Visibility.PUBLIC,
-            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
-            Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]),
-        )
+    query = query.where(
+        Trip.status == TripStatus.PUBLISHED,
+        Stop.status == StopStatus.PUBLISHED,
+    )
+    if not user:
+        query = query.where(Trip.visibility == Visibility.PUBLIC, Stop.visibility == Visibility.PUBLIC)
 
     stop = (await session.execute(query)).scalars().first()
     if not stop:
@@ -128,7 +128,7 @@ async def get_stop(
         .options(selectinload(Post.media), selectinload(Post.stop), selectinload(Post.poi))
         .order_by(Post.posted_at.desc())
     )
-    posts_query = _public_or_admin(posts_query, Post, user)
+    posts_query = _reader_visible(posts_query, Post, user).where(Post.status == PostStatus.PUBLISHED)
     posts_rows = (await session.execute(posts_query)).scalars().all()
     posts_out: list[PublicPostSummary] = []
     for p in posts_rows:
@@ -169,8 +169,9 @@ async def get_stop(
         .where(Stop.trip_id == stop.trip_id)
         .order_by(Stop.sort_order.asc())
     )
-    if not _is_admin(user):
-        siblings_query = siblings_query.where(Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]))
+    siblings_query = siblings_query.where(Stop.status == StopStatus.PUBLISHED)
+    if not user:
+        siblings_query = siblings_query.where(Stop.visibility == Visibility.PUBLIC)
     sibling_rows = (await session.execute(siblings_query)).all()
     prev_sib = None
     next_sib = None
@@ -235,11 +236,15 @@ async def get_post(
             selectinload(Post.stop).selectinload(Stop.trip),
         )
     )
-    if not _is_admin(user):
+    query = query.where(
+        Trip.status == TripStatus.PUBLISHED,
+        Stop.status == StopStatus.PUBLISHED,
+        Post.status == PostStatus.PUBLISHED,
+    )
+    if not user:
         query = query.where(
             Trip.visibility == Visibility.PUBLIC,
-            Trip.status.notin_([TripStatus.DRAFT, TripStatus.ARCHIVED]),
-            Stop.status.notin_([StopStatus.DRAFT, StopStatus.ARCHIVED]),
+            Stop.visibility == Visibility.PUBLIC,
             Post.visibility == Visibility.PUBLIC,
         )
     post = (await session.execute(query)).scalars().first()
@@ -272,7 +277,8 @@ async def get_post(
             .where(Post.stop_id == stop.id, Post.post_type == PostType.ACTIVITY)
             .order_by(func.coalesce(Post.activity_started_at, Post.posted_at).asc())
         )
-        if not _is_admin(user):
+        sib_q = sib_q.where(Post.status == PostStatus.PUBLISHED)
+        if not user:
             sib_q = sib_q.where(Post.visibility == Visibility.PUBLIC)
         sib_rows = (await session.execute(sib_q)).all()
         for i, row in enumerate(sib_rows):

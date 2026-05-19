@@ -86,6 +86,10 @@
   --bg:        var(--ink-0);
   --surface:   var(--ink-1);
   --surface-2: var(--ink-2);
+  --nav-bg: rgba(10,13,17,.85);
+  --nav-bg-strong: rgba(16,20,25,.95);
+  --hero-wash: linear-gradient(90deg, rgba(10,13,17,.4), rgba(10,13,17,.08));
+  --hover-soft: rgba(255,255,255,.06);
 
   --display: var(--font-display);
   --sans:    var(--font-sans);
@@ -105,6 +109,49 @@
   /* Bottom nav safe area */
   --nav-height: 64px;
   --nav-height-safe: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+
+  --ink-0: #f8f2e8;
+  --ink-1: #fffaf2;
+  --ink-2: #f1e7d8;
+  --ink-3: #e7dccb;
+  --ink-4: #d7c7b3;
+  --line: #cdbda8;
+  --line-soft: #e2d6c6;
+
+  --paper: #231f1a;
+  --paper-2: #40382f;
+  --muted: #6f665e;
+  --dim: #8a7e72;
+  --faint: #b9aa99;
+
+  --ember: #b85f1f;
+  --ember-2: #d67931;
+  --ember-glow: rgba(184,95,31,.16);
+  --sky: #3f789c;
+  --forest: #327a52;
+  --sunset: #b14f43;
+  --sage: #647f4f;
+
+  --bg: var(--ink-0);
+  --surface: var(--ink-1);
+  --surface-2: var(--ink-2);
+  --nav-bg: rgba(255,250,242,.88);
+  --nav-bg-strong: rgba(255,250,242,.96);
+  --hero-wash: linear-gradient(90deg, rgba(255,250,242,.26), rgba(255,250,242,.72));
+  --hover-soft: rgba(35,31,26,.07);
+
+  --shadow-1: 0 1px 0 rgba(255,255,255,.72) inset, 0 24px 60px -34px rgba(64,45,25,.28);
+  --shadow-glow: 0 0 0 1px var(--ember-glow), 0 18px 60px -28px rgba(184,95,31,.28);
+  --shadow-card: 0 8px 28px -18px rgba(64,45,25,.32), 0 1px 0 rgba(255,255,255,.75) inset;
+  --shadow-float: 0 14px 38px -22px rgba(64,45,25,.36), 0 1px 0 rgba(255,255,255,.8) inset;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* ---------- Base layer ---------- */
@@ -181,6 +228,20 @@
     color: var(--dim);
   }
 
+  .current-meta-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--paper);
+  }
+
+  .current-meta-value {
+    color: var(--paper-2);
+    font-weight: 600;
+  }
+
   .text-gradient {
     background: linear-gradient(135deg, var(--ember) 0%, var(--ember-2) 100%);
     -webkit-background-clip: text;
@@ -225,7 +286,7 @@
 
   .card-hero {
     background:
-      linear-gradient(90deg, rgba(10,13,17,.4), rgba(10,13,17,.08)),
+      var(--hero-wash),
       linear-gradient(135deg, var(--ink-2) 0%, var(--ink-1) 100%);
     border: 1px solid var(--line);
     border-radius: 8px;
@@ -285,7 +346,7 @@
   }
   .btn-ghost:hover {
     color: var(--paper);
-    background: rgba(255,255,255,.06);
+    background: var(--hover-soft);
   }
 
   /* ── Badges / Chips ─────────────────────────────────────────── */
@@ -321,6 +382,11 @@
     background: rgba(138,171,126,.15);
     color: var(--sage);
     border-color: rgba(138,171,126,.3);
+  }
+  .badge-unpublished {
+    background: rgba(111,163,196,.15);
+    color: var(--sky);
+    border-color: rgba(111,163,196,.3);
   }
   .badge-private {
     background: rgba(212,107,92,.15);
@@ -372,7 +438,7 @@
     top: 0; left: 0; right: 0;
     z-index: 50;
     height: 56px;
-    background: rgba(10,13,17,.85);
+    background: var(--nav-bg);
     backdrop-filter: blur(16px) saturate(180%);
     border-bottom: 1px solid var(--line-soft);
     padding: 0 24px;
@@ -390,7 +456,7 @@
     bottom: 0; left: 0; right: 0;
     z-index: 50;
     height: var(--nav-height-safe);
-    background: rgba(10,13,17,.92);
+    background: var(--nav-bg-strong);
     backdrop-filter: blur(16px) saturate(180%);
     border-top: 1px solid var(--line-soft);
     align-items: flex-start;
@@ -475,6 +541,71 @@
     stroke-linejoin: round;
   }
 
+  .theme-toggle {
+    border: 1px solid var(--line-soft);
+    background: var(--surface-2);
+    color: var(--muted);
+    cursor: pointer;
+    transition: color 0.2s, border-color 0.2s, background 0.2s;
+  }
+  .theme-toggle:hover {
+    color: var(--ember);
+    border-color: var(--line);
+    background: var(--hover-soft);
+  }
+  .theme-toggle__icon {
+    display: none;
+    align-items: center;
+    justify-content: center;
+  }
+  .theme-toggle__icon svg {
+    width: 18px;
+    height: 18px;
+    stroke: currentColor;
+    stroke-width: 1.9;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  :root[data-theme="dark"] .theme-toggle__icon--moon,
+  :root[data-theme="light"] .theme-toggle__icon--sun {
+    display: inline-flex;
+  }
+  .theme-toggle--desktop,
+  .theme-toggle--admin {
+    min-width: 86px;
+    height: 36px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 12px;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .theme-toggle--mobile {
+    min-width: 56px;
+    min-height: 48px;
+    border: 0;
+    background: transparent;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 2px;
+    padding: 4px 10px;
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+  .theme-toggle--mobile:hover {
+    background: transparent;
+  }
+
   .section-band {
     border-top: 1px solid var(--line-soft);
     padding-top: 24px;
@@ -530,7 +661,7 @@
   .map-overlay {
     position: absolute;
     z-index: 10;
-    background: rgba(16,20,25,.85);
+    background: var(--nav-bg);
     backdrop-filter: blur(8px);
     border: 1px solid var(--line);
     border-radius: 6px;
@@ -617,4 +748,11 @@
     border-radius: 3px;
   }
   ::-webkit-scrollbar-thumb:hover { background: var(--dim); }
+}
+
+/* Make Google Maps InfoWindow title readable. Google injects this DOM outside Astro component scopes. */
+.gm-style-iw-ch {
+  color: #202124 !important;
+  font-weight: 500 !important;
+  opacity: 1 !important;
 }

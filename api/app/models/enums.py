@@ -10,6 +10,7 @@ class TripStatus(str, enum.Enum):
     ACTIVE = "active"
     COMPLETED = "completed"
     PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
     ARCHIVED = "archived"
 
 class StopStatus(str, enum.Enum):
@@ -17,6 +18,13 @@ class StopStatus(str, enum.Enum):
     PLANNED = "planned"
     ACTIVE = "active"
     PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
+    ARCHIVED = "archived"
+
+class PostStatus(str, enum.Enum):
+    DRAFT = "draft"
+    PUBLISHED = "published"
+    UNPUBLISHED = "unpublished"
     ARCHIVED = "archived"
 
 class PlannedStopImportState(str, enum.Enum):

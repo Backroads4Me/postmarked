@@ -4,6 +4,8 @@
  */
 interface Props {
   title: string;
+  displayTitle?: string;
+  detailTitle?: string;
   slug?: string;
   tripSlug?: string;
   summary?: string;
@@ -13,8 +15,10 @@ interface Props {
   stopType?: string;
 }
 
-const { title, slug, tripSlug, summary, date, tripTitle, placeName, stopType } = Astro.props;
+const { title, displayTitle, detailTitle, slug, tripSlug, summary, date, placeName } = Astro.props;
 const href = slug && tripSlug ? `/trips/${tripSlug}/stops/${slug}` : undefined;
+const primaryTitle = displayTitle || title;
+const secondaryTitle = detailTitle && detailTitle !== primaryTitle ? detailTitle : '';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -32,27 +36,23 @@ function formatDate(dateStr?: string) {
 >
   <div class="flex items-start justify-between gap-4">
     <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-2 mb-2">
-        <span class="inline-symbol" aria-hidden="true">
-          <svg viewBox="0 0 24 24"><path d="M12 21s6-5.2 6-11a6 6 0 0 0-12 0c0 5.8 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></svg>
-        </span>
-        {stopType && <span class="badge text-[10px] py-0.5">{stopType}</span>}
-        {date && <span class="label">{formatDate(date)}</span>}
+      <div class="flex items-baseline gap-2 mb-2">
+        {date && (
+          <>
+            <span class="display text-xl text-muted group-hover:text-ember-2 transition-colors">
+              {formatDate(date)}
+            </span>
+            <span class="display text-xl text-muted" aria-hidden="true">—</span>
+          </>
+        )}
+        <h3 class="display text-xl group-hover:text-ember-2 transition-colors truncate">
+          {primaryTitle}
+        </h3>
       </div>
 
-      <h3 class="display text-xl group-hover:text-ember-2 transition-colors truncate">
-        {title}
-      </h3>
-
-      {placeName && <p class="coord mt-1">{placeName}</p>}
+      {secondaryTitle && <p class="coord mt-1">{secondaryTitle}</p>}
       {summary && <p class="text-muted text-sm mt-2 line-clamp-2">{summary}</p>}
 
-      {tripTitle && (
-        <div class="flex items-center gap-2 mt-3">
-          <span class="label">Trip</span>
-          <span class="text-xs text-dim">{tripTitle}</span>
-        </div>
-      )}
     </div>
   </div>
 </a>

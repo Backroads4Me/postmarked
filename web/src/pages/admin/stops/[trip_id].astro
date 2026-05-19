@@ -39,6 +39,8 @@ function formatDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
+
+const tripIsPrivate = trip.visibility === 'private';
 ---
 
 <AdminLayout title={`Stops — ${trip.title}`}>
@@ -48,7 +50,10 @@ function formatDate(d) {
       <div class="label mb-1">Stops</div>
       <h1 class="display text-3xl">{trip.title}</h1>
     </div>
-    <button type="button" id="show-add-form" class="btn btn-sm">+ Add Stop</button>
+    <div class="flex flex-wrap gap-2">
+      <button type="button" id="show-bulk-controls" class="btn btn-sm btn-ghost">Select Stops</button>
+      <button type="button" id="show-add-form" class="btn btn-sm">+ Add Stop</button>
+    </div>
   </div>
 
   {/* Add stop form (hidden by default) */}
@@ -115,12 +120,24 @@ function formatDate(d) {
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Status</label>
         <select name="status" class="bg-surface-2 border border-line p-2 text-sm">
-          <option value="draft">Draft</option>
-          <option value="active">Active</option>
-          <option value="planned">Planned</option>
+          <option value="draft" selected>Draft</option>
+          <option value="published">Published</option>
+          <option value="unpublished">Unpublished</option>
           <option value="archived">Archived</option>
         </select>
-        <span class="text-xs text-dim">Draft and archived stops stay admin-only. Other stops follow the trip visibility.</span>
+        <span class="text-xs text-dim">Only published stops appear outside admin pages. Visibility applies after publishing.</span>
+      </div>
+
+      <div class="flex flex-col gap-1">
+        <label class="text-xs font-bold">Visibility</label>
+        <select name="visibility" class="bg-surface-2 border border-line p-2 text-sm" disabled={tripIsPrivate}>
+          <option value="public" selected={!tripIsPrivate}>Public</option>
+          <option value="private" selected={tripIsPrivate}>Private</option>
+        </select>
+        {tripIsPrivate && <input type="hidden" name="visibility" value="private" />}
+        <span class="text-xs text-dim">
+          Private trips can only have private stops. Public trips can still hide individual stops.
+        </span>
       </div>
 
       <div class="md:col-span-2">
@@ -134,12 +151,74 @@ function formatDate(d) {
   </div>
 
   {stops.length > 0 ? (
-    <div class="card-flat overflow-x-auto" style="padding: 0;">
-      <table style="width: 100%; min-width: 680px; border-collapse: collapse; font-size: 13px;">
+    <div>
+      <div id="bulk-controls" class="hidden card-flat mb-4">
+        <div class="flex flex-col lg:flex-row gap-3 lg:items-end lg:justify-between">
+          <div>
+            <div class="label mb-1">Bulk edit</div>
+            <p class="text-xs text-muted">
+              <span id="bulk-selected-count">0</span> selected. Change status, type, or delete selected stops.
+            </p>
+          </div>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <label class="flex flex-col gap-1">
+              <span class="label">Status</span>
+              <select id="bulk-status" class="bg-surface-2 border border-line p-2 text-sm min-w-36">
+                <option value="">No change</option>
+                <option value="draft">Draft</option>
+                <option value="published">Published</option>
+                <option value="unpublished">Unpublished</option>
+                <option value="archived">Archived</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="label">Type</span>
+              <select id="bulk-type" class="bg-surface-2 border border-line p-2 text-sm min-w-36">
+                <option value="">No change</option>
+                <option value="campground">Campground</option>
+                <option value="boondocking">Boondocking</option>
+                <option value="overnight">Overnight</option>
+                <option value="attraction">Attraction</option>
+                <option value="restaurant">Restaurant</option>
+                <option value="service">Service</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="label">Visibility</span>
+              <select id="bulk-visibility" class="bg-surface-2 border border-line p-2 text-sm min-w-36" disabled={tripIsPrivate}>
+                <option value="">No change</option>
+                <option value="public">Public</option>
+                <option value="private">Private</option>
+              </select>
+            </label>
+            <div class="flex items-end gap-2">
+              <button type="button" id="bulk-apply" class="btn btn-sm">Apply</button>
+              <button
+                type="button"
+                id="bulk-delete"
+                class="btn btn-sm"
+                style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+              >
+                Delete
+              </button>
+              <button type="button" id="bulk-cancel" class="btn btn-sm btn-ghost">Cancel</button>
+            </div>
+          </div>
+        </div>
+        <div id="bulk-error" class="hidden text-ember text-sm mt-3"></div>
+      </div>
+
+      <div class="card-flat overflow-x-auto" style="padding: 0;">
+      <table style="width: 100%; min-width: 760px; border-collapse: collapse; font-size: 13px;">
         <thead>
           <tr style="border-bottom: 1px solid var(--line);">
+            <th class="label js-bulk-cell hidden" style="padding: 10px 12px; text-align: center; width: 44px;">
+              <input type="checkbox" id="bulk-select-all" aria-label="Select all stops" />
+            </th>
             <th class="label" style="padding: 10px 16px; text-align: left;">Title</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Type</th>
+            <th class="label" style="padding: 10px 12px; text-align: center;">Visibility</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Status</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Date</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Actions</th>
@@ -148,6 +227,14 @@ function formatDate(d) {
         <tbody id="stops-tbody">
           {stops.map(stop => (
             <tr style="border-bottom: 1px solid var(--line-soft);" data-stop-row={stop.id}>
+              <td class="js-bulk-cell hidden" style="padding: 10px 12px; text-align: center;">
+                <input
+                  type="checkbox"
+                  class="js-stop-select"
+                  value={stop.id}
+                  aria-label={`Select ${stop.title}`}
+                />
+              </td>
               <td style="padding: 10px 16px;">
                 <div class="flex items-center gap-2">
                   {stop.is_current && <span class="pulse-dot" style="width: 8px; height: 8px;"></span>}
@@ -159,7 +246,12 @@ function formatDate(d) {
                 <span class="text-xs text-muted">{stop.stop_type || '—'}</span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'active' ? 'badge-active' : stop.status === 'published' ? 'badge-published' : 'badge-planned'}`}>
+                <span class={`badge text-[9px] ${stop.visibility === 'public' ? 'badge-public' : 'badge-draft'}`}>
+                  {stop.visibility}
+                </span>
+              </td>
+              <td style="padding: 10px 12px; text-align: center;">
+                <span class={`badge text-[9px] ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'published' ? 'badge-published' : stop.status === 'unpublished' ? 'badge-unpublished' : stop.status === 'archived' ? 'badge-private' : 'badge-planned'}`}>
                   {stop.status}
                 </span>
               </td>
@@ -184,6 +276,7 @@ function formatDate(d) {
           ))}
         </tbody>
       </table>
+      </div>
     </div>
   ) : plannedStops.length > 0 ? (
     <div class="card-flat overflow-x-auto" style="padding: 0;">
@@ -315,5 +408,135 @@ function formatDate(d) {
         alert(`Could not delete stop: ${err instanceof Error ? err.message : String(err)}`);
       }
     });
+  });
+
+  const bulkControls = document.getElementById('bulk-controls');
+  const bulkCells = Array.from(document.querySelectorAll<HTMLElement>('.js-bulk-cell'));
+  const bulkShowButton = document.getElementById('show-bulk-controls');
+  const bulkCancelButton = document.getElementById('bulk-cancel');
+  const bulkApplyButton = document.getElementById('bulk-apply') as HTMLButtonElement | null;
+  const bulkDeleteButton = document.getElementById('bulk-delete') as HTMLButtonElement | null;
+  const bulkSelectAll = document.getElementById('bulk-select-all') as HTMLInputElement | null;
+  const bulkStatus = document.getElementById('bulk-status') as HTMLSelectElement | null;
+  const bulkType = document.getElementById('bulk-type') as HTMLSelectElement | null;
+  const bulkVisibility = document.getElementById('bulk-visibility') as HTMLSelectElement | null;
+  const bulkCount = document.getElementById('bulk-selected-count');
+  const bulkError = document.getElementById('bulk-error');
+
+  function selectedStopIds() {
+    return Array.from(document.querySelectorAll<HTMLInputElement>('.js-stop-select:checked'))
+      .map(input => input.value);
+  }
+
+  function setBulkError(message: string | null) {
+    if (!bulkError) return;
+    if (message) {
+      bulkError.textContent = message;
+      bulkError.classList.remove('hidden');
+    } else {
+      bulkError.textContent = '';
+      bulkError.classList.add('hidden');
+    }
+  }
+
+  function updateBulkCount() {
+    const selected = selectedStopIds();
+    if (bulkCount) bulkCount.textContent = String(selected.length);
+    if (bulkSelectAll) {
+      const total = document.querySelectorAll<HTMLInputElement>('.js-stop-select').length;
+      bulkSelectAll.checked = total > 0 && selected.length === total;
+      bulkSelectAll.indeterminate = selected.length > 0 && selected.length < total;
+    }
+  }
+
+  function setBulkMode(enabled: boolean) {
+    bulkControls?.classList.toggle('hidden', !enabled);
+    bulkCells.forEach(cell => cell.classList.toggle('hidden', !enabled));
+    bulkShowButton?.classList.toggle('hidden', enabled);
+    if (!enabled) {
+      document.querySelectorAll<HTMLInputElement>('.js-stop-select').forEach(input => {
+        input.checked = false;
+      });
+      if (bulkSelectAll) {
+        bulkSelectAll.checked = false;
+        bulkSelectAll.indeterminate = false;
+      }
+      if (bulkStatus) bulkStatus.value = '';
+      if (bulkType) bulkType.value = '';
+      if (bulkVisibility) bulkVisibility.value = '';
+      setBulkError(null);
+      updateBulkCount();
+    }
+  }
+
+  async function runBulkAction(payload: Record<string, unknown>) {
+    const stopIds = selectedStopIds();
+    if (stopIds.length === 0) {
+      setBulkError('Select at least one stop.');
+      return false;
+    }
+
+    setBulkError(null);
+    if (bulkApplyButton) bulkApplyButton.disabled = true;
+    if (bulkDeleteButton) bulkDeleteButton.disabled = true;
+
+    try {
+      const res = await fetch('/api/admin/stops/bulk', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stop_ids: stopIds, ...payload }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      return true;
+    } catch (err) {
+      setBulkError(err instanceof Error ? err.message : String(err));
+      return false;
+    } finally {
+      if (bulkApplyButton) bulkApplyButton.disabled = false;
+      if (bulkDeleteButton) bulkDeleteButton.disabled = false;
+    }
+  }
+
+  bulkShowButton?.addEventListener('click', () => setBulkMode(true));
+  bulkCancelButton?.addEventListener('click', () => setBulkMode(false));
+
+  bulkSelectAll?.addEventListener('change', () => {
+    document.querySelectorAll<HTMLInputElement>('.js-stop-select').forEach(input => {
+      input.checked = Boolean(bulkSelectAll.checked);
+    });
+    updateBulkCount();
+  });
+
+  document.querySelectorAll<HTMLInputElement>('.js-stop-select').forEach(input => {
+    input.addEventListener('change', updateBulkCount);
+  });
+
+  bulkApplyButton?.addEventListener('click', async () => {
+    const payload: Record<string, unknown> = {};
+    if (bulkStatus?.value) payload.status = bulkStatus.value;
+    if (bulkType?.value) payload.stop_type = bulkType.value;
+    if (bulkVisibility?.value) payload.visibility = bulkVisibility.value;
+    if (!payload.status && !payload.stop_type && !payload.visibility) {
+      setBulkError('Choose a status, type, or visibility to update.');
+      return;
+    }
+    if (await runBulkAction(payload)) location.reload();
+  });
+
+  bulkDeleteButton?.addEventListener('click', async () => {
+    const stopIds = selectedStopIds();
+    if (stopIds.length === 0) {
+      setBulkError('Select at least one stop.');
+      return;
+    }
+    if (!confirm(`Delete ${stopIds.length} selected stop${stopIds.length === 1 ? '' : 's'}? This cannot be undone.`)) return;
+    if (await runBulkAction({ delete: true })) {
+      stopIds.forEach(id => document.querySelector(`[data-stop-row="${id}"]`)?.remove());
+      setBulkMode(false);
+    }
   });
 </script>

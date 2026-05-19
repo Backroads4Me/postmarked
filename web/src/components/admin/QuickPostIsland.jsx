@@ -35,7 +35,8 @@ export default function QuickPostIsland() {
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [summary, setSummary] = useState("");
-  const [visibility, setVisibility] = useState("public");
+  const [status, setStatus] = useState("draft");
+  const [visibility, setVisibility] = useState("private");
   const [activityType, setActivityType] = useState("other");
   const [activityStartedAt, setActivityStartedAt] = useState("");
   const [activityEndedAt, setActivityEndedAt] = useState("");
@@ -174,6 +175,7 @@ export default function QuickPostIsland() {
         title: title.trim(),
         body: body.trim() || null,
         stop_id: stopId || null,
+        status,
         visibility,
         media_ids: mediaIds,
         post_type: postType,
@@ -340,10 +342,22 @@ export default function QuickPostIsland() {
           </select>
         </div>
         <div>
+          <label className="label" htmlFor="qp-status">Status</label>
+          <select id="qp-status" value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+            <option value="draft">Draft</option>
+            <option value="published">Published</option>
+            <option value="unpublished">Unpublished</option>
+            <option value="archived">Archived</option>
+          </select>
+        </div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div>
           <label className="label" htmlFor="qp-vis">Visibility</label>
           <select id="qp-vis" value={visibility} onChange={(e) => setVisibility(e.target.value)} style={inputStyle}>
-            <option value="public">Public — family can see</option>
-            <option value="private">Private — only admin</option>
+            <option value="private">Private — logged-in users</option>
+            <option value="public">Public — anyone</option>
           </select>
         </div>
       </div>
@@ -420,7 +434,7 @@ export default function QuickPostIsland() {
           disabled={publishing || hasPendingUploads || !title.trim()}
           style={{ minHeight: 44, paddingInline: 24 }}
         >
-          {publishing ? "Publishing…" : "Publish"}
+          {publishing ? "Saving…" : status === "published" ? "Publish Post" : "Save Post"}
         </button>
         <button
           type="button"
@@ -428,7 +442,7 @@ export default function QuickPostIsland() {
           onClick={() => {
             if (confirm("Discard this draft?")) {
               clearDraft();
-              setTitle(""); setBody(""); setSummary(""); setPhotos([]);
+              setTitle(""); setBody(""); setSummary(""); setStatus("draft"); setVisibility("private"); setPhotos([]);
             }
           }}
           disabled={publishing}

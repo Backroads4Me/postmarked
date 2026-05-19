@@ -70,9 +70,6 @@ export default function TripProgressIsland({ trip }) {
                   Now
                 </span>
               )}
-              {activeStop.status === 'planned' && (
-                <span className="badge badge-planned text-[9px] py-0.5">Planned</span>
-              )}
               <button
                 onClick={() => setActiveStopId(null)}
                 className="ml-auto text-dim hover:text-paper transition-colors"

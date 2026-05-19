@@ -27,6 +27,17 @@ const {
     <meta name="theme-color" content="#0a0d11" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <script is:inline>
+      (() => {
+        const root = document.documentElement;
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        const storedTheme = localStorage.getItem('goodpath-theme');
+        const resolvedTheme = storedTheme || (media.matches ? 'dark' : 'light');
+
+        root.dataset.theme = resolvedTheme;
+        root.dataset.themePreference = storedTheme || 'system';
+      })();
+    </script>
     <title>{title}</title>
   </head>
   <body>

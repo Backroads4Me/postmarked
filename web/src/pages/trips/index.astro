@@ -17,17 +17,6 @@ function formatDate(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
 }
 
-function getStatusBadge(status) {
-  const map = {
-    draft: 'badge-draft',
-    active: 'badge-active',
-    published: 'badge-published',
-    planned: 'badge-planned',
-    archived: '',
-  };
-  return map[status] || '';
-}
-
 function coverSrc(trip) {
   const cover = trip.cover_media;
   if (cover?.processing_state !== 'ready' || !cover?.derivative_paths?.webp) return null;
@@ -79,7 +68,6 @@ const headerText = sectionText(siteText, 'trips.header', {
             </div>
             <div>
               <div class="flex items-center gap-2 mb-2">
-                <span class={`badge text-[10px] ${getStatusBadge(trip.status)}`}>{trip.status}</span>
                 <span class="label">{formatDate(trip.start_date)}</span>
               </div>
               <h2 class="display text-2xl group-hover:text-ember-2 transition-colors">{trip.title}</h2>

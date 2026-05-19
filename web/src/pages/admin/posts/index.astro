@@ -21,6 +21,14 @@ function timeAgo(dateStr) {
   if (diff < 7) return `${diff} days ago`;
   return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
+
+function statusBadge(status) {
+  if (status === 'draft') return 'badge-draft';
+  if (status === 'published') return 'badge-published';
+  if (status === 'unpublished') return 'badge-unpublished';
+  if (status === 'archived') return 'badge-private';
+  return 'badge-planned';
+}
 ---
 
 <AdminLayout title="Posts">
@@ -39,7 +47,10 @@ function timeAgo(dateStr) {
         <div class="card-flat">
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
-              <span class="text-lg">✏️</span>
+              <span class="text-lg" aria-hidden="true">✏️</span>
+              <span class={`badge text-[9px] ${statusBadge(post.status)}`}>
+                {post.status}
+              </span>
               <span class={`badge text-[9px] ${post.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
                 {post.visibility}
               </span>
