@@ -3,6 +3,7 @@ import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
 import StopMapIsland from '../../../../components/StopMapIsland.jsx';
+import MediaGallery from '../../../../components/ui/MediaGallery.astro';
 
 const { slug, stop } = Astro.params;
 
@@ -36,7 +37,6 @@ const gallery = allMedia.filter(m => {
   seen.add(m.id);
   return true;
 });
-
 function fmtDate(d) {
   if (!d) return '';
   return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
@@ -93,28 +93,7 @@ function fmtRange(start, end) {
     {/* ── Gallery ──────────────────────────────────────────── */}
     {gallery.length > 0 && (
       <section class="mb-10">
-        <div
-          class="grid gap-2"
-          style={`grid-template-columns: repeat(${gallery.length === 1 ? 1 : gallery.length === 2 ? 2 : 3}, 1fr);`}
-        >
-          {gallery.map(m => (
-            <a
-              href={`/media/${m.id}/webp`}
-              class="block aspect-square rounded-md overflow-hidden border border-line-soft"
-              style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
-            >
-              <img
-                src={`/media/${m.id}/webp`}
-                alt={m.alt_text || m.caption || ''}
-                loading="lazy"
-                decoding="async"
-                width={m.width || undefined}
-                height={m.height || undefined}
-                class="w-full h-full object-cover"
-              />
-            </a>
-          ))}
-        </div>
+        <MediaGallery media={gallery} limit={10} />
       </section>
     )}
 
@@ -195,6 +174,18 @@ function fmtRange(start, end) {
                 <span class="label">{fmtDate(p.posted_at)}</span>
               </div>
               {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
+              {p.media && p.media.length > 0 && (
+                <div class="mt-3 flex gap-2 overflow-x-auto">
+                  {p.media.slice(0, 4).map(m => (
+                    <a href={`/media/${m.id}/webp`} target="_blank" rel="noopener noreferrer"
+                       class="rounded block overflow-hidden bg-line-soft"
+                       style="height: 88px; width: 88px; flex-shrink: 0;">
+                      <img src={`/media/${m.id}/webp`} alt={m.alt_text || m.caption || ''} loading="lazy"
+                           class="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              )}
             </article>
           ))}
         </div>

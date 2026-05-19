@@ -15,6 +15,9 @@ export default defineConfig({
     mode: 'standalone'
   }),
   vite: {
+    server: {
+      allowedHosts: ['werehere.app']
+    },
     plugins: [tailwindcss()]
   },
 

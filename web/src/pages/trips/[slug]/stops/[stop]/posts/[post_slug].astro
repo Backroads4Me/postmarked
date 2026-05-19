@@ -2,6 +2,7 @@
 import Layout from '../../../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../../../lib/api.js';
 import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
+import MediaGallery from '../../../../../../components/ui/MediaGallery.astro';
 
 const { slug, stop: stopSlug, post_slug } = Astro.params;
 
@@ -76,26 +77,7 @@ function fmtTime(d, timezoneId) {
     {/* ── Gallery ──────────────────────────────────────────── */}
     {post.media && post.media.length > 0 && (
       <section class="mb-10">
-        <div
-          class="grid gap-2"
-          style={`grid-template-columns: repeat(${post.media.length === 1 ? 1 : post.media.length === 2 ? 2 : 3}, 1fr);`}
-        >
-          {post.media.map(m => (
-            <a
-              href={`/media/${m.id}/webp`}
-              class="block aspect-square rounded-md overflow-hidden border border-line-soft"
-              style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
-            >
-              <img
-                src={`/media/${m.id}/webp`}
-                alt={m.alt_text || m.caption || ''}
-                loading="lazy"
-                decoding="async"
-                class="w-full h-full object-cover"
-              />
-            </a>
-          ))}
-        </div>
+        <MediaGallery media={post.media} limit={10} />
       </section>
     )}
 

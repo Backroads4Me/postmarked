@@ -13,8 +13,34 @@ try {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return 'TBD';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function formatRange(start, end) {
+  if (!start) return '';
+  if (!end) return formatDate(start);
+  const s = new Date(start);
+  const e = new Date(end);
+  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
+    return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${e.getFullYear()}`;
+  }
+  return `${formatDate(start)} – ${formatDate(end)}`;
+}
+
+function tripDateRange(trip) {
+  if (trip.start_date || trip.end_date) {
+    return formatRange(trip.start_date, trip.end_date);
+  }
+  const datedStops = (trip.stops || []).filter((s) => s.start_date || s.end_date);
+  if (datedStops.length === 0) return '';
+  const start = datedStops
+    .map((s) => s.start_date || s.end_date)
+    .sort((a, b) => new Date(a) - new Date(b))[0];
+  const end = datedStops
+    .map((s) => s.end_date || s.start_date)
+    .sort((a, b) => new Date(b) - new Date(a))[0];
+  return formatRange(start, end);
 }
 
 function coverSrc(trip) {
@@ -47,28 +73,31 @@ const headerText = sectionText(siteText, 'trips.header', {
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         {trips.map(trip => (
           <a href={`/trips/${trip.slug}`} class="card group" id={`trip-${trip.slug}`}>
-            <div class="aspect-video bg-surface-2 rounded-lg mb-4 overflow-hidden border border-line-soft relative">
-              {coverSrc(trip) ? (
+            {coverSrc(trip) && (
+              <div class="aspect-video bg-surface-2 rounded-lg mb-4 overflow-hidden border border-line-soft relative">
                 <img
                   src={coverSrc(trip)}
                   alt={trip.cover_media.alt_text || ''}
                   class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                   loading="lazy"
                 />
-              ) : (
-                <div class="absolute inset-0 flex items-center justify-center">
-                  <span class="text-4xl opacity-30">🗺️</span>
-                </div>
-              )}
-              {trip.stops_total > 0 && (
-                <div class="absolute bottom-2 right-2">
-                  <span class="badge text-[9px]">{trip.stops_completed}/{trip.stops_total} stops</span>
-                </div>
-              )}
-            </div>
+                {trip.stops_total > 0 && (
+                  <div class="absolute bottom-2 right-2">
+                    <span class="badge text-[9px]">{trip.stops_completed}/{trip.stops_total} stops</span>
+                  </div>
+                )}
+              </div>
+            )}
             <div>
-              <div class="flex items-center gap-2 mb-2">
-                <span class="label">{formatDate(trip.start_date)}</span>
+              <div class="flex items-center justify-between gap-2 mb-2">
+                <div>
+                  {tripDateRange(trip) && (
+                    <span class="label">{tripDateRange(trip)}</span>
+                  )}
+                </div>
+                {!coverSrc(trip) && trip.stops_total > 0 && (
+                  <span class="badge text-[9px]">{trip.stops_completed}/{trip.stops_total} stops</span>
+                )}
               </div>
               <h2 class="display text-2xl group-hover:text-ember-2 transition-colors">{trip.title}</h2>
               {trip.summary && (

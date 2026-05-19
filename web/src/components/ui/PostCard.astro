@@ -7,6 +7,9 @@
  * streaming endpoint. Visibility is enforced server-side; the absence of a
  * media entry here means the caller can't see it.
  */
+import { renderMarkdown } from '../../lib/markdown.js';
+import MediaGallery from './MediaGallery.astro';
+
 interface MediaSummary {
   id: string;
   width?: number | null;
@@ -27,7 +30,7 @@ interface Props {
 }
 
 const { title, body, date, placeName, media = [] } = Astro.props;
-const photos = (media || []).slice(0, 3);
+const renderedBody = body ? renderMarkdown(body) : '';
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
@@ -57,36 +60,59 @@ function timeAgo(dateStr?: string) {
   </div>
 
   <h3 class="text-lg font-medium text-paper mb-1">{title}</h3>
-  {body && <p class="text-muted text-sm leading-relaxed line-clamp-3">{body}</p>}
-
-  {photos.length > 0 && (
+  {renderedBody && (
     <div
-      class:list={[
-        'mt-3 grid gap-1 rounded-md overflow-hidden',
-        photos.length === 1 ? 'grid-cols-1' : photos.length === 2 ? 'grid-cols-2' : 'grid-cols-3',
-      ]}
-    >
-      {photos.map((m) => (
-        <a
-          href={`/media/${m.id}/webp`}
-          class="block aspect-square bg-line-soft overflow-hidden"
-          style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
-        >
-          <img
-            src={`/media/${m.id}/webp`}
-            alt={m.alt_text || m.caption || ''}
-            loading="lazy"
-            decoding="async"
-            width={m.width || undefined}
-            height={m.height || undefined}
-            class="w-full h-full object-cover"
-          />
-        </a>
-      ))}
-    </div>
+      class="post-card-markdown text-muted text-sm leading-relaxed line-clamp-3"
+      set:html={renderedBody}
+    />
   )}
+
+  <MediaGallery media={media} maxWidth="max-w-sm" />
 
   <div class="flex items-center gap-3 mt-3 text-xs">
     {placeName && <span class="coord">{placeName}</span>}
   </div>
 </div>
+
+<style>
+  .post-card-markdown :global(p) {
+    margin: 0 0 0.45rem;
+  }
+
+  .post-card-markdown :global(p:last-child),
+  .post-card-markdown :global(ul:last-child),
+  .post-card-markdown :global(h3:last-child),
+  .post-card-markdown :global(h4:last-child),
+  .post-card-markdown :global(h5:last-child) {
+    margin-bottom: 0;
+  }
+
+  .post-card-markdown :global(h3),
+  .post-card-markdown :global(h4),
+  .post-card-markdown :global(h5) {
+    color: var(--paper);
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 0.7rem 0 0.3rem;
+  }
+
+  .post-card-markdown :global(ul) {
+    list-style: disc;
+    margin: 0.35rem 0 0.45rem 1.1rem;
+    padding: 0;
+  }
+
+  .post-card-markdown :global(a) {
+    color: var(--ember);
+    text-decoration: none;
+  }
+
+  .post-card-markdown :global(code) {
+    background: var(--surface-2);
+    border: 1px solid var(--line-soft);
+    border-radius: 4px;
+    color: var(--paper);
+    font-size: 0.85em;
+    padding: 0.05rem 0.25rem;
+  }
+</style>

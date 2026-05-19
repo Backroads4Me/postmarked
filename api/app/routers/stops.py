@@ -87,8 +87,9 @@ async def get_stop(
     coord = coord_row.first()
     latitude, longitude = (coord[0], coord[1]) if coord else (None, None)
 
-    # Own media (assets directly attached to this stop)
-    own_media = visible_ready_media(stop.media or [], user)
+    # Own media (assets directly attached to this stop). Post media also carries
+    # stop_id for scoping, but it should render only through its published post.
+    own_media = visible_ready_media([m for m in (stop.media or []) if m.post_id is None], user)
 
     # POIs for this stop with resolved coordinates
     pois_out: list[PublicPOISummary] = []

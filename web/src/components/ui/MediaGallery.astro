@@ -1,0 +1,72 @@
+---
+/**
+ * MediaGallery — Reusable photo gallery for posts and stops.
+ *
+ * Single photo: displays at natural aspect ratio, constrained by max dimensions.
+ * Multiple photos: compact bento grid with square-cropped thumbnails.
+ */
+interface MediaSummary {
+  id: string;
+  width?: number | null;
+  height?: number | null;
+  blurhash?: string | null;
+  dominant_color?: string | null;
+  alt_text?: string | null;
+  caption?: string | null;
+}
+
+interface Props {
+  media: MediaSummary[];
+  /** Max width of the gallery container. Default 'none' (full width). */
+  maxWidth?: string;
+  /** Max height for a single photo. Default '20rem'. */
+  singleMaxHeight?: string;
+  /** When true, use a multi-column bento layout for multiple photos. Default true. */
+  bentoGrid?: boolean;
+  /** Number of photos to show. Default 3. */
+  limit?: number;
+}
+
+const { media, maxWidth = 'none', singleMaxHeight = '20rem', bentoGrid = true, limit = 3 } = Astro.props;
+const photos = (media || []).slice(0, limit);
+const isSingle = photos.length === 1;
+---
+
+{photos.length > 0 && (
+  <div
+    class:list={[
+      'mt-3 grid gap-1 rounded-md overflow-hidden',
+      isSingle ? 'grid-cols-1' : bentoGrid ? 'grid-cols-2 sm:grid-cols-3' : 'grid-cols-2',
+      maxWidth !== 'none' ? maxWidth : '',
+    ]}
+  >
+    {photos.map((m) => (
+      <a
+        href={`/media/${m.id}/webp`}
+        class:list={['block overflow-hidden', !isSingle && 'bg-line-soft']}
+        style={!isSingle && m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
+      >
+        {isSingle ? (
+          <img
+            src={`/media/${m.id}/webp`}
+            alt={m.alt_text || m.caption || ''}
+            loading="lazy"
+            decoding="async"
+            class="block mx-auto h-auto max-w-full"
+            style={`max-height: ${singleMaxHeight};`}
+          />
+        ) : (
+          <img
+            src={`/media/${m.id}/webp`}
+            alt={m.alt_text || m.caption || ''}
+            loading="lazy"
+            decoding="async"
+            width={m.width || undefined}
+            height={m.height || undefined}
+            class="w-full h-full object-cover"
+          />
+        )}
+      </a>
+    ))}
+  </div>
+)}

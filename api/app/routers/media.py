@@ -153,7 +153,7 @@ async def get_media(
         raise HTTPException(status_code=404, detail="Not found")
 
     parent_vis, parent_published = await _parent_visibility(session, asset)
-    if not parent_published:
+    if not parent_published and not user:
         raise HTTPException(status_code=404, detail="Not found")
     eff_vis = effective_visibility(asset.visibility, parent_vis)
     if not is_visible_to_user(eff_vis, None, user):

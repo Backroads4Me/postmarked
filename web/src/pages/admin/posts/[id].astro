@@ -1,13 +1,14 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
+import { renderMarkdown } from '../../../lib/markdown.js';
+import MediaGallery from '../../../components/ui/MediaGallery.astro';
 
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
 
 let post = null;
 let stops = [];
-let pois = [];
 try {
   const [postsRes, stopsRes] = await Promise.all([
     fetch(apiUrl('/api/admin/posts'), { headers: cookie ? { cookie } : {} }),
@@ -25,15 +26,8 @@ if (!post) return Astro.redirect('/admin/posts');
 
 stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 
-const isActivity = post.post_type === 'activity';
-
-// Load POIs for the current stop if this is an activity post
-if (isActivity && post.stop_id) {
-  try {
-    const poisRes = await fetch(apiUrl(`/api/admin/stops/${post.stop_id}/pois`), { headers: cookie ? { cookie } : {} });
-    if (poisRes.ok) pois = await poisRes.json();
-  } catch (e) {}
-}
+const attachedMedia = post.media || [];
+const renderedPreviewBody = renderMarkdown(post.body || '');
 
 // Format datetime for datetime-local input (strips timezone, yields local-ish value)
 function toDatetimeLocal(iso) {
@@ -48,15 +42,11 @@ function toDatetimeLocal(iso) {
       <a href="/admin/posts" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-4 inline-block">← Back</a>
       <div class="flex items-center gap-3">
         <h1 class="display text-3xl">Edit Post</h1>
-        <span class="badge" style={isActivity ? 'background: var(--ember-glow); color: var(--ember);' : ''}>
-          {post.post_type}
-        </span>
       </div>
     </div>
 
-    <form id="post-edit-form" class="flex flex-col gap-6" data-post-type={post.post_type}>
+    <form id="post-edit-form" class="flex flex-col gap-6">
       <input type="hidden" name="id" value={post.id} />
-      <input type="hidden" name="post_type" value={post.post_type} />
 
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold" for="title">Title</label>
@@ -64,49 +54,17 @@ function toDatetimeLocal(iso) {
           class="bg-surface-2 border border-line p-3 focus:border-ember" />
       </div>
 
-      {isActivity && (
-        <div class="flex flex-col gap-2">
-          <label class="text-sm font-bold" for="summary">Summary</label>
-          <input id="summary" type="text" name="summary" value={post.summary ?? ''} maxlength="500"
-            placeholder="Short card text for the activity"
-            class="bg-surface-2 border border-line p-3 focus:border-ember" />
-        </div>
-      )}
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold" for="posted_at">Post date</label>
+        <input id="posted_at" type="datetime-local" name="posted_at" value={toDatetimeLocal(post.posted_at)}
+          class="bg-surface-2 border border-line p-3 focus:border-ember" />
+      </div>
 
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold" for="body">Body (markdown)</label>
         <textarea id="body" name="body" rows="8"
           class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.body ?? ''}</textarea>
       </div>
-
-      {isActivity && (
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-bold" for="activity_type">Activity Type</label>
-            <select id="activity_type" name="activity_type" class="bg-surface-2 border border-line p-3">
-              {['hiking','museum','restaurant','attraction','service','scenic_drive','shopping','family','other'].map(t => (
-                <option value={t} selected={post.activity_type === t} style="text-transform: capitalize;">
-                  {t.replace(/_/g, ' ')}
-                </option>
-              ))}
-            </select>
-          </div>
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-bold" for="activity_started_at">
-              When <span class="text-ember">*</span>
-            </label>
-            <input id="activity_started_at" type="datetime-local" name="activity_started_at"
-              value={toDatetimeLocal(post.activity_started_at)}
-              class="bg-surface-2 border border-line p-3 focus:border-ember" />
-          </div>
-          <div class="flex flex-col gap-2">
-            <label class="text-sm font-bold" for="activity_ended_at">Ended At (optional)</label>
-            <input id="activity_ended_at" type="datetime-local" name="activity_ended_at"
-              value={toDatetimeLocal(post.activity_ended_at)}
-              class="bg-surface-2 border border-line p-3 focus:border-ember" />
-          </div>
-        </div>
-      )}
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="flex flex-col gap-2">
@@ -141,22 +99,75 @@ function toDatetimeLocal(iso) {
         </div>
       </div>
 
-      {isActivity && (
-        <div class="flex flex-col gap-2" id="poi-row">
-          <label class="text-sm font-bold" for="poi_id">Place (optional)</label>
-          <select id="poi_id" name="poi_id" class="bg-surface-2 border border-line p-3">
-            <option value="">No place linked</option>
-            {pois.map(p => (
-              <option value={p.id} selected={p.id === post.poi_id}>
-                {p.label} ({p.poi_type})
-              </option>
-            ))}
-          </select>
-          <p class="text-xs text-dim" id="poi-hint">
-            {pois.length === 0 ? 'No POIs for this stop. Add them in the Stops admin.' : ''}
-          </p>
+      <div class="flex flex-col gap-2">
+        <div class="flex items-baseline justify-between gap-3">
+          <label class="text-sm font-bold">Attached media</label>
+          <span class="text-xs text-dim">{attachedMedia.length} item{attachedMedia.length === 1 ? '' : 's'}</span>
         </div>
-      )}
+        {attachedMedia.length > 0 ? (
+          <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {attachedMedia.map((m) => (
+              <a
+                href={`/media/${m.id}/webp`}
+                target="_blank"
+                rel="noopener noreferrer"
+                class="block bg-surface-2 border border-line-soft rounded overflow-hidden hover:border-ember transition-colors"
+                style="text-decoration: none;"
+              >
+                <div class="aspect-square bg-line-soft">
+                  {m.kind === 'video' ? (
+                    <img
+                      src={`/media/${m.id}/poster`}
+                      alt={m.alt_text || m.caption || ''}
+                      class="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <img
+                      src={`/media/${m.id}/webp`}
+                      alt={m.alt_text || m.caption || ''}
+                      loading="lazy"
+                      decoding="async"
+                      class="w-full h-full object-cover"
+                    />
+                  )}
+                </div>
+                <div class="p-2">
+                  <div class="label">{m.kind} · {m.processing_state}</div>
+                  {(m.caption || m.alt_text) && (
+                    <div class="text-xs text-muted mt-1 truncate">{m.caption || m.alt_text}</div>
+                  )}
+                </div>
+              </a>
+            ))}
+          </div>
+        ) : (
+          <div class="bg-surface-2 border border-line-soft rounded p-3 text-sm text-muted">
+            No media is attached to this post.
+          </div>
+        )}
+      </div>
+
+      <section class="flex flex-col gap-2">
+        <div class="flex items-baseline justify-between gap-3">
+          <h2 class="display text-xl m-0">Timeline preview</h2>
+          <span id="preview-meta" class="label">{post.status} · {post.visibility}</span>
+        </div>
+        <article class="card-flat">
+          <div class="flex items-center gap-2 mb-3">
+            <span class="inline-symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 19h14"/><path d="m14 5 5 5"/><path d="M4 16.5 15.5 5 19 8.5 7.5 20H4v-3.5Z"/></svg>
+            </span>
+            <span class="eyebrow">Update</span>
+            <span id="preview-date" class="label ml-auto">{new Date(post.posted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          </div>
+          <h3 id="preview-title" class="text-lg font-medium text-paper mb-1">{post.title}</h3>
+          <div id="preview-body" class="post-preview-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedPreviewBody || '<p>Markdown preview appears here as you write.</p>'} />
+          <MediaGallery media={attachedMedia} maxWidth="max-w-sm" />
+          <div class="flex items-center gap-3 mt-3 text-xs">
+            <span id="preview-place" class="coord">{post.place_name || post.stop_title || ''}</span>
+          </div>
+        </article>
+      </section>
 
       <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
       <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2">Saved!</div>
@@ -171,58 +182,90 @@ function toDatetimeLocal(iso) {
     </form>
   </div>
 
-  <script define:vars={{ isActivity, initialStopId: post.stop_id ?? '' }}>
+  <script define:vars={{ stops }}>
     const form = document.getElementById('post-edit-form');
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
-    const stopSelect = document.getElementById('stop_id');
+    const previewTitle = document.getElementById('preview-title');
+    const previewBody = document.getElementById('preview-body');
+    const previewDate = document.getElementById('preview-date');
+    const previewMeta = document.getElementById('preview-meta');
+    const previewPlace = document.getElementById('preview-place');
 
-    // Reload POIs when stop changes (activity posts only)
-    if (isActivity && stopSelect) {
-      stopSelect.addEventListener('change', async () => {
-        const stopId = stopSelect.value;
-        const poiSelect = document.getElementById('poi_id');
-        const hint = document.getElementById('poi-hint');
-        if (!poiSelect) return;
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
 
-	        if (!stopId) {
-	          resetPoiOptions(poiSelect, []);
-	          if (hint) hint.textContent = '';
-	          return;
-	        }
+    function renderInline(value) {
+      return escapeHtml(value)
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+|\/[^)\s]*)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    }
 
-        try {
-	          const res = await fetch(`/api/admin/stops/${stopId}/pois`, { credentials: 'include' });
-	          const pois = res.ok ? await res.json() : [];
-	          resetPoiOptions(poiSelect, pois);
-	          if (hint) hint.textContent = pois.length === 0 ? 'No POIs for this stop. Add them in the Stops admin.' : '';
-	        } catch {
-	          if (hint) hint.textContent = 'Failed to load POIs';
+    function renderMarkdown(value) {
+      const source = String(value ?? '').trim();
+      if (!source) return '<p>Markdown preview appears here as you write.</p>';
+      const blocks = [];
+      let items = [];
+      const flush = () => {
+        if (!items.length) return;
+        blocks.push(`<ul>${items.map((item) => `<li>${item}</li>`).join('')}</ul>`);
+        items = [];
+      };
+      for (const line of source.split(/\r?\n/)) {
+        const trimmed = line.trim();
+        if (!trimmed) {
+          flush();
+          continue;
         }
-	      });
-	    }
+        const list = trimmed.match(/^[-*]\s+(.+)$/);
+        if (list) {
+          items.push(renderInline(list[1]));
+          continue;
+        }
+        flush();
+        const heading = trimmed.match(/^(#{1,3})\s+(.+)$/);
+        if (heading) {
+          const level = heading[1].length + 2;
+          blocks.push(`<h${level}>${renderInline(heading[2])}</h${level}>`);
+        } else {
+          blocks.push(`<p>${renderInline(trimmed)}</p>`);
+        }
+      }
+      flush();
+      return blocks.join('');
+    }
 
-	    function resetPoiOptions(select, pois) {
-	      select.replaceChildren();
+    function updatePreview() {
+      const title = form.querySelector('[name="title"]').value.trim() || 'Untitled post';
+      const body = form.querySelector('[name="body"]').value;
+      const postedAt = form.querySelector('[name="posted_at"]').value;
+      const status = form.querySelector('[name="status"]').value;
+      const visibility = form.querySelector('[name="visibility"]').value;
+      const stopId = form.querySelector('[name="stop_id"]').value;
+      const stop = stops.find((s) => s.id === stopId);
 
-	      const empty = document.createElement('option');
-	      empty.value = '';
-	      empty.textContent = 'No place linked';
-	      select.appendChild(empty);
+      previewTitle.textContent = title;
+      previewBody.innerHTML = renderMarkdown(body);
+      previewDate.textContent = postedAt ? new Date(postedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+      previewMeta.textContent = `${status} · ${visibility}`;
+      previewPlace.textContent = stop?.place_name || stop?.title || '';
+    }
 
-	      for (const poi of pois) {
-	        const option = document.createElement('option');
-	        option.value = poi.id;
-	        option.textContent = `${poi.label} (${poi.poi_type})`;
-	        select.appendChild(option);
-	      }
-	    }
-	
-	    form.addEventListener('submit', async (e) => {
+    form.addEventListener('input', updatePreview);
+    form.addEventListener('change', updatePreview);
+
+    form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const formData = new FormData(form);
       const id = formData.get('id');
-      const postType = formData.get('post_type');
 
       errorDiv.classList.add('hidden');
       successDiv.classList.add('hidden');
@@ -233,15 +276,9 @@ function toDatetimeLocal(iso) {
         stop_id: formData.get('stop_id') || null,
         status: formData.get('status'),
         visibility: formData.get('visibility'),
+        posted_at: new Date(formData.get('posted_at')).toISOString(),
+        post_type: 'update',
       };
-
-      if (postType === 'activity') {
-        body.activity_type = formData.get('activity_type') || null;
-        body.summary = formData.get('summary') || null;
-        body.activity_started_at = formData.get('activity_started_at') || null;
-        body.activity_ended_at = formData.get('activity_ended_at') || null;
-        body.poi_id = formData.get('poi_id') || null;
-      }
 
       try {
         const res = await fetch(`/api/admin/posts/${id}`, {

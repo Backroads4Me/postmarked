@@ -8,18 +8,19 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
-from sqlalchemy import select, update
+from sqlalchemy import func, or_, select, update
 from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
-from app.models.content import MediaAsset, PointOfInterest, Post, Stop
-from app.models.enums import PostStatus, StopStatus, Visibility
+from app.models.content import MediaAsset, PointOfInterest, Post, Stop, Trip
+from app.models.enums import PostStatus, PostType, StopStatus, TripStatus, Visibility
 from app.models.user import User
 from app.schemas.post import PostCreate, PostOut, PostUpdate
 from app.services.audit import log_audit_event
+from app.services.media_storage import delete_media_asset_files
 
 router = APIRouter(tags=["admin-posts"])
 
@@ -91,12 +92,12 @@ async def create_post(
         posted_at=posted_at,
         visibility=visibility,
         status=post_in.status,
-        post_type=post_in.post_type,
-        activity_type=post_in.activity_type,
-        summary=post_in.summary,
-        activity_started_at=post_in.activity_started_at,
-        activity_ended_at=post_in.activity_ended_at,
-        poi_id=post_in.poi_id,
+        post_type=PostType.UPDATE,
+        activity_type=None,
+        summary=None,
+        activity_started_at=None,
+        activity_ended_at=None,
+        poi_id=None,
     )
     session.add(post)
 
@@ -151,6 +152,12 @@ async def update_post(
         update_data["visibility"] = Visibility(update_data["visibility"])
     if "status" in update_data and update_data["status"] == PostStatus.PUBLISHED:
         post.posted_at = post.posted_at or datetime.now(timezone.utc)
+    update_data["post_type"] = PostType.UPDATE
+    update_data["activity_type"] = None
+    update_data["summary"] = None
+    update_data["activity_started_at"] = None
+    update_data["activity_ended_at"] = None
+    update_data["poi_id"] = None
     for key, value in update_data.items():
         setattr(post, key, value)
 
@@ -170,10 +177,24 @@ async def delete_post(
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
 
+    media_result = await session.execute(select(MediaAsset).where(MediaAsset.post_id == post_id))
+    attached_media = list(media_result.scalars().all())
+    for asset in attached_media:
+        await session.delete(asset)
+
     await session.delete(post)
-    await log_audit_event(session, user.id, "DELETE", "Post", post.id)
+    await log_audit_event(
+        session,
+        user.id,
+        "DELETE",
+        "Post",
+        post.id,
+        {"deleted_media_count": len(attached_media)},
+    )
     await session.commit()
-    return {"ok": True}
+    for asset in attached_media:
+        delete_media_asset_files(asset)
+    return {"ok": True, "deleted_media_count": len(attached_media)}
 
 
 # ── Current Stop ─────────────────────────────────────────────────────────
@@ -225,11 +246,26 @@ async def get_current_stop(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
-    """Get the currently marked stop."""
+    """Get the marked current stop, or infer it from today's published itinerary."""
     result = await session.execute(
         select(Stop).where(Stop.is_current == True)
     )
     stop = result.scalars().first()
+    if not stop:
+        today = datetime.now(timezone.utc).date()
+        result = await session.execute(
+            select(Stop)
+            .join(Trip, Stop.trip_id == Trip.id)
+            .where(
+                Stop.status == StopStatus.PUBLISHED,
+                Trip.status == TripStatus.PUBLISHED,
+                func.date(Stop.start_date) <= today,
+                or_(Stop.end_date.is_(None), func.date(Stop.end_date) >= today),
+            )
+            .order_by(Stop.start_date.desc())
+            .limit(1)
+        )
+        stop = result.scalars().first()
     if not stop:
         return {"current_stop": None}
     return {

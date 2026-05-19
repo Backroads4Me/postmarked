@@ -18,7 +18,6 @@ export default function CommentsIsland({ targetKind, targetId }) {
   const [posting, setPosting] = useState(false);
   const [postError, setPostError] = useState(null);
   const [viewer, setViewer] = useState(undefined);
-  const [returnTo, setReturnTo] = useState("/");
 
   async function load() {
     setLoading(true);
@@ -47,8 +46,6 @@ export default function CommentsIsland({ targetKind, targetId }) {
   }, [targetId, targetKind]);
 
   useEffect(() => {
-    setReturnTo(window.location.pathname + window.location.search);
-
     async function loadViewer() {
       try {
         const res = await fetch("/api/users/me", { credentials: "include" });
@@ -118,10 +115,9 @@ export default function CommentsIsland({ targetKind, targetId }) {
     viewer?.role === "admin" || viewer?.approval_state === "approved";
   const authKnown = viewer !== undefined;
   const canComment = Boolean(viewerIsApproved);
-  const loginHref = `/auth/login?next=${encodeURIComponent(returnTo)}`;
   const disabledReason =
     authKnown && !viewer
-      ? "Sign in or create an account to leave a comment."
+      ? "Sign in with an approved account to leave a comment."
       : authKnown && viewer && !viewerIsApproved
         ? "Your account is pending approval before you can comment."
         : "";
@@ -177,63 +173,54 @@ export default function CommentsIsland({ targetKind, targetId }) {
         </ul>
       )}
 
-      <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+      {!authKnown && <div className="label">Checking comment permissions…</div>}
+
+      {authKnown && !canComment && (
+        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--muted)" }}>
+          {disabledReason}
+        </div>
+      )}
+
+      {authKnown && canComment && (
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <label htmlFor={`comment-${targetId}`} className="label">
             Add a comment
           </label>
-          {authKnown && !viewer && (
-            <div style={{ display: "flex", gap: 12, fontSize: 12 }}>
-              <a href={loginHref} style={{ color: "var(--ember)", textDecoration: "none" }}>
-                Sign in
-              </a>
-              <a href="/auth/register" style={{ color: "var(--muted)", textDecoration: "none" }}>
-                Create account
-              </a>
-            </div>
+          <textarea
+            id={`comment-${targetId}`}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={3}
+            maxLength={2000}
+            placeholder="Share a note…"
+            style={{
+              width: "100%",
+              padding: "10px 12px",
+              background: "var(--surface-2)",
+              border: "1px solid var(--line)",
+              borderRadius: 6,
+              color: "var(--paper)",
+              fontSize: 14,
+              fontFamily: "var(--sans)",
+              resize: "vertical",
+            }}
+          />
+          {postError && (
+            <div style={{ fontSize: 12, color: "var(--ember)" }}>{postError}</div>
           )}
-        </div>
-        {disabledReason && (
-          <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--muted)" }}>
-            {disabledReason}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span className="label">{draft.length}/2000</span>
+            <button
+              type="submit"
+              className="btn"
+              disabled={posting || !draft.trim()}
+              style={{ minHeight: 36 }}
+            >
+              {posting ? "Posting…" : "Post comment"}
+            </button>
           </div>
-        )}
-        <textarea
-          id={`comment-${targetId}`}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={3}
-          maxLength={2000}
-          disabled={authKnown && !canComment}
-          placeholder={canComment ? "Share a note…" : "Comments are available after sign-in"}
-          style={{
-            width: "100%",
-            padding: "10px 12px",
-            background: "var(--surface-2)",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            color: "var(--paper)",
-            fontSize: 14,
-            fontFamily: "var(--sans)",
-            resize: "vertical",
-            opacity: authKnown && !canComment ? 0.72 : 1,
-          }}
-        />
-        {postError && (
-          <div style={{ fontSize: 12, color: "var(--ember)" }}>{postError}</div>
-        )}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span className="label">{draft.length}/2000</span>
-          <button
-            type="submit"
-            className="btn"
-            disabled={posting || !draft.trim() || !canComment}
-            style={{ minHeight: 36 }}
-          >
-            {posting ? "Posting…" : "Post comment"}
-          </button>
-        </div>
-      </form>
+        </form>
+      )}
     </section>
   );
 }

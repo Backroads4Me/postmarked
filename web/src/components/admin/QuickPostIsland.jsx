@@ -1,19 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { renderMarkdown } from "../../lib/markdown.js";
 
 const DRAFT_KEY = "goodpath:draft:quick-post";
 const TUS_VERSION = "1.0.0";
-
-const ACTIVITY_TYPES = [
-  { value: "hiking", label: "Hiking" },
-  { value: "museum", label: "Museum" },
-  { value: "restaurant", label: "Restaurant" },
-  { value: "attraction", label: "Attraction" },
-  { value: "service", label: "Service" },
-  { value: "scenic_drive", label: "Scenic Drive" },
-  { value: "shopping", label: "Shopping" },
-  { value: "family", label: "Family" },
-  { value: "other", label: "Other" },
-];
 
 const inputStyle = {
   width: "100%",
@@ -27,41 +16,46 @@ const inputStyle = {
   minHeight: 44,
 };
 
+function toDatetimeLocal(date = new Date()) {
+  const offsetMs = date.getTimezoneOffset() * 60000;
+  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+}
+
 export default function QuickPostIsland() {
-  const [postType, setPostType] = useState("update");
   const [stops, setStops] = useState([]);
+  const [trips, setTrips] = useState([]);
   const [currentStopId, setCurrentStopId] = useState("");
   const [stopId, setStopId] = useState("");
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
-  const [summary, setSummary] = useState("");
+  const [postedAt, setPostedAt] = useState(() => toDatetimeLocal());
   const [status, setStatus] = useState("draft");
-  const [visibility, setVisibility] = useState("private");
-  const [activityType, setActivityType] = useState("other");
-  const [activityStartedAt, setActivityStartedAt] = useState("");
-  const [activityEndedAt, setActivityEndedAt] = useState("");
-  const [pois, setPois] = useState([]);
-  const [poiId, setPoiId] = useState("");
+  const [visibility, setVisibility] = useState("public");
 
   const [photos, setPhotos] = useState([]);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState(null);
   const fileInputRef = useRef(null);
+  const photoUrlsRef = useRef(new Set());
 
   useEffect(() => {
     (async () => {
       try {
-        const [stopsRes, currentRes] = await Promise.all([
+        const [stopsRes, currentRes, tripsRes] = await Promise.all([
           fetch("/api/admin/stops", { credentials: "include" }),
           fetch("/api/admin/current-stop", { credentials: "include" }),
+          fetch("/api/admin/trips", { credentials: "include" }),
         ]);
         const stopsBody = stopsRes.ok ? await stopsRes.json() : [];
         const currentBody = currentRes.ok ? await currentRes.json() : { current_stop: null };
+        const tripsBody = tripsRes.ok ? await tripsRes.json() : [];
         stopsBody.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
         setStops(stopsBody);
+        setTrips(tripsBody);
         const cur = currentBody.current_stop?.id ?? "";
         setCurrentStopId(cur);
         setStopId(cur);
+        setVisibility(visibilityForStop(cur, stopsBody, tripsBody));
       } catch {
         setError("Failed to load stops");
       }
@@ -77,16 +71,18 @@ export default function QuickPostIsland() {
     } catch {}
   }, []);
 
-  // Load POIs when stop changes
-  useEffect(() => {
-    setPoiId("");
-    setPois([]);
-    if (!stopId) return;
-    fetch(`/api/admin/stops/${stopId}/pois`, { credentials: "include" })
-      .then((r) => (r.ok ? r.json() : []))
-      .then(setPois)
-      .catch(() => {});
-  }, [stopId]);
+  function visibilityForStop(nextStopId, stopList = stops, tripList = trips) {
+    if (!nextStopId) return "public";
+    const stop = stopList.find((s) => s.id === nextStopId);
+    if (!stop) return "public";
+    const trip = tripList.find((t) => t.id === stop.trip_id);
+    return trip?.visibility || "public";
+  }
+
+  function selectStop(nextStopId) {
+    setStopId(nextStopId);
+    setVisibility(visibilityForStop(nextStopId));
+  }
 
   useEffect(() => {
     try {
@@ -142,26 +138,56 @@ export default function QuickPostIsland() {
 
   function onFilesSelected(ev) {
     const files = Array.from(ev.target.files || []);
-    const queued = files.map((f) => ({
-      localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      name: f.name,
-      status: "queued",
-      progress: 0,
-      file: f,
-    }));
+    const queued = files.map((f) => {
+      const previewUrl = URL.createObjectURL(f);
+      photoUrlsRef.current.add(previewUrl);
+      return {
+        localId: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        name: f.name,
+        type: f.type,
+        previewUrl,
+        status: "queued",
+        progress: 0,
+        file: f,
+      };
+    });
     setPhotos((prev) => [...prev, ...queued]);
     queued.forEach((q) => uploadOne(q.localId, q.file));
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   function removePhoto(localId) {
-    setPhotos((prev) => prev.filter((p) => p.localId !== localId));
+    setPhotos((prev) => {
+      const removed = prev.find((p) => p.localId === localId);
+      if (removed?.previewUrl) {
+        URL.revokeObjectURL(removed.previewUrl);
+        photoUrlsRef.current.delete(removed.previewUrl);
+      }
+      return prev.filter((p) => p.localId !== localId);
+    });
   }
+
+  function clearPhotos() {
+    for (const url of photoUrlsRef.current) {
+      URL.revokeObjectURL(url);
+    }
+    photoUrlsRef.current.clear();
+    setPhotos([]);
+  }
+
+  useEffect(() => {
+    return () => {
+      for (const url of photoUrlsRef.current) {
+        URL.revokeObjectURL(url);
+      }
+      photoUrlsRef.current.clear();
+    };
+  }, []);
 
   async function publish() {
     if (!title.trim()) { setError("Title is required"); return; }
-    if (postType === "activity" && !activityStartedAt) {
-      setError("Activity date/time is required");
+    if (!postedAt) {
+      setError("Post date is required");
       return;
     }
     const pending = photos.filter((p) => p.status === "uploading" || p.status === "queued");
@@ -177,16 +203,10 @@ export default function QuickPostIsland() {
         stop_id: stopId || null,
         status,
         visibility,
+        posted_at: new Date(postedAt).toISOString(),
         media_ids: mediaIds,
-        post_type: postType,
+        post_type: "update",
       };
-      if (postType === "activity") {
-        payload.activity_type = activityType;
-        payload.summary = summary.trim() || null;
-        payload.activity_started_at = activityStartedAt || null;
-        payload.activity_ended_at = activityEndedAt || null;
-        payload.poi_id = poiId || null;
-      }
       const res = await fetch("/api/admin/posts", {
         method: "POST",
         credentials: "include",
@@ -207,6 +227,13 @@ export default function QuickPostIsland() {
   }
 
   const hasPendingUploads = photos.some((p) => p.status === "uploading" || p.status === "queued");
+  const selectedStop = stops.find((s) => s.id === stopId);
+  const previewPhotos = photos.filter((p) => p.previewUrl).slice(0, 3);
+  const previewBody = renderMarkdown(body.trim());
+  const previewPlace = selectedStop?.place_name || selectedStop?.title || "";
+  const previewDate = postedAt
+    ? new Date(postedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    : "Today";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
@@ -216,29 +243,6 @@ export default function QuickPostIsland() {
         </div>
       )}
 
-      {/* Mode selector */}
-      <div style={{ display: "flex", gap: 8 }}>
-        {["update", "activity"].map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setPostType(t)}
-            style={{
-              padding: "8px 18px",
-              borderRadius: 6,
-              border: "1px solid var(--line)",
-              background: postType === t ? "var(--ember)" : "var(--surface-2)",
-              color: postType === t ? "#fff" : "var(--muted)",
-              fontSize: 13,
-              fontWeight: postType === t ? 600 : 400,
-              cursor: "pointer",
-            }}
-          >
-            {t === "update" ? "Quick Update" : "Activity"}
-          </button>
-        ))}
-      </div>
-
       <div>
         <label className="label" htmlFor="qp-title">Title</label>
         <input
@@ -247,38 +251,32 @@ export default function QuickPostIsland() {
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           maxLength={200}
-          placeholder={postType === "activity" ? "What did you do?" : "Quick note from the road"}
+          placeholder="Postcard from the road"
           autoComplete="off"
           style={{ ...inputStyle, fontSize: 16, padding: "12px 14px" }}
         />
       </div>
 
-      {postType === "activity" && (
-        <div>
-          <label className="label" htmlFor="qp-summary">Summary (short card text)</label>
-          <input
-            id="qp-summary"
-            type="text"
-            value={summary}
-            onChange={(e) => setSummary(e.target.value)}
-            maxLength={500}
-            placeholder="One-line description for the activity card"
-            style={inputStyle}
-          />
-        </div>
-      )}
+      <div>
+        <label className="label" htmlFor="qp-posted-at">Post date</label>
+        <input
+          id="qp-posted-at"
+          type="datetime-local"
+          value={postedAt}
+          onChange={(e) => setPostedAt(e.target.value)}
+          style={inputStyle}
+        />
+      </div>
 
       <div>
-        <label className="label" htmlFor="qp-body">
-          {postType === "activity" ? "Details (markdown)" : "Body (markdown)"}
-        </label>
+        <label className="label" htmlFor="qp-body">Body (markdown)</label>
         <textarea
           id="qp-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={6}
           maxLength={10000}
-          placeholder={postType === "activity" ? "Tell the story..." : "What's happening?"}
+          placeholder="What do you want to share?"
           style={{
             width: "100%",
             padding: "12px 14px",
@@ -294,45 +292,10 @@ export default function QuickPostIsland() {
         />
       </div>
 
-      {postType === "activity" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          <div>
-            <label className="label" htmlFor="qp-activity-type">Activity type</label>
-            <select id="qp-activity-type" value={activityType} onChange={(e) => setActivityType(e.target.value)} style={inputStyle}>
-              {ACTIVITY_TYPES.map((t) => (
-                <option key={t.value} value={t.value}>{t.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="label" htmlFor="qp-started-at">
-              When <span style={{ color: "var(--ember)" }}>*</span>
-            </label>
-            <input
-              id="qp-started-at"
-              type="datetime-local"
-              value={activityStartedAt}
-              onChange={(e) => setActivityStartedAt(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-          <div>
-            <label className="label" htmlFor="qp-ended-at">Ended at (optional)</label>
-            <input
-              id="qp-ended-at"
-              type="datetime-local"
-              value={activityEndedAt}
-              onChange={(e) => setActivityEndedAt(e.target.value)}
-              style={inputStyle}
-            />
-          </div>
-        </div>
-      )}
-
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
         <div>
           <label className="label" htmlFor="qp-stop">Stop</label>
-          <select id="qp-stop" value={stopId} onChange={(e) => setStopId(e.target.value)} style={inputStyle}>
+          <select id="qp-stop" value={stopId} onChange={(e) => selectStop(e.target.value)} style={inputStyle}>
             <option value="">No stop</option>
             {stops.map((s) => (
               <option key={s.id} value={s.id}>
@@ -361,18 +324,6 @@ export default function QuickPostIsland() {
           </select>
         </div>
       </div>
-
-      {postType === "activity" && stopId && pois.length > 0 && (
-        <div>
-          <label className="label" htmlFor="qp-poi">Place (optional)</label>
-          <select id="qp-poi" value={poiId} onChange={(e) => setPoiId(e.target.value)} style={inputStyle}>
-            <option value="">No place linked</option>
-            {pois.map((p) => (
-              <option key={p.id} value={p.id}>{p.label} ({p.poi_type})</option>
-            ))}
-          </select>
-        </div>
-      )}
 
       <div>
         <label className="label">Photos</label>
@@ -426,6 +377,62 @@ export default function QuickPostIsland() {
         </div>
       </div>
 
+      <section style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 12 }}>
+          <h2 className="display" style={{ fontSize: 20, margin: 0 }}>Timeline preview</h2>
+          <span className="label">{status} · {visibility}</span>
+        </div>
+        <article className="card-flat">
+          <div className="flex items-center gap-2 mb-3">
+            <span className="inline-symbol" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M5 19h14"/><path d="m14 5 5 5"/><path d="M4 16.5 15.5 5 19 8.5 7.5 20H4v-3.5Z"/></svg>
+            </span>
+            <span className="eyebrow">Update</span>
+            <span className="label" style={{ marginLeft: "auto" }}>{previewDate}</span>
+          </div>
+
+          <h3 className="text-lg font-medium text-paper mb-1">
+            {title.trim() || "Untitled post"}
+          </h3>
+
+          {previewBody ? (
+            <div
+              className="post-preview-markdown text-muted text-sm leading-relaxed line-clamp-3"
+              dangerouslySetInnerHTML={{ __html: previewBody }}
+            />
+          ) : (
+            <p className="text-muted text-sm leading-relaxed line-clamp-3">
+              Markdown preview appears here as you write.
+            </p>
+          )}
+
+          {previewPhotos.length > 0 && (
+            <div className="mt-3 flex flex-col gap-2 max-w-sm">
+              {previewPhotos.map((p) => (
+                <a
+                  key={p.localId}
+                  href={p.previewUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block bg-line-soft overflow-hidden rounded-md"
+                >
+                  <img
+                    src={p.previewUrl}
+                    alt={p.name}
+                    className="block max-w-full h-auto object-contain mx-auto"
+                    style={{ maxHeight: previewPhotos.length === 1 ? "28rem" : "18rem" }}
+                  />
+                </a>
+              ))}
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 mt-3 text-xs">
+            {previewPlace && <span className="coord">{previewPlace}</span>}
+          </div>
+        </article>
+      </section>
+
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <button
           type="button"
@@ -442,7 +449,7 @@ export default function QuickPostIsland() {
           onClick={() => {
             if (confirm("Discard this draft?")) {
               clearDraft();
-              setTitle(""); setBody(""); setSummary(""); setStatus("draft"); setVisibility("private"); setPhotos([]);
+              setTitle(""); setBody(""); setPostedAt(toDatetimeLocal()); setStatus("draft"); setVisibility(visibilityForStop(stopId)); clearPhotos();
             }
           }}
           disabled={publishing}
@@ -451,6 +458,43 @@ export default function QuickPostIsland() {
         </button>
         <span className="label" style={{ marginLeft: "auto" }}>Draft autosaves</span>
       </div>
+      <style>{`
+        .post-preview-markdown p {
+          margin: 0 0 0.45rem;
+        }
+        .post-preview-markdown p:last-child,
+        .post-preview-markdown ul:last-child,
+        .post-preview-markdown h3:last-child,
+        .post-preview-markdown h4:last-child,
+        .post-preview-markdown h5:last-child {
+          margin-bottom: 0;
+        }
+        .post-preview-markdown h3,
+        .post-preview-markdown h4,
+        .post-preview-markdown h5 {
+          color: var(--paper);
+          font-size: 1rem;
+          font-weight: 600;
+          margin: 0.7rem 0 0.3rem;
+        }
+        .post-preview-markdown ul {
+          list-style: disc;
+          margin: 0.35rem 0 0.45rem 1.1rem;
+          padding: 0;
+        }
+        .post-preview-markdown a {
+          color: var(--ember);
+          text-decoration: none;
+        }
+        .post-preview-markdown code {
+          background: var(--surface-2);
+          border: 1px solid var(--line-soft);
+          border-radius: 4px;
+          color: var(--paper);
+          font-size: 0.85em;
+          padding: 0.05rem 0.25rem;
+        }
+      `}</style>
     </div>
   );
 }

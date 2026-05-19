@@ -144,13 +144,16 @@ def _trip_summary_out(trip: Optional[Trip], stops: list[Stop], user=None) -> Opt
     if not trip:
         return None
     today = datetime.now(timezone.utc).date()
+    dated_stops = [stop for stop in stops if stop.start_date]
+    start_date = trip.start_date or (min((stop.start_date for stop in dated_stops), default=None))
+    end_date = trip.end_date or (max(((stop.end_date or stop.start_date) for stop in dated_stops), default=None))
     return PublicTripSegmentSummary(
         id=trip.id,
         slug=trip.slug,
         title=trip.title,
         summary=trip.summary,
-        start_date=trip.start_date,
-        end_date=trip.end_date,
+        start_date=start_date,
+        end_date=end_date,
         status=trip.status,
         total_distance_meters=trip.total_distance_meters,
         stops_completed=sum(1 for stop in stops if _is_visible_stop_status(stop) and stop.start_date.date() <= today),

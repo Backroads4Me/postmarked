@@ -71,6 +71,7 @@ class PostUpdate(BaseModel):
     stop_id: Optional[uuid.UUID] = None
     visibility: Optional[str] = None
     status: Optional[PostStatus] = None
+    posted_at: Optional[datetime] = None
 
     post_type: Optional[PostType] = None
     activity_type: Optional[ActivityType] = None
