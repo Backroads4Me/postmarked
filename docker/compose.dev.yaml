@@ -6,13 +6,6 @@
 name: postmarked
 
 services:
-  api-migrate:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
-    volumes:
-      - ./api:/app
-
   api:
     build:
       context: ./api

@@ -3,17 +3,6 @@ name: postmarked
 x-api-image: &api-image ghcr.io/backroads4me/postmarked-api:${IMAGE_TAG:-latest}
 
 services:
-  api-migrate:
-    image: *api-image
-    command: ["alembic", "upgrade", "head"]
-    env_file: .env
-    environment:
-      - PYTHONPATH=/app
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: on-failure
-
   api:
     image: *api-image
     env_file: .env
@@ -27,8 +16,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      api-migrate:
-        condition: service_completed_successfully
     volumes:
       - ${ORIGINALS_SOURCE:-originals}:/originals
       - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
@@ -45,9 +32,10 @@ services:
       - DERIVATIVES_PATH=/derivatives
       - INGEST_PATH=/ingest
     depends_on:
-      - redis
-      - db
-      - api-migrate
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ${ORIGINALS_SOURCE:-originals}:/originals
       - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
@@ -59,8 +47,10 @@ services:
     command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
     env_file: .env
     depends_on:
-      - redis
-      - db
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   web:

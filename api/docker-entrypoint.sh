@@ -10,4 +10,7 @@ if [ "$(id -u)" = "0" ]; then
   exec gosu appuser "$@"
 fi
 
+alembic upgrade head
+python scripts/seed.py
+
 exec "$@"
