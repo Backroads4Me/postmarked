@@ -1,7 +1,7 @@
 [project]
-name = "goodpath-api"
+name = "postmarked-api"
 version = "0.1.0"
-description = "Goodpath API Backend"
+description = "Postmarked API Backend"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

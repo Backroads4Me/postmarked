@@ -9,7 +9,7 @@ admin_password="${ADMIN_PASSWORD:-admin123}"
 
 tmp_dir="$(mktemp -d)"
 cookie_jar="$tmp_dir/cookies.txt"
-image_file="$tmp_dir/goodpath-smoke.png"
+image_file="$tmp_dir/postmarked-smoke.png"
 create_headers="$tmp_dir/create.headers"
 patch_headers="$tmp_dir/patch.headers"
 asset_id=""
@@ -70,7 +70,7 @@ create_status="$(
     -X POST "$api_url/api/admin/media/tus" \
     -H 'Tus-Resumable: 1.0.0' \
     -H "Upload-Length: $size" \
-    -H 'Upload-Metadata: filename Z29vZHBhdGgtc21va2UucG5n,filetype aW1hZ2UvcG5n'
+    -H 'Upload-Metadata: filename cG9zdG1hcmtlZC1zbW9rZS5wbmc=,filetype aW1hZ2UvcG5n'
 )"
 if [[ "$create_status" != "201" ]]; then
   echo "Upload create failed with HTTP $create_status" >&2
@@ -98,16 +98,16 @@ if [[ "$patch_status" != "204" ]]; then
   exit 1
 fi
 
-asset_id="$(awk 'tolower($1)=="x-goodpath-asset-id:" {print $2}' "$patch_headers" | tr -d '\r')"
+asset_id="$(awk 'tolower($1)=="x-postmarked-asset-id:" {print $2}' "$patch_headers" | tr -d '\r')"
 if [[ -z "$asset_id" ]]; then
-  echo "Upload patch response did not include X-Goodpath-Asset-Id" >&2
+  echo "Upload patch response did not include X-Postmarked-Asset-Id" >&2
   exit 1
 fi
 
 for _ in $(seq 1 30); do
   state="$(
     docker compose exec -T db \
-      psql -U postgres -d goodpath -At \
+      psql -U postgres -d postmarked -At \
       -c "select processing_state from media_asset where id='$asset_id';"
   )"
   if [[ "$state" == "READY" ]]; then
@@ -115,7 +115,7 @@ for _ in $(seq 1 30); do
   fi
   if [[ "$state" == "FAILED" ]]; then
     docker compose exec -T db \
-      psql -U postgres -d goodpath \
+      psql -U postgres -d postmarked \
       -c "select error_message from media_asset where id='$asset_id';" >&2
     exit 1
   fi

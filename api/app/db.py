@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 DATABASE_URL = os.getenv(
     "DATABASE_URL", 
-    "postgresql+psycopg://postgres:postgres@db:5432/goodpath"
+    "postgresql+psycopg://postgres:postgres@db:5432/postmarked"
 )
 # Modify connection string to work with async psycopg
 if DATABASE_URL.startswith("postgresql://"):

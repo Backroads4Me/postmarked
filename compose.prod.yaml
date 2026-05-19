@@ -1,0 +1,28 @@
+# Production overrides — pulls pre-built images from GHCR instead of building locally.
+#
+# Usage:
+#   docker compose -f compose.yaml -f compose.prod.yaml up -d
+#
+# Set IMAGE_TAG to deploy a specific version, or leave unset to use "latest".
+#   IMAGE_TAG=0.2.1 docker compose -f compose.yaml -f compose.prod.yaml up -d
+
+services:
+  api-migrate:
+    build: !reset null
+    image: ghcr.io/tedlanham/postmarked-api:${IMAGE_TAG:-latest}
+
+  api:
+    build: !reset null
+    image: ghcr.io/tedlanham/postmarked-api:${IMAGE_TAG:-latest}
+
+  worker:
+    build: !reset null
+    image: ghcr.io/tedlanham/postmarked-api:${IMAGE_TAG:-latest}
+
+  beat:
+    build: !reset null
+    image: ghcr.io/tedlanham/postmarked-api:${IMAGE_TAG:-latest}
+
+  web:
+    build: !reset null
+    image: ghcr.io/tedlanham/postmarked-web:${IMAGE_TAG:-latest}

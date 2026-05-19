@@ -22,7 +22,7 @@ uv pip install -e ".[dev]"
 ## Run Directly
 
 ```bash
-PYTHONPATH=. DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/goodpath \
+PYTHONPATH=. DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/postmarked \
   uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
@@ -68,9 +68,9 @@ mypy app
 Docker equivalents:
 
 ```bash
-docker exec goodpath-api-1 alembic current
-docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
-docker exec goodpath-api-1 python scripts/seed.py
+docker exec postmarked-api-1 alembic current
+docker exec postmarked-api-1 python -c "import app.main; print('api import ok')"
+docker exec postmarked-api-1 python scripts/seed.py
 ```
 
 The runtime Docker image installs production dependencies only, so `ruff` and
@@ -97,7 +97,7 @@ extras.
 | `/api/auth` | fastapi-users | Registration |
 | `/api/users/me` | fastapi-users | Current-user check |
 
-Auth uses the `goodpath_session` HTTP-only cookie. Login via `POST /api/auth/jwt/login` with `username` and `password` form fields.
+Auth uses the `postmarked_session` HTTP-only cookie. Login via `POST /api/auth/jwt/login` with `username` and `password` form fields.
 
 ## Import Parser
 

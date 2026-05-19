@@ -15,12 +15,12 @@ from app.models.enums import MediaKind, MediaProcessingState, Visibility
 logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-DATABASE_URL_SYNC = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/goodpath")
+DATABASE_URL_SYNC = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postmarked")
 
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
 
-celery_app = Celery("goodpath_tasks", broker=REDIS_URL)
+celery_app = Celery("postmarked_tasks", broker=REDIS_URL)
 
 engine = create_engine(DATABASE_URL_SYNC)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

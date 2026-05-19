@@ -49,7 +49,7 @@ while IFS=$'\t' read -r asset_id original_path webp_path poster_path; do
   fi
 done < <(
   docker exec "$db_container" \
-    psql -U postgres -d goodpath -At -F $'\t' -c "$query"
+    psql -U postgres -d postmarked -At -F $'\t' -c "$query"
 )
 
 if [[ "$missing" -ne 0 ]]; then

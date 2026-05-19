@@ -19,15 +19,15 @@ echo "[1/2] Restoring volumes..."
 # Extract the tar directly over the docker volumes
 # NOTE: This assumes the volumes exist. If they don't, `docker compose up -d` first.
 docker run --rm \
-  -v goodpath_originals:/originals \
-  -v goodpath_derivatives:/derivatives \
+  -v postmarked_originals:/originals \
+  -v postmarked_derivatives:/derivatives \
   -v "$(realpath ${VOL_FILE}):/backup.tar.gz" \
   alpine tar -xzf "/backup.tar.gz" -C /
 
 echo "[2/2] Restoring PostgreSQL database..."
 # Fast wipe and restore
-docker compose exec -T db dropdb -U postgres goodpath || true
-docker compose exec -T db createdb -U postgres goodpath
-cat "$DB_FILE" | docker compose exec -T db psql -U postgres -d goodpath
+docker compose exec -T db dropdb -U postgres postmarked || true
+docker compose exec -T db createdb -U postgres postmarked
+cat "$DB_FILE" | docker compose exec -T db psql -U postgres -d postmarked
 
 echo "Restore complete!"
