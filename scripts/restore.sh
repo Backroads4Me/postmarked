@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Goodpath Restore Tool
+# Postmarked Restore Tool
 # Usage: ./scripts/restore.sh <db_sql_file> <volume_tar_file>
 
 if [ "$#" -ne 2 ]; then

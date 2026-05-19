@@ -80,7 +80,7 @@ async def seed_profiles(session):
     if not await first_or_none(session, TravelerProfile):
         session.add(
             TravelerProfile(
-                title="The Goodpath Family",
+                title="Backroads 4 Me",
                 intro="We sold our house to live on wheels. Exploring America one campground at a time.",
                 visibility=Visibility.PUBLIC,
             )
@@ -284,7 +284,7 @@ async def seed():
         )
 
         await session.commit()
-        print("Successfully seeded/backfilled Goodpath demo data.")
+        print("Successfully seeded/backfilled Postmarked demo data.")
 
 
 if __name__ == "__main__":

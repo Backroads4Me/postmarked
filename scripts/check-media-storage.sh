@@ -7,7 +7,7 @@ api_container="$(docker compose ps -q api)"
 db_container="$(docker compose ps -q db)"
 
 if [[ -z "$api_container" || -z "$db_container" ]]; then
-  echo "Goodpath api/db containers are not running. Start the stack with: docker compose up" >&2
+  echo "Postmarked api/db containers are not running. Start the stack with: docker compose up" >&2
   exit 2
 fi
 

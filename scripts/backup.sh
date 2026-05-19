@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Goodpath Backup Tool
+# Postmarked Backup Tool
 # Designed to run from the repository root
 
 ARCHIVE_DIR="./scripts/archives"

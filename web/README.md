@@ -1,6 +1,6 @@
-# Goodpath Web
+# Postmarked Web
 
-Astro frontend for Goodpath. The app is server-rendered with React islands for interactive pieces such as maps, comments, quick posting, imports, and admin controls.
+Astro frontend for Postmarked. The app is server-rendered with React islands for interactive pieces such as maps, comments, quick posting, imports, and admin controls.
 
 ## Stack
 

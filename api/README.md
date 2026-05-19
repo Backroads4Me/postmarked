@@ -1,6 +1,6 @@
-# Goodpath API
+# Postmarked API
 
-FastAPI backend for Goodpath. Requires PostgreSQL/PostGIS and Redis.
+FastAPI backend for Postmarked. Requires PostgreSQL/PostGIS and Redis.
 
 ## Stack
 

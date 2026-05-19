@@ -1,33 +1,13 @@
 name: postmarked
 
-services:
-  web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
-    env_file:
-      - .env
-    environment:
-      - PUBLIC_BASE_URL=http://localhost
-      - API_BASE_URL=http://api:8000
-      - HOST=0.0.0.0
-      - PORT=4321
-    depends_on:
-      - api
-    restart: unless-stopped
+x-api-image: &api-image ghcr.io/backroads4me/postmarked-api:${IMAGE_TAG:-latest}
 
+services:
   api-migrate:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: *api-image
     command: ["alembic", "upgrade", "head"]
+    env_file: .env
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
-      - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
-      - APP_ENV=${APP_ENV:-dev}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Ted & Family}
       - PYTHONPATH=/app
     depends_on:
       db:
@@ -35,18 +15,9 @@ services:
     restart: on-failure
 
   api:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: *api-image
+    env_file: .env
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
-      - APP_ENV=${APP_ENV:-dev}
-      - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:4321,http://localhost:8000}
-      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
-      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
-      - ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Ted & Family}
       - PYTHONPATH=/app
       - ORIGINALS_PATH=/originals
       - DERIVATIVES_PATH=/derivatives
@@ -65,14 +36,10 @@ services:
     restart: unless-stopped
 
   worker:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: *api-image
     command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
+    env_file: .env
     environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
       - PYTHONPATH=/app
       - ORIGINALS_PATH=/originals
       - DERIVATIVES_PATH=/derivatives
@@ -88,17 +55,24 @@ services:
     restart: unless-stopped
 
   beat:
-    build:
-      context: ./api
-      dockerfile: Dockerfile
+    image: *api-image
     command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
-    environment:
-      - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/postmarked
-      - REDIS_URL=redis://redis:6379/0
-      - PYTHONPATH=/app
+    env_file: .env
     depends_on:
       - redis
       - db
+    restart: unless-stopped
+
+  web:
+    image: ghcr.io/backroads4me/postmarked-web:${IMAGE_TAG:-latest}
+    env_file: .env
+    environment:
+      - HOST=0.0.0.0
+      - PORT=4321
+    depends_on:
+      - api
+    ports:
+      - "4321:4321"
     restart: unless-stopped
 
   flower:
@@ -117,10 +91,7 @@ services:
 
   db:
     image: postgis/postgis:16-3.4-alpine
-    environment:
-      - POSTGRES_USER=${POSTGRES_USER:-postgres}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
-      - POSTGRES_DB=${POSTGRES_DB:-postmarked}
+    env_file: .env
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
