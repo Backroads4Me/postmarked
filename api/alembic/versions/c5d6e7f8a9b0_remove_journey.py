@@ -32,8 +32,7 @@ def upgrade() -> None:
     op.drop_column("post", "journey_id")
     op.drop_column("planned_stop", "journey_id")
 
-    # Drop journey table (drop its own FK to stop first)
-    op.drop_constraint("journey_current_stop_id_fkey", "journey", type_="foreignkey")
+    # Drop journey table — its own FK (current_stop_id → stop) drops automatically with it
     op.drop_table("journey")
 
     # Drop journeystatus enum
