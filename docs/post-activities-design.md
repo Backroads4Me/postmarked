@@ -5,7 +5,7 @@ Last updated: 2026-05-16
 
 ## Decision
 
-Goodpath should build local stop activities on top of posts instead of adding a separate `Activity` entity.
+Postmarked should build local stop activities on top of posts instead of adding a separate `Activity` entity.
 
 Posts already support the core activity needs:
 
@@ -104,7 +104,7 @@ Reader display:
 
 ### Google Enriched
 
-Use this when the owner wants Goodpath to pull optional Google place context.
+Use this when the owner wants Postmarked to pull optional Google place context.
 
 Fetch:
 

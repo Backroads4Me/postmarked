@@ -63,7 +63,7 @@ async def get_user_manager(user_db=Depends(get_user_db)):
     yield UserManager(user_db)
 
 cookie_transport = CookieTransport(
-    cookie_name="goodpath_session",
+    cookie_name="postmarked_session",
     cookie_max_age=60 * 60 * 24 * 7,  # 7 days
     cookie_secure=_COOKIE_SECURE,
     cookie_httponly=True,

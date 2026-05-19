@@ -29,14 +29,14 @@ async def first_or_none(session, model, **filters):
 
 
 async def seed_user(session):
-    admin_email = os.getenv("GOODPATH_ADMIN_EMAIL", "admin@example.com").strip().lower()
-    admin_password = os.getenv("GOODPATH_ADMIN_PASSWORD", "admin123")
-    admin_display_name = os.getenv("GOODPATH_ADMIN_DISPLAY_NAME", "Ted & Family")
+    admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com").strip().lower()
+    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
+    admin_display_name = os.getenv("ADMIN_DISPLAY_NAME", "Ted & Family")
 
     if not admin_email:
-        raise RuntimeError("GOODPATH_ADMIN_EMAIL must not be empty")
+        raise RuntimeError("ADMIN_EMAIL must not be empty")
     if not admin_password:
-        raise RuntimeError("GOODPATH_ADMIN_PASSWORD must not be empty")
+        raise RuntimeError("ADMIN_PASSWORD must not be empty")
 
     password_helper = PasswordHelper()
     existing = await first_or_none(session, User, email=admin_email)

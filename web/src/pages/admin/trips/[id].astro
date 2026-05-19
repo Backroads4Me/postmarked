@@ -307,7 +307,7 @@ function formatDate(value) {
         });
         if (!patchRes.ok) throw new Error(`Upload patch failed: ${patchRes.status}`);
 
-        const assetId = patchRes.headers.get('X-Goodpath-Asset-Id') || location.split('/').pop();
+        const assetId = patchRes.headers.get('X-Postmarked-Asset-Id') || location.split('/').pop();
 
         // Set as cover
         const patchTrip = await fetch(`/api/admin/trips/${tripId}`, {

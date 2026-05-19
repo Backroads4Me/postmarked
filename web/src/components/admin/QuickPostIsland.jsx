@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { renderMarkdown } from "../../lib/markdown.js";
 
-const DRAFT_KEY = "goodpath:draft:quick-post";
+const DRAFT_KEY = "postmarked:draft:quick-post";
 const TUS_VERSION = "1.0.0";
 
 const inputStyle = {
@@ -124,7 +124,7 @@ export default function QuickPostIsland() {
       if (!patchRes.ok) throw new Error(`patch: ${patchRes.status}`);
 
       const assetId =
-        patchRes.headers.get("X-Goodpath-Asset-Id") || location.split("/").pop();
+        patchRes.headers.get("X-Postmarked-Asset-Id") || location.split("/").pop();
 
       setPhotos((prev) =>
         prev.map((p) => (p.localId === localId ? { ...p, status: "done", mediaId: assetId, progress: 100 } : p))

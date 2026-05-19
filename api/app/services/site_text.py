@@ -6,9 +6,9 @@ DEFAULT_SITE_TEXT_SECTIONS = [
     {
         "page_key": "home",
         "section_key": "header",
-        "label": "Welcome to Goodpath",
-        "heading": "Our RV Adventure",
-        "body": "A family travel journal — where we are, where we've been, and where we're headed.",
+        "label": "Welcome to Postmarked",
+        "heading": "On the Road",
+        "body": "Quick updates from the road — where we are, where we've been, and where we're headed.",
         "sort_order": 10,
     },
     {
@@ -50,7 +50,7 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "section_key": "header",
         "label": "Journeys",
         "heading": "All Trips",
-        "body": "Each trip is a chapter in our RV story — from coast to coast.",
+        "body": "Every journey, documented.",
         "sort_order": 10,
     },
     {
@@ -58,7 +58,7 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "section_key": "header",
         "label": None,
         "heading": "Timeline",
-        "body": "A chronological journey through our RV life — stops, stories, and moments.",
+        "body": "Every stop, story, and moment — in order.",
         "sort_order": 10,
     },
 ]

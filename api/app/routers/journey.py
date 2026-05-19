@@ -255,6 +255,7 @@ async def get_home(
     current_stop = _stop_out(current_stop_model, coords, user)
     current_sort_order = current_stop.sort_order if current_stop else -1
     next_stop_model = next((s for s in stops if s.sort_order > current_sort_order), None)
+    previous_stop_model = next((s for s in reversed(stops) if s.sort_order < current_sort_order), None)
 
     posts_query = (
         select(Post)
@@ -342,6 +343,7 @@ async def get_home(
     return HomeOut(
         current_stop=current_stop,
         next_stop=_stop_out(next_stop_model, coords, user),
+        previous_stop=_stop_out(previous_stop_model, coords, user),
         recent_stops=[stop_out for s in recent_stop_models if (stop_out := _stop_out(s, coords, user))],
         recent_posts=[await _post_out(post, coords, user) for post in posts],
         active_trip_segment=_trip_summary_out(active_trip, active_trip_stops, user),

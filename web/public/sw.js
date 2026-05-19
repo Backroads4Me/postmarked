@@ -1,5 +1,5 @@
-// sw.js - Goodpath PWA Service Worker
-const CACHE_NAME = 'goodpath-cache-v3';
+// sw.js - Postmarked PWA Service Worker
+const CACHE_NAME = 'postmarked-cache-v1';
 
 // Astro hashes filenames for cache-busting (e.g. _astro/index.Dg3fK.js).
 // These are immutable — serve cache-first with no revalidation.

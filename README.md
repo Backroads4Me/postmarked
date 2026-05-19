@@ -1,6 +1,10 @@
-# Goodpath
+# Postmarked
 
-Goodpath is a personal, self-hosted RV lifestyle sharing app for full-time RV travel. It is designed so family and friends can quickly see where the RV is now, what has been shared recently, and how the current trip segment fits into one continuous journey.
+Postmarked is a self-hosted travel journal for sharing your journey with friends and family. Post a quick update, drop a photo, note the place — like sending a postcard from everywhere you go. Visitors can check in whenever they want, or sign up to be notified when something new is posted.
+
+It is not a trip planning tool, a blogging platform, or a journaling app. Just quick, lightweight updates from the road.
+
+Learn more and find self-hosting guides at [postmarked.io](https://postmarked.io).
 
 ## Current Status
 
@@ -8,7 +12,7 @@ The local MVP is ready for owner testing. The stabilization pass is complete:
 
 - Docker stack boots with Astro, FastAPI, Postgres/PostGIS, Redis, and Celery.
 - Alembic migrations are at head.
-- Seed data creates a full-time RV journey, trip segments, current stop, future stop, and recent posts.
+- Seed data creates a journey with trip segments, a current stop, a future stop, and recent posts.
 - Public reader APIs are wired to the frontend.
 - Admin can manage trips, stops, journeys, posts, imports, media, and pending users.
 - RV Trip Wizard Excel preview/apply creates and updates `PlannedStop` rows.
@@ -29,8 +33,8 @@ Use the Astro web app at http://localhost:4321 for normal testing. Astro proxies
 Admin:
 
 - URL: http://localhost:4321/admin
-- Email: `GOODPATH_ADMIN_EMAIL` from `.env` (`admin@example.com` by default)
-- Password: `GOODPATH_ADMIN_PASSWORD` from `.env` (`admin123` by default)
+- Email: `ADMIN_EMAIL` from `.env` (`admin@example.com` by default)
+- Password: `ADMIN_PASSWORD` from `.env` (`admin123` by default)
 
 Change the seeded admin credentials before any real deployment.
 
@@ -70,10 +74,10 @@ Useful smoke checks:
 
 ```bash
 docker compose ps
-docker exec goodpath-api-1 alembic current
-docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
-docker exec goodpath-api-1 python scripts/seed.py
-docker exec goodpath-web-1 npm run build
+docker exec postmarked-api-1 alembic current
+docker exec postmarked-api-1 python -c "import app.main; print('api import ok')"
+docker exec postmarked-api-1 python scripts/seed.py
+docker exec postmarked-web-1 npm run build
 ./scripts/check-media-storage.sh
 ./scripts/smoke-media-upload.sh
 ```
@@ -89,7 +93,7 @@ curl http://localhost:8000/api/trip-segments
 
 ## RV Trip Wizard Excel Import
 
-The MVP supports RV Trip Wizard `.xlsx` exports only.
+The app supports RV Trip Wizard `.xlsx` exports for importing planned itineraries.
 
 Browser flow:
 
@@ -116,7 +120,7 @@ curl -X POST http://localhost:8000/api/admin/imports/<import_run_id>/apply \
 
 Use `"create_trip": true` to create a trip segment from the file title.
 
-Reimport is preview-first. Removed stops are marked `REMOVED_FROM_LATEST_IMPORT`, not deleted. Private RV Trip Wizard fields such as reservation numbers, comments, cost, and fuel data are stored for the owner but are not returned by public reader endpoints.
+Reimport is preview-first. Removed stops are marked `REMOVED_FROM_LATEST_IMPORT`, not deleted. Private fields such as reservation numbers, comments, cost, and fuel data are stored for the owner but are not returned by public reader endpoints.
 
 ## Direct Development
 
@@ -134,7 +138,7 @@ API:
 cd api
 uv venv
 uv pip install -e ".[dev]"
-PYTHONPATH=. DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/goodpath uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+PYTHONPATH=. DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/postmarked uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 For direct API development you still need PostgreSQL/PostGIS and Redis. The easiest route is to run the Docker database services.
@@ -151,19 +155,6 @@ PUBLIC_GOOGLE_MAPS_MAP_ID=<optional cloud map ID>
 
 Create a Google Maps Platform API key, restrict it by HTTP referrer, and set budget/quota alerts in Google Cloud. If the key is missing, the app still renders a simple route schematic instead of a blank map. The optional map ID enables Google Advanced Markers and cloud map styling; local testing falls back to Google's demo map ID when it is blank.
 
-MapLibre + PMTiles remains available as the self-hosted basemap option:
-
-```env
-PUBLIC_MAP_PROVIDER=maplibre
-```
-
-To enable full local MapLibre basemap tiles, place a compatible PMTiles file under `GOODPATH_PMTILES_DIR` from `.env`:
-
-```text
-pmtiles/basemap.pmtiles
-```
-
-Large `.pmtiles` files are intentionally ignored by git.
 
 ## Deployment Notes
 

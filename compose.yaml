@@ -1,3 +1,5 @@
+name: postmarked
+
 services:
   web:
     build:
@@ -7,14 +9,11 @@ services:
       - .env
     environment:
       - PUBLIC_BASE_URL=http://localhost
-      - PUBLIC_MAP_PROVIDER=${PUBLIC_MAP_PROVIDER:-google}
       - API_BASE_URL=http://api:8000
       - HOST=0.0.0.0
       - PORT=4321
     depends_on:
       - api
-    volumes:
-      - ${GOODPATH_PMTILES_DIR:-../pmtiles}:/app/public/tiles:ro
     restart: unless-stopped
 
   api-migrate:
@@ -26,9 +25,9 @@ services:
       - DATABASE_URL=postgresql+psycopg://postgres:postgres@db:5432/goodpath
       - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
       - APP_ENV=${APP_ENV:-dev}
-      - GOODPATH_ADMIN_EMAIL=${GOODPATH_ADMIN_EMAIL:-admin@example.com}
-      - GOODPATH_ADMIN_PASSWORD=${GOODPATH_ADMIN_PASSWORD:-admin123}
-      - GOODPATH_ADMIN_DISPLAY_NAME=${GOODPATH_ADMIN_DISPLAY_NAME:-Ted & Family}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Ted & Family}
       - PYTHONPATH=/app
     depends_on:
       db:
@@ -45,9 +44,9 @@ services:
       - SECRET_KEY=${SECRET_KEY:-dev-only-change-me}
       - APP_ENV=${APP_ENV:-dev}
       - ALLOWED_ORIGINS=${ALLOWED_ORIGINS:-http://localhost,http://localhost:4321,http://localhost:8000}
-      - GOODPATH_ADMIN_EMAIL=${GOODPATH_ADMIN_EMAIL:-admin@example.com}
-      - GOODPATH_ADMIN_PASSWORD=${GOODPATH_ADMIN_PASSWORD:-admin123}
-      - GOODPATH_ADMIN_DISPLAY_NAME=${GOODPATH_ADMIN_DISPLAY_NAME:-Ted & Family}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin123}
+      - ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Ted & Family}
       - PYTHONPATH=/app
       - ORIGINALS_PATH=/originals
       - DERIVATIVES_PATH=/derivatives
@@ -60,9 +59,9 @@ services:
       api-migrate:
         condition: service_completed_successfully
     volumes:
-      - ${GOODPATH_ORIGINALS_SOURCE:-originals}:/originals
-      - ${GOODPATH_DERIVATIVES_SOURCE:-derivatives}:/derivatives
-      - ${GOODPATH_INGEST_SOURCE:-ingest}:/ingest
+      - ${ORIGINALS_SOURCE:-originals}:/originals
+      - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
+      - ${INGEST_SOURCE:-ingest}:/ingest
     restart: unless-stopped
 
   worker:
@@ -83,9 +82,9 @@ services:
       - db
       - api-migrate
     volumes:
-      - ${GOODPATH_ORIGINALS_SOURCE:-originals}:/originals
-      - ${GOODPATH_DERIVATIVES_SOURCE:-derivatives}:/derivatives
-      - ${GOODPATH_INGEST_SOURCE:-ingest}:/ingest
+      - ${ORIGINALS_SOURCE:-originals}:/originals
+      - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
+      - ${INGEST_SOURCE:-ingest}:/ingest
     restart: unless-stopped
 
   beat:

@@ -23,6 +23,8 @@ try {
 
 const current = homeData?.current_stop;
 const activeTrip = homeData?.active_trip_segment;
+const nextStop = homeData?.next_stop;
+const previousStop = homeData?.previous_stop;
 const updates = [
   ...(homeData?.recent_posts || []).map((post) => ({ kind: 'post', ...post })),
   ...(homeData?.recent_stops || []).map((stop) => ({ kind: 'stop', ...stop })),
@@ -31,7 +33,6 @@ const updates = [
   const dateB = new Date(b.posted_at || b.start_date || 0).getTime();
   return dateB - dateA;
 });
-const nextStop = homeData?.next_stop;
 const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
 const siteText = await loadSiteText();
 const currentText = sectionText(siteText, 'home.current', {
@@ -39,13 +40,9 @@ const currentText = sectionText(siteText, 'home.current', {
   heading: 'Current Location',
 });
 const homeHeaderText = sectionText(siteText, 'home.header', {
-  label: 'Welcome to Goodpath',
-  heading: 'Our RV Adventure',
-  body: "A family travel journal — where we are, where we've been, and where we're headed.",
-});
-const nextText = sectionText(siteText, 'home.next', {
-  label: 'Next Up',
-  heading: 'Next Up',
+  label: 'Welcome to Postmarked',
+  heading: 'On the Road',
+  body: "Quick updates from the road — where we are, where we've been, and where we're headed.",
 });
 const plannedText = sectionText(siteText, 'home.planned', {
   label: 'From the trip plan',
@@ -72,26 +69,20 @@ function cityStateFromAddress(address) {
 }
 
 function stopCityState(stop) {
-  return cityStateFromAddress(stop?.summary || stop?.address || '') || '';
+  return cityStateFromAddress(stop?.summary || stop?.address || '') || stop?.title || '';
 }
+
+const nextStopMention = nextStop ? { cityState: stopCityState(nextStop), slug: nextStop.slug, tripSlug: nextStop.trip_slug } : undefined;
+const prevStopMention = previousStop ? { cityState: stopCityState(previousStop), slug: previousStop.slug, tripSlug: previousStop.trip_slug } : undefined;
 
 function formatStopDate(dateStr) {
   if (!dateStr) return '';
   return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
-const nextCityState = stopCityState(nextStop);
-const nextPrimaryTitle = nextStop ? nextCityState || nextStop.title : '';
-const nextSecondaryTitle = nextStop
-  ? nextCityState
-    ? nextStop.title
-    : nextStop.place_name && nextStop.place_name !== nextStop.title
-      ? nextStop.place_name
-      : ''
-  : '';
 ---
 
-<Layout title="Goodpath — Where Are We Now?">
+<Layout title="Postmarked">
   <main class="frame py-8 md:py-12">
     {error && (
       <section class="mb-6" aria-live="polite">
@@ -106,7 +97,7 @@ const nextSecondaryTitle = nextStop
       {homeHeaderText.label && <div class="label mb-2">{homeHeaderText.label}</div>}
       <h1 class="display text-3xl md:text-4xl">{homeHeaderText.heading}</h1>
       {homeHeaderText.body && (
-        <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+        <p class="lede mt-3 text-sm" style="font-family: var(--sans); max-width: none;">
           {homeHeaderText.body}
         </p>
       )}
@@ -126,6 +117,8 @@ const nextSecondaryTitle = nextStop
           nights={current.nights}
           note={current.public_note}
           label={currentText.label}
+          prevStop={prevStopMention}
+          nextStop={nextStopMention}
         />
       ) : (
         <div class="card-hero">
@@ -140,49 +133,6 @@ const nextSecondaryTitle = nextStop
         </div>
       )}
     </section>
-
-    {/* ── Next Stop ──────────────────────────────────────────── */}
-    {nextStop && (
-      <section class="mb-10" id="next-stop-section">
-        <div class="card-hero">
-          <div class="flex items-center gap-3 mb-4">
-            <span class="brand-mark" aria-hidden="true"></span>
-            {nextText.label && <span class="eyebrow">{nextText.label}</span>}
-          </div>
-          <h3 class="display text-3xl md:text-4xl mb-2">
-            <a href={`/trips/${nextStop.trip_slug}/stops/${nextStop.slug}`} class="hover:text-ember-2 transition-colors">
-              {nextPrimaryTitle}
-            </a>
-          </h3>
-          {nextSecondaryTitle && (
-            <p class="coord mb-1">{nextSecondaryTitle}</p>
-          )}
-          {nextCityState && nextStop.summary && (
-            <p class="text-sm text-muted mb-4">{nextStop.summary}</p>
-          )}
-          <div class="flex flex-wrap gap-4 text-sm">
-            {nextStop.start_date && (
-              <div class="flex flex-col">
-                <span class="current-meta-label mb-1">Arriving</span>
-                <span class="current-meta-value">{formatStopDate(nextStop.start_date)}</span>
-              </div>
-            )}
-            {nextStop.nights && nextStop.nights > 0 && (
-              <div class="flex flex-col">
-                <span class="current-meta-label mb-1">Staying</span>
-                <span class="current-meta-value">{nextStop.nights} night{nextStop.nights !== 1 ? 's' : ''}</span>
-              </div>
-            )}
-            <div class="flex flex-col">
-              <span class="current-meta-label mb-1">Trip</span>
-              <a href={`/trips/${nextStop.trip_slug}`} class="current-meta-value hover:text-ember-2 transition-colors">
-                {nextStop.trip_title || activeTrip?.title || 'Current Trip'}
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-    )}
 
     {/* ── Up Next: Planned Itinerary ─────────────────────────── */}
     {upcomingPlanned.length > 0 && (
@@ -286,7 +236,7 @@ const nextSecondaryTitle = nextStop
     <footer class="mt-16 mb-8 text-center">
       <div class="divider"></div>
       <p class="text-dim text-xs mt-6">
-        <span class="text-ember">Goodpath</span> — A self-hosted RV travel journal
+        <a href="/about" class="text-ember hover:text-ember-2 transition-colors">Postmarked</a> — a self-hosted travel journal
       </p>
     </footer>
 

@@ -32,10 +32,10 @@ const { class: className = '' } = Astro.props;
 
 <script is:inline>
   (() => {
-    if (window.__goodpathThemeToggleReady) return;
-    window.__goodpathThemeToggleReady = true;
+    if (window.__postmarkedThemeToggleReady) return;
+    window.__postmarkedThemeToggleReady = true;
 
-    const storageKey = 'goodpath-theme';
+    const storageKey = 'postmarked-theme';
     const root = document.documentElement;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const themeColor = document.querySelector('meta[name="theme-color"]');

@@ -348,6 +348,14 @@
     color: var(--paper);
     background: var(--hover-soft);
   }
+  .btn-ghost-ember {
+    background: transparent;
+    border-color: var(--ember);
+    color: var(--ember);
+  }
+  .btn-ghost-ember:hover {
+    background: color-mix(in srgb, var(--ember) 12%, transparent);
+  }
 
   /* ── Badges / Chips ─────────────────────────────────────────── */
   .badge {

@@ -1,7 +1,7 @@
 {
-  "name": "Goodpath Travel Journal",
-  "short_name": "Goodpath",
-  "description": "A high-performance offline-tolerant travel journal.",
+  "name": "Postmarked",
+  "short_name": "Postmarked",
+  "description": "A self-hosted travel journal. Quick updates from the road — like sending postcards.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#111111",

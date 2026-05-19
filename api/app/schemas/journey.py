@@ -139,6 +139,7 @@ class PublicPlannedStopSummary(BaseResponse):
 class HomeOut(BaseModel):
     current_stop: Optional[PublicStopSummary] = None
     next_stop: Optional[PublicStopSummary] = None
+    previous_stop: Optional[PublicStopSummary] = None
     recent_stops: List[PublicStopSummary] = []
     recent_posts: List[PublicPostSummary] = []
     active_trip_segment: Optional[PublicTripSegmentSummary] = None

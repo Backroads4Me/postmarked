@@ -9,8 +9,8 @@ interface Props {
 }
 
 const {
-  title = "Goodpath — RV Travel Journal",
-  description = "Follow our full-time RV adventure across America. See where we are, where we've been, and where we're headed.",
+  title = "Postmarked",
+  description = "A travel journal for the road. Quick updates, photos, and notes — like sending a postcard from everywhere you go.",
   hideNav = false,
 } = Astro.props;
 ---
@@ -31,7 +31,7 @@ const {
       (() => {
         const root = document.documentElement;
         const media = window.matchMedia('(prefers-color-scheme: dark)');
-        const storedTheme = localStorage.getItem('goodpath-theme');
+        const storedTheme = localStorage.getItem('postmarked-theme');
         const resolvedTheme = storedTheme || (media.matches ? 'dark' : 'light');
 
         root.dataset.theme = resolvedTheme;

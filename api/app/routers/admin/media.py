@@ -89,7 +89,7 @@ os.makedirs(ORIGINALS_PATH, exist_ok=True)
 
 TUS_VERSION = "1.0.0"
 DEFAULT_MAX_UPLOAD_BYTES = 250 * 1024 * 1024
-MAX_UPLOAD_BYTES = int(os.getenv("GOODPATH_MAX_UPLOAD_BYTES", str(DEFAULT_MAX_UPLOAD_BYTES)))
+MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(DEFAULT_MAX_UPLOAD_BYTES)))
 ALLOWED_UPLOAD_MIME_TYPES = {
     "image/jpeg",
     "image/png",
@@ -251,10 +251,10 @@ async def patch_upload(
         existing = (await session.execute(existing_q)).scalar_one_or_none()
         if existing:
             _cleanup_temp(file_id)
-            response_headers["X-Goodpath-Asset-Id"] = str(existing.id)
-            response_headers["X-Goodpath-Duplicate-Of"] = str(existing.id)
+            response_headers["X-Postmarked-Asset-Id"] = str(existing.id)
+            response_headers["X-Postmarked-Duplicate-Of"] = str(existing.id)
             response_headers["Access-Control-Expose-Headers"] = (
-                "Tus-Resumable, Upload-Offset, X-Goodpath-Asset-Id, X-Goodpath-Duplicate-Of"
+                "Tus-Resumable, Upload-Offset, X-Postmarked-Asset-Id, X-Postmarked-Duplicate-Of"
             )
             return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
 
@@ -286,18 +286,18 @@ async def patch_upload(
             existing = (await session.execute(existing_q)).scalar_one_or_none()
             if existing:
                 _cleanup_temp(file_id)
-                response_headers["X-Goodpath-Asset-Id"] = str(existing.id)
-                response_headers["X-Goodpath-Duplicate-Of"] = str(existing.id)
+                response_headers["X-Postmarked-Asset-Id"] = str(existing.id)
+                response_headers["X-Postmarked-Duplicate-Of"] = str(existing.id)
                 response_headers["Access-Control-Expose-Headers"] = (
-                    "Tus-Resumable, Upload-Offset, X-Goodpath-Asset-Id, X-Goodpath-Duplicate-Of"
+                    "Tus-Resumable, Upload-Offset, X-Postmarked-Asset-Id, X-Postmarked-Duplicate-Of"
                 )
                 return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
             raise
 
         process_media_asset.delay(file_id)
-        response_headers["X-Goodpath-Asset-Id"] = str(asset.id)
+        response_headers["X-Postmarked-Asset-Id"] = str(asset.id)
         response_headers["Access-Control-Expose-Headers"] = (
-            "Tus-Resumable, Upload-Offset, X-Goodpath-Asset-Id"
+            "Tus-Resumable, Upload-Offset, X-Postmarked-Asset-Id"
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)

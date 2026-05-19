@@ -51,11 +51,11 @@ const siteText = await loadSiteText();
 const headerText = sectionText(siteText, 'timeline.header', {
   label: null,
   heading: 'Timeline',
-  body: 'A chronological journey through our RV life — stops, stories, and moments.',
+  body: 'Every stop, story, and moment — in order.',
 });
 ---
 
-<Layout title="Timeline — Goodpath">
+<Layout title="Timeline — Postmarked">
   <main class="frame py-8 md:py-12">
     <section class="mb-8">
       {headerText.label && <div class="label mb-2">{headerText.label}</div>}
@@ -71,7 +71,7 @@ const headerText = sectionText(siteText, 'timeline.header', {
         </div>
         <a
           href={showUpcoming ? '/timeline' : '/timeline?upcoming=1'}
-          class={`btn btn-sm shrink-0 ${showUpcoming ? 'btn-primary' : 'btn-ghost'}`}
+          class={`btn btn-sm shrink-0 ${showUpcoming ? 'btn-primary' : 'btn-ghost-ember'}`}
           aria-pressed={showUpcoming ? 'true' : 'false'}
         >
           {showUpcoming ? 'Hide upcoming stops' : 'Show upcoming stops'}

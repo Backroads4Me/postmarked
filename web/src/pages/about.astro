@@ -1,0 +1,55 @@
+---
+import Layout from '../layouts/Layout.astro';
+---
+
+<Layout title="About — Postmarked" hideNav={false}>
+  <main class="frame py-12 md:py-20">
+    <div class="max-w-prose mx-auto">
+
+      <div class="mb-10">
+        <div class="label mb-3">About</div>
+        <h1 class="display text-4xl md:text-5xl mb-4">Postmarked</h1>
+        <p class="lede text-base" style="font-family: var(--sans);">
+          A self-hosted travel journal for people who travel and want to share it simply.
+        </p>
+      </div>
+
+      <div class="grid gap-8">
+
+        <section class="card-flat">
+          <h2 class="display text-xl mb-3">What it is</h2>
+          <p class="text-sm text-muted leading-relaxed">
+            Postmarked is built around a simple idea: when you're on the road, you want to share where you are and what you're seeing — not write a blog post. It's the digital equivalent of mailing a postcard. Quick updates, a photo or two, a note about the place. That's it.
+          </p>
+          <p class="text-sm text-muted leading-relaxed mt-3">
+            Friends and family can check in whenever they want, or sign up to get notified when something new is posted. No social media required on either end.
+          </p>
+        </section>
+
+        <section class="card-flat">
+          <h2 class="display text-xl mb-3">What it isn't</h2>
+          <p class="text-sm text-muted leading-relaxed">
+            Postmarked is not a trip planning tool, a travel blog platform, or a journaling app. There are great tools for all of those things. This is just for sharing the journey as it happens — lightweight, fast, and focused.
+          </p>
+        </section>
+
+        <section class="card-flat">
+          <h2 class="display text-xl mb-3">Self-hosted</h2>
+          <p class="text-sm text-muted leading-relaxed">
+            Postmarked is designed to be run on your own server. Your photos, your updates, your data — hosted wherever you choose. No subscription, no third-party platform to depend on.
+          </p>
+          <p class="text-sm text-muted leading-relaxed mt-3">
+            Documentation, setup guides, and releases are available at{' '}
+            <a href="https://postmarked.io" class="text-ember hover:text-ember-2 transition-colors" target="_blank" rel="noopener noreferrer">postmarked.io</a>.
+          </p>
+        </section>
+
+      </div>
+
+      <div class="mt-12 pt-6 border-t border-line-soft text-center">
+        <a href="/" class="btn btn-ghost btn-sm">← Back home</a>
+      </div>
+
+    </div>
+  </main>
+</Layout>

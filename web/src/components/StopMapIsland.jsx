@@ -1,6 +1,5 @@
 import { useEffect, useRef } from "react";
 
-const MAP_PROVIDER = (import.meta.env.PUBLIC_MAP_PROVIDER || "google").toLowerCase();
 const GOOGLE_MAPS_API_KEY = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const GOOGLE_MAPS_MAP_ID = import.meta.env.PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
 
@@ -27,155 +26,80 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
     let googleMarkers = [];
 
     async function init() {
-      if (MAP_PROVIDER === "google" && GOOGLE_MAPS_API_KEY) {
-        const { google, Map } = await loadGoogleMaps(GOOGLE_MAPS_API_KEY);
-        map = new Map(containerRef.current, {
-          center: { lat: Number(latitude), lng: Number(longitude) },
-          zoom: 12,
-          mapId: GOOGLE_MAPS_MAP_ID,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          backgroundColor: "#101419",
-        });
-        mapRef.current = map;
+      if (!GOOGLE_MAPS_API_KEY) return;
 
-        const bounds = new google.maps.LatLngBounds();
-        const allPoints = [
-          { lat: Number(latitude), lng: Number(longitude) },
-          ...pois.map((p) => ({ lat: Number(p.latitude), lng: Number(p.longitude) })),
-          ...mediaGps.map((p) => ({ lat: Number(p.latitude), lng: Number(p.longitude) })),
-        ].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+      const { google, Map } = await loadGoogleMaps(GOOGLE_MAPS_API_KEY);
+      map = new Map(containerRef.current, {
+        center: { lat: Number(latitude), lng: Number(longitude) },
+        zoom: 12,
+        mapId: GOOGLE_MAPS_MAP_ID,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false,
+        backgroundColor: "#101419",
+      });
+      mapRef.current = map;
+
+      const bounds = new google.maps.LatLngBounds();
+      const allPoints = [
+        { lat: Number(latitude), lng: Number(longitude) },
+        ...pois.map((p) => ({ lat: Number(p.latitude), lng: Number(p.longitude) })),
+        ...mediaGps.map((p) => ({ lat: Number(p.latitude), lng: Number(p.longitude) })),
+      ].filter((p) => Number.isFinite(p.lat) && Number.isFinite(p.lng));
+
+      addGoogleMarker({
+        google,
+        map,
+        position: { lat: Number(latitude), lng: Number(longitude) },
+        title: "Stop",
+        color: POI_COLORS.campground,
+        scale: 1.1,
+        markers: googleMarkers,
+      });
+
+      for (const poi of pois) {
+        const lat = Number(poi.latitude);
+        const lng = Number(poi.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+        const title = escapeHtml(poi.label);
+        const type = escapeHtml(poi.poi_type);
+        const mapsLink = poi.google_maps_url
+          ? `<br><a href="${escapeHtml(poi.google_maps_url)}" target="_blank" rel="noopener" style="font-size:11px;">Open in Maps</a>`
+          : "";
 
         addGoogleMarker({
           google,
           map,
-          position: { lat: Number(latitude), lng: Number(longitude) },
-          title: "Stop",
-          color: POI_COLORS.campground,
-          scale: 1.1,
+          position: { lat, lng },
+          title: poi.label,
+          color: POI_COLORS[poi.poi_type] ?? POI_COLORS.other,
+          scale: 0.8,
+          content: `<strong>${title}</strong><br><span style="font-size:11px;opacity:.7">${type}</span>${mapsLink}`,
           markers: googleMarkers,
         });
-
-        for (const poi of pois) {
-          const lat = Number(poi.latitude);
-          const lng = Number(poi.longitude);
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-
-          const title = escapeHtml(poi.label);
-          const type = escapeHtml(poi.poi_type);
-          const mapsLink = poi.google_maps_url
-            ? `<br><a href="${escapeHtml(poi.google_maps_url)}" target="_blank" rel="noopener" style="font-size:11px;">Open in Maps</a>`
-            : "";
-
-          addGoogleMarker({
-            google,
-            map,
-            position: { lat, lng },
-            title: poi.label,
-            color: POI_COLORS[poi.poi_type] ?? POI_COLORS.other,
-            scale: 0.8,
-            content: `<strong>${title}</strong><br><span style="font-size:11px;opacity:.7">${type}</span>${mapsLink}`,
-            markers: googleMarkers,
-          });
-        }
-
-        for (const pt of mediaGps) {
-          const lat = Number(pt.latitude);
-          const lng = Number(pt.longitude);
-          if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
-
-          addGoogleMarker({
-            google,
-            map,
-            position: { lat, lng },
-            title: "Photo",
-            color: "#e8c44a",
-            scale: 0.6,
-            markers: googleMarkers,
-          });
-        }
-
-        for (const point of allPoints) bounds.extend(point);
-        if (allPoints.length > 1) {
-          map.fitBounds(bounds, 40);
-        }
-        return;
       }
 
-      const maplibregl = (await import("maplibre-gl")).default;
-      await import("maplibre-gl/dist/maplibre-gl.css");
+      for (const pt of mediaGps) {
+        const lat = Number(pt.latitude);
+        const lng = Number(pt.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
 
-      const style = {
-        version: 8,
-        sources: {
-          carto: {
-            type: "raster",
-            tiles: ["https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            attribution: "© CartoDB",
-          },
-        },
-        layers: [{ id: "carto-base", type: "raster", source: "carto" }],
-      };
+        addGoogleMarker({
+          google,
+          map,
+          position: { lat, lng },
+          title: "Photo",
+          color: "#e8c44a",
+          scale: 0.6,
+          markers: googleMarkers,
+        });
+      }
 
-      map = new maplibregl.Map({
-        container: containerRef.current,
-        style,
-        center: [longitude, latitude],
-        zoom: 12,
-        attributionControl: false,
-      });
-      mapRef.current = map;
-
-      map.on("load", () => {
-        // Stop center marker
-        const el = document.createElement("div");
-        el.style.cssText = `width:18px;height:18px;border-radius:50%;background:#4a9f6e;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);`;
-        new maplibregl.Marker({ element: el })
-          .setLngLat([longitude, latitude])
-          .setPopup(new maplibregl.Popup({ offset: 12 }).setHTML("<strong>Stop</strong>"))
-          .addTo(map);
-
-        // POI markers
-        for (const poi of pois) {
-          const color = POI_COLORS[poi.poi_type] ?? POI_COLORS.other;
-          const poiEl = document.createElement("div");
-          poiEl.style.cssText = `width:12px;height:12px;border-radius:50%;background:${color};border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.4);cursor:pointer;`;
-          const popup = new maplibregl.Popup({ offset: 10 }).setHTML(
-            `<strong>${poi.label}</strong><br><span style="font-size:11px;opacity:.7">${poi.poi_type}</span>` +
-            (poi.google_maps_url ? `<br><a href="${poi.google_maps_url}" target="_blank" rel="noopener" style="font-size:11px;">Open in Maps ↗</a>` : "")
-          );
-          new maplibregl.Marker({ element: poiEl })
-            .setLngLat([poi.longitude, poi.latitude])
-            .setPopup(popup)
-            .addTo(map);
-        }
-
-        // Photo GPS dots
-        for (const pt of mediaGps) {
-          const dotEl = document.createElement("div");
-          dotEl.style.cssText = `width:8px;height:8px;border-radius:50%;background:#e8c44a;border:1px solid rgba(255,255,255,.6);box-shadow:0 1px 2px rgba(0,0,0,.3);`;
-          new maplibregl.Marker({ element: dotEl })
-            .setLngLat([pt.longitude, pt.latitude])
-            .addTo(map);
-        }
-
-        // Fit bounds if there are POIs or photo dots
-        const allPoints = [
-          { lng: longitude, lat: latitude },
-          ...pois.map((p) => ({ lng: p.longitude, lat: p.latitude })),
-          ...mediaGps.map((p) => ({ lng: p.longitude, lat: p.latitude })),
-        ];
-        if (allPoints.length > 1) {
-          const lngs = allPoints.map((p) => p.lng);
-          const lats = allPoints.map((p) => p.lat);
-          map.fitBounds(
-            [[Math.min(...lngs), Math.min(...lats)], [Math.max(...lngs), Math.max(...lats)]],
-            { padding: 40, maxZoom: 14 }
-          );
-        }
-      });
+      for (const point of allPoints) bounds.extend(point);
+      if (allPoints.length > 1) {
+        map.fitBounds(bounds, 40);
+      }
     }
 
     init().catch(console.error);
@@ -229,7 +153,7 @@ function loadGoogleMaps(apiKey) {
   if (googleMapsPromise) return googleMapsPromise;
 
   googleMapsPromise = new Promise((resolve, reject) => {
-    const existing = document.querySelector("script[data-goodpath-google-maps]");
+    const existing = document.querySelector("script[data-postmarked-google-maps]");
     if (existing && window.google?.maps?.Map) {
       resolve({ google: window.google, Map: window.google.maps.Map });
       return;
@@ -241,7 +165,7 @@ function loadGoogleMaps(apiKey) {
       v: "weekly",
       libraries: "marker",
     });
-    script.dataset.goodpathGoogleMaps = "true";
+    script.dataset.postmarkedGoogleMaps = "true";
     script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
     script.async = true;
     script.defer = true;

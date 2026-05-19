@@ -153,12 +153,8 @@ function toDatetimeLocal(iso) {
           <span id="preview-meta" class="label">{post.status} · {post.visibility}</span>
         </div>
         <article class="card-flat">
-          <div class="flex items-center gap-2 mb-3">
-            <span class="inline-symbol" aria-hidden="true">
-              <svg viewBox="0 0 24 24"><path d="M5 19h14"/><path d="m14 5 5 5"/><path d="M4 16.5 15.5 5 19 8.5 7.5 20H4v-3.5Z"/></svg>
-            </span>
-            <span class="eyebrow">Update</span>
-            <span id="preview-date" class="label ml-auto">{new Date(post.posted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          <div class="mb-3">
+            <span id="preview-date" class="label">{new Date(post.posted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </div>
           <h3 id="preview-title" class="text-lg font-medium text-paper mb-1">{post.title}</h3>
           <div id="preview-body" class="post-preview-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedPreviewBody || '<p>Markdown preview appears here as you write.</p>'} />

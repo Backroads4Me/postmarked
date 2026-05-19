@@ -35,29 +35,14 @@ const renderedBody = body ? renderMarkdown(body) : '';
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   } catch { return ''; }
 }
 
-function timeAgo(dateStr?: string) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  if (diff < 7) return `${diff} days ago`;
-  return formatDate(dateStr);
-}
 ---
 
 <div class="card-flat" id={`post-${title?.toLowerCase().replace(/\s+/g, '-')}`}>
-  <div class="flex items-center gap-2 mb-3">
-    <span class="inline-symbol" aria-hidden="true">
-      <svg viewBox="0 0 24 24"><path d="M5 19h14"/><path d="m14 5 5 5"/><path d="M4 16.5 15.5 5 19 8.5 7.5 20H4v-3.5Z"/></svg>
-    </span>
-    <span class="eyebrow">Update</span>
-    {date && <span class="label ml-auto">{timeAgo(date)}</span>}
-  </div>
+  {date && <div class="mb-3"><span class="label">{formatDate(date)}</span></div>}
 
   <h3 class="text-lg font-medium text-paper mb-1">{title}</h3>
   {renderedBody && (

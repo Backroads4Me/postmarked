@@ -3,9 +3,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-api_url="${GOODPATH_API_URL:-http://localhost:8000}"
-admin_email="${GOODPATH_ADMIN_EMAIL:-admin@example.com}"
-admin_password="${GOODPATH_ADMIN_PASSWORD:-admin123}"
+api_url="${API_URL:-http://localhost:8000}"
+admin_email="${ADMIN_EMAIL:-admin@example.com}"
+admin_password="${ADMIN_PASSWORD:-admin123}"
 
 tmp_dir="$(mktemp -d)"
 cookie_jar="$tmp_dir/cookies.txt"

@@ -5,8 +5,11 @@ __pycache__/
 .venv/
 venv/
 .pytest_cache/
+.benchmarks/
 .mypy_cache/
 .ruff_cache/
+.coverage
+htmlcov/
 
 # Node
 node_modules/
@@ -23,6 +26,10 @@ coverage/
 /web/dist-codex-check/
 /web/.astro/
 /web/.vite/
+/web/public/tiles/
+
+# Editor
+.vscode/
 
 # Env / secrets
 .env
@@ -39,9 +46,6 @@ coverage/
 # Runtime-generated scheduler state
 /api/celerybeat-schedule
 /api/celerybeat-schedule.*
-
-# PMTiles basemap data (download from protomaps.com/builds)
-pmtiles/*.pmtiles
 
 # OS / editor
 .DS_Store

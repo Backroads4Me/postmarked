@@ -103,7 +103,7 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
         return await call_next(request)
 
 
-app = FastAPI(title="Goodpath API", description="Self-hosted RV travel journal API")
+app = FastAPI(title="Postmarked API", description="Self-hosted travel journal API")
 
 app.add_middleware(
     CORSMiddleware,

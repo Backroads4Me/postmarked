@@ -1,15 +1,13 @@
-# Goodpath Testing Checklist
+# Postmarked Testing Checklist
 
-Status: local MVP ready for owner testing  
+Status: local MVP ready for owner testing
 Last updated: 2026-05-04
-
-This document replaces the old sprint tracker. S1-S3 stabilization work is complete; S4 polish remains open but is not blocking local testing.
 
 ## What Is Ready
 
 - Docker Compose dev stack.
 - Automatic Alembic migration on compose startup.
-- Seeded full-time RV demo data.
+- Seeded demo journey data.
 - Public home, timeline, trips index, trip segment detail, and stop detail pages.
 - Admin dashboard.
 - Current stop picker.
@@ -20,7 +18,6 @@ This document replaces the old sprint tracker. S1-S3 stabilization work is compl
 - RV Trip Wizard Excel preview/apply flow.
 - Media streaming through `/media/{asset_id}/{variant}`.
 - Google Maps provider with route schematic fallback when no API key is configured.
-- Optional PMTiles map source when `PUBLIC_MAP_PROVIDER=maplibre`.
 
 ## Verified Checks
 
@@ -28,16 +25,16 @@ These checks passed on 2026-05-04:
 
 ```bash
 docker compose ps
-docker exec goodpath-api-1 alembic current
-docker exec goodpath-api-1 python -c "import app.main; print('api import ok')"
-docker exec goodpath-api-1 python scripts/seed.py
-docker exec goodpath-web-1 npm run build
+docker exec postmarked-api-1 alembic current
+docker exec postmarked-api-1 python -c "import app.main; print('api import ok')"
+docker exec postmarked-api-1 python scripts/seed.py
+docker exec postmarked-web-1 npm run build
 ```
 
 Verified API/page behavior:
 
 - `/api/health/ready` returns `200`.
-- `/api/home` returns the active journey, current stop, recent posts, recent stops, active trip segment, and upcoming planned stops.
+- `/api/home` returns the active journey, current stop, next/previous stops, recent posts, recent stops, active trip segment, and upcoming planned stops.
 - `/api/timeline` returns a paginated unified feed of recent `post` and `stop` updates.
 - `/api/trip-segments` returns visible trip segment summaries.
 - `/api/trip-segments/michigan-ny-2026` returns ordered stops with coordinates.
@@ -52,7 +49,7 @@ Use http://localhost:4321 for normal testing.
 
 1. Open `/`.
 2. Confirm the home page quickly answers:
-   - where the RV is now
+   - where you are now
    - what was shared recently
    - where the route is headed next
 3. Open `/timeline`.
@@ -87,8 +84,7 @@ Highest value before wider family testing:
 3. Add friendly SSR error banners where pages currently degrade quietly.
 4. Verify public and admin pages at 390px and 1280px widths.
 5. Add auth-aware header state with login/logout/admin affordances.
-6. Add `/rv` and `/about` public pages.
-7. Add admin settings/profile pages for RV and traveler details.
-8. Add deeper tests for import reimport edge cases.
-9. Add deeper tests for visibility inheritance across journey, trip, stop, post, and media.
-10. Finish production reverse-proxy/TLS/header review before deploying on a public domain.
+6. Add admin settings/profile pages for traveler details.
+7. Add deeper tests for import reimport edge cases.
+8. Add deeper tests for visibility inheritance across journey, trip, stop, post, and media.
+9. Finish production reverse-proxy/TLS/header review before deploying on a public domain.

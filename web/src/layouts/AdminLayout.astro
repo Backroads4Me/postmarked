@@ -30,7 +30,7 @@ function isActive(href: string) {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{title} — Goodpath Admin</title>
+  <title>{title} — Postmarked Admin</title>
   <link rel="manifest" href="/manifest.json" />
   <meta name="theme-color" content="#0a0d11" />
   <meta name="robots" content="noindex, nofollow" />
@@ -38,7 +38,7 @@ function isActive(href: string) {
     (() => {
       const root = document.documentElement;
       const media = window.matchMedia('(prefers-color-scheme: dark)');
-      const storedTheme = localStorage.getItem('goodpath-theme');
+      const storedTheme = localStorage.getItem('postmarked-theme');
       const resolvedTheme = storedTheme || (media.matches ? 'dark' : 'light');
 
       root.dataset.theme = resolvedTheme;
@@ -49,7 +49,7 @@ function isActive(href: string) {
 <body style="padding-bottom: 0;">
   <nav class="admin-top-nav">
     <div class="admin-brand">
-      <span class="text-ember font-bold">GOODPATH</span>
+      <span class="text-ember font-bold">POSTMARKED</span>
       <span class="admin-separator">ADMIN</span>
     </div>
     <div class="admin-links">
