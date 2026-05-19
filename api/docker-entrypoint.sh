@@ -7,6 +7,8 @@ for dir in "${ORIGINALS_PATH:-/tmp/originals}" "${DERIVATIVES_PATH:-/tmp/derivat
 done
 
 if [ "$(id -u)" = "0" ]; then
+  gosu appuser alembic upgrade head
+  gosu appuser python scripts/seed.py
   exec gosu appuser "$@"
 fi
 
