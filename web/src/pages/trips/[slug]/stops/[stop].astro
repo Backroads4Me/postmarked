@@ -10,7 +10,10 @@ const { slug, stop } = Astro.params;
 let detail = null;
 let loadError = null;
 try {
-  const res = await fetch(apiUrl(`/api/trips/${slug}/stops/${stop}`));
+  const cookie = Astro.request.headers.get('cookie');
+  const res = await fetch(apiUrl(`/api/trips/${slug}/stops/${stop}`), {
+    headers: cookie ? { cookie } : {},
+  });
   if (res.ok) {
     detail = await res.json();
   } else if (res.status === 404) {

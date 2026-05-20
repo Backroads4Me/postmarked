@@ -9,7 +9,10 @@ const { slug, stop: stopSlug, post_slug } = Astro.params;
 let post = null;
 let loadError = null;
 try {
-  const res = await fetch(apiUrl(`/api/trips/${slug}/stops/${stopSlug}/posts/${post_slug}`));
+  const cookie = Astro.request.headers.get('cookie');
+  const res = await fetch(apiUrl(`/api/trips/${slug}/stops/${stopSlug}/posts/${post_slug}`), {
+    headers: cookie ? { cookie } : {},
+  });
   if (res.ok) {
     post = await res.json();
   } else if (res.status === 404) {

@@ -6,7 +6,10 @@ import { loadSiteText, sectionText } from '../../lib/siteText.js';
 
 let trips = [];
 try {
-  const res = await fetch(apiUrl('/api/trip-segments'));
+  const cookie = Astro.request.headers.get('cookie');
+  const res = await fetch(apiUrl('/api/trip-segments'), {
+    headers: cookie ? { cookie } : {},
+  });
   if (res.ok) trips = await res.json();
 } catch (e) {
   console.error(e);
