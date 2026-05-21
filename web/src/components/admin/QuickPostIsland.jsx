@@ -191,7 +191,7 @@ export default function QuickPostIsland() {
       return;
     }
     const pending = photos.filter((p) => p.status === "uploading" || p.status === "queued");
-    if (pending.length > 0) { setError("Wait for photo uploads to finish"); return; }
+    if (pending.length > 0) { setError("Wait for media uploads to finish"); return; }
 
     setPublishing(true);
     setError(null);
@@ -326,7 +326,7 @@ export default function QuickPostIsland() {
       </div>
 
       <div>
-        <label className="label">Photos</label>
+        <label className="label">Media</label>
         <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
           <input
             ref={fileInputRef}
@@ -408,22 +408,36 @@ export default function QuickPostIsland() {
 
           {previewPhotos.length > 0 && (
             <div className="mt-3 flex flex-col gap-2 max-w-sm">
-              {previewPhotos.map((p) => (
-                <a
-                  key={p.localId}
-                  href={p.previewUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="block bg-line-soft overflow-hidden rounded-md"
-                >
-                  <img
-                    src={p.previewUrl}
-                    alt={p.name}
-                    className="block max-w-full h-auto object-contain mx-auto"
-                    style={{ maxHeight: previewPhotos.length === 1 ? "28rem" : "18rem" }}
-                  />
-                </a>
-              ))}
+              {previewPhotos.map((p) => {
+                const isVideo = p.type?.startsWith("video/");
+                return isVideo ? (
+                  <div key={p.localId} className="block bg-line-soft overflow-hidden rounded-md">
+                    <video
+                      src={p.previewUrl}
+                      controls
+                      muted
+                      preload="metadata"
+                      className="block max-w-full h-auto object-contain mx-auto"
+                      style={{ maxHeight: previewPhotos.length === 1 ? "28rem" : "18rem" }}
+                    />
+                  </div>
+                ) : (
+                  <a
+                    key={p.localId}
+                    href={p.previewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block bg-line-soft overflow-hidden rounded-md"
+                  >
+                    <img
+                      src={p.previewUrl}
+                      alt={p.name}
+                      className="block max-w-full h-auto object-contain mx-auto"
+                      style={{ maxHeight: previewPhotos.length === 1 ? "28rem" : "18rem" }}
+                    />
+                  </a>
+                );
+              })}
             </div>
           )}
 

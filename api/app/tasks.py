@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+import json
 from celery import Celery
 import subprocess
 from PIL import Image, ExifTags
@@ -39,6 +40,30 @@ def _dms_to_decimal(dms, ref) -> float | None:
         return decimal
     except Exception:
         return None
+
+
+def _probe_video_dimensions(file_path: str) -> tuple[int, int]:
+    """Return the first valid video stream dimensions from ffprobe JSON output."""
+    dim_cmd = [
+        "ffprobe",
+        "-v",
+        "error",
+        "-select_streams",
+        "v",
+        "-show_entries",
+        "stream=width,height",
+        "-of",
+        "json",
+        file_path,
+    ]
+    raw = subprocess.check_output(dim_cmd).decode("utf-8")
+    data = json.loads(raw or "{}")
+    for stream in data.get("streams", []):
+        width = stream.get("width")
+        height = stream.get("height")
+        if isinstance(width, int) and isinstance(height, int) and width > 0 and height > 0:
+            return width, height
+    raise ValueError("No video stream with numeric width and height found")
 
 
 @celery_app.task(name="process_media_asset")
@@ -120,13 +145,11 @@ def process_media_asset(asset_id: str):
                 duration_str = subprocess.check_output(probe_cmd).decode('utf-8').strip()
                 asset.duration_seconds = float(duration_str)
 
-                # Get dimensions 
-                dim_cmd = ["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=s=x:p=0", file_path]
-                dim_str = subprocess.check_output(dim_cmd).decode('utf-8').strip()
-                w, h = dim_str.split('x')
-                asset.width = int(w)
-                asset.height = int(h)
-                asset.aspect_ratio = round(int(w)/int(h), 4)
+                # Get dimensions from the first valid video stream.
+                w, h = _probe_video_dimensions(file_path)
+                asset.width = w
+                asset.height = h
+                asset.aspect_ratio = round(w / h, 4)
 
                 # Extract poster image
                 poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")

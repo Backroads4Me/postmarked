@@ -1,12 +1,13 @@
 ---
 /**
- * MediaGallery — Reusable photo gallery for posts and stops.
+ * MediaGallery — Reusable media gallery for posts and stops.
  *
- * Single photo: displays at natural aspect ratio, constrained by max dimensions.
- * Multiple photos: compact bento grid with square-cropped thumbnails.
+ * Single item: displays at natural aspect ratio, constrained by max dimensions.
+ * Multiple items: compact bento grid with square-cropped thumbnails.
  */
 interface MediaSummary {
   id: string;
+  kind?: 'photo' | 'video' | string;
   width?: number | null;
   height?: number | null;
   blurhash?: string | null;
@@ -28,11 +29,23 @@ interface Props {
 }
 
 const { media, maxWidth = 'none', singleMaxHeight = '20rem', bentoGrid = true, limit = 3 } = Astro.props;
-const photos = (media || []).slice(0, limit);
-const isSingle = photos.length === 1;
+const items = (media || []).slice(0, limit);
+const isSingle = items.length === 1;
+
+function isVideo(m: MediaSummary) {
+  return m.kind === 'video';
+}
+
+function mediaHref(m: MediaSummary) {
+  return isVideo(m) ? `/media/${m.id}/original` : `/media/${m.id}/webp`;
+}
+
+function posterSrc(m: MediaSummary) {
+  return isVideo(m) ? `/media/${m.id}/poster` : `/media/${m.id}/webp`;
+}
 ---
 
-{photos.length > 0 && (
+{items.length > 0 && (
   <div
     class:list={[
       'mt-3 grid gap-1 rounded-md overflow-hidden',
@@ -40,15 +53,29 @@ const isSingle = photos.length === 1;
       maxWidth !== 'none' ? maxWidth : '',
     ]}
   >
-    {photos.map((m) => (
+    {items.map((m) => isSingle && isVideo(m) ? (
+      <div
+        class="media-gallery-item block overflow-hidden"
+        style={m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
+      >
+        <video
+          src={`/media/${m.id}/original`}
+          poster={posterSrc(m)}
+          controls
+          preload="metadata"
+          class="block mx-auto h-auto max-w-full"
+          style={`max-height: ${singleMaxHeight};`}
+        />
+      </div>
+    ) : (
       <a
-        href={`/media/${m.id}/webp`}
-        class:list={['block overflow-hidden', !isSingle && 'bg-line-soft']}
+        href={mediaHref(m)}
+        class:list={['media-gallery-item block overflow-hidden', !isSingle && 'bg-line-soft']}
         style={!isSingle && m.dominant_color ? `background-color: ${m.dominant_color};` : undefined}
       >
         {isSingle ? (
           <img
-            src={`/media/${m.id}/webp`}
+            src={posterSrc(m)}
             alt={m.alt_text || m.caption || ''}
             loading="lazy"
             decoding="async"
@@ -56,17 +83,50 @@ const isSingle = photos.length === 1;
             style={`max-height: ${singleMaxHeight};`}
           />
         ) : (
-          <img
-            src={`/media/${m.id}/webp`}
-            alt={m.alt_text || m.caption || ''}
-            loading="lazy"
-            decoding="async"
-            width={m.width || undefined}
-            height={m.height || undefined}
-            class="w-full h-full object-cover"
-          />
+          <div class="media-gallery-thumb">
+            <img
+              src={posterSrc(m)}
+              alt={m.alt_text || m.caption || ''}
+              loading="lazy"
+              decoding="async"
+              width={m.width || undefined}
+              height={m.height || undefined}
+              class="w-full h-full object-cover"
+            />
+            {isVideo(m) && <span class="media-gallery-play" aria-hidden="true">▶</span>}
+          </div>
         )}
       </a>
     ))}
   </div>
 )}
+
+<style>
+  .media-gallery-item {
+    position: relative;
+  }
+
+  .media-gallery-thumb {
+    height: 100%;
+    position: relative;
+  }
+
+  .media-gallery-play {
+    align-items: center;
+    background: rgb(0 0 0 / 0.62);
+    border: 1px solid rgb(255 255 255 / 0.28);
+    border-radius: 999px;
+    color: white;
+    display: flex;
+    font-size: 13px;
+    height: 34px;
+    justify-content: center;
+    left: 50%;
+    line-height: 1;
+    padding-left: 2px;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 34px;
+  }
+</style>

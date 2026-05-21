@@ -121,6 +121,11 @@ export default function CommentsIsland({ targetKind, targetId }) {
       : authKnown && viewer && !viewerIsApproved
         ? "Your account is pending approval before you can comment."
         : "";
+  const nextPath =
+    typeof window === "undefined"
+      ? ""
+      : `${window.location.pathname}${window.location.search}`;
+  const loginHref = `/auth/login${nextPath ? `?next=${encodeURIComponent(nextPath)}` : ""}`;
 
   return (
     <section
@@ -176,8 +181,14 @@ export default function CommentsIsland({ targetKind, targetId }) {
       {!authKnown && <div className="label">Checking comment permissions…</div>}
 
       {authKnown && !canComment && (
-        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--muted)" }}>
-          {disabledReason}
+        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--muted)", display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>{disabledReason}</div>
+          {!viewer && (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <a className="btn btn-sm" href={loginHref}>Sign in</a>
+              <a className="btn btn-sm btn-ghost" href="/auth/register">Register</a>
+            </div>
+          )}
         </div>
       )}
 

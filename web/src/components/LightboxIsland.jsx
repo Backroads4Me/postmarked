@@ -65,14 +65,13 @@ export default function LightboxIsland({ stops }) {
             onClick={(e) => e.stopPropagation()} 
           />
        ) : activeMedia.derivative_paths?.poster ? (
-         // If video, render html5 video element. Assuming original_path mapping exists in a real scenario
          <video 
            controls 
            poster={activeMedia.derivative_paths.poster} 
            className="max-w-full max-h-full object-contain pointer-events-auto rounded shadow-2xl"
            onClick={e => e.stopPropagation()}
           >
-            <source src={`/media/originals/${activeMedia.id}.bin`} />
+            <source src={`/media/${activeMedia.id}/original`} />
          </video>
        ) : (
           <div className="text-muted">Loading asset...</div>
