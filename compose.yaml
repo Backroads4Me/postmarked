@@ -61,13 +61,12 @@ services:
     image: ghcr.io/backroads4me/postmarked-web:${IMAGE_TAG:-latest}
     build:
       context: ./web
-      args:
-        PUBLIC_GOOGLE_MAPS_API_KEY: ${PUBLIC_GOOGLE_MAPS_API_KEY:-}
-        PUBLIC_GOOGLE_MAPS_MAP_ID: ${PUBLIC_GOOGLE_MAPS_MAP_ID:-}
     env_file: .env
     environment:
       - HOST=0.0.0.0
       - PORT=4321
+      - PUBLIC_GOOGLE_MAPS_API_KEY=${PUBLIC_GOOGLE_MAPS_API_KEY:-}
+      - PUBLIC_GOOGLE_MAPS_MAP_ID=${PUBLIC_GOOGLE_MAPS_MAP_ID:-}
     depends_on:
       - api
     ports:

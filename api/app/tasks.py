@@ -178,6 +178,7 @@ import hashlib
 import shutil
 
 INGEST_PATH = os.getenv("INGEST_PATH", "/tmp/ingest")
+PROCESSED_INGEST_PATH = os.path.join(INGEST_PATH, "processed")
 os.makedirs(INGEST_PATH, exist_ok=True)
 
 def hash_file(filepath: str) -> str:
@@ -187,11 +188,32 @@ def hash_file(filepath: str) -> str:
             hasher.update(chunk)
     return hasher.hexdigest()
 
+
+def _processed_ingest_path(filepath: str) -> str:
+    rel_path = os.path.relpath(filepath, INGEST_PATH)
+    dest_path = os.path.join(PROCESSED_INGEST_PATH, rel_path)
+    base, ext = os.path.splitext(dest_path)
+    candidate = dest_path
+    counter = 1
+    while os.path.exists(candidate):
+        candidate = f"{base}-{counter}{ext}"
+        counter += 1
+    os.makedirs(os.path.dirname(candidate), exist_ok=True)
+    return candidate
+
+
+def _move_to_processed(filepath: str) -> str:
+    dest_path = _processed_ingest_path(filepath)
+    shutil.move(filepath, dest_path)
+    return dest_path
+
+
 @celery_app.task(name="scan_filesystem")
 def scan_filesystem():
     """
     Recursively scans INGEST_PATH for new media files and hashes them. 
     If unique, it copies them to ORIGINALS_PATH and fires processing logic.
+    Handled files are moved to INGEST_PATH/processed so ingest stays a queue.
     """
     db = SessionLocal()
     try:
@@ -199,6 +221,8 @@ def scan_filesystem():
             return "Ingest path missing"
             
         for root, dirs, files in os.walk(INGEST_PATH):
+            if os.path.commonpath([PROCESSED_INGEST_PATH, root]) == PROCESSED_INGEST_PATH:
+                continue
             for file in files:
                 if file.startswith('.'): continue
                 
@@ -213,6 +237,7 @@ def scan_filesystem():
                 query = select(MediaAsset).where(MediaAsset.original_sha256 == fhash)
                 existing = db.execute(query).scalar_one_or_none()
                 if existing:
+                    _move_to_processed(filepath)
                     continue # Skip deduplicated
                 
                 # Register new asset
@@ -237,6 +262,7 @@ def scan_filesystem():
                 )
                 db.add(asset)
                 db.commit()
+                _move_to_processed(filepath)
                 
                 # Delegate
                 process_media_asset.delay(str(new_id))

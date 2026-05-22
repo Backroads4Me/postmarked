@@ -1,9 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '@nanostores/react';
+import { getRuntimeConfig } from '../lib/runtimeConfig.js';
 import { urlState } from '../stores/urlState';
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || '';
-const GOOGLE_MAPS_MAP_ID = import.meta.env.PUBLIC_GOOGLE_MAPS_MAP_ID || 'DEMO_MAP_ID';
 
 let googleMapsPromise = null;
 
@@ -44,20 +42,23 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
 
   useEffect(() => {
     let cancelled = false;
+    const config = getRuntimeConfig();
+    const googleMapsApiKey = config.googleMapsApiKey || '';
+    const googleMapsMapId = config.googleMapsMapId || 'DEMO_MAP_ID';
 
-    if (!GOOGLE_MAPS_API_KEY) {
+    if (!googleMapsApiKey) {
       setFallbackReason('Google Maps key missing');
       return;
     }
 
-    loadGoogleMaps(GOOGLE_MAPS_API_KEY)
+    loadGoogleMaps(googleMapsApiKey)
       .then(({ Map }) => {
         if (cancelled || mapRef.current || !mapContainer.current) return;
 
         const map = new Map(mapContainer.current, {
           center: { lat: 39, lng: -98 },
           zoom: 4,
-          mapId: GOOGLE_MAPS_MAP_ID,
+          mapId: googleMapsMapId,
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,

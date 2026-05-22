@@ -1,7 +1,5 @@
 import { useEffect, useRef } from "react";
-
-const GOOGLE_MAPS_API_KEY = import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY || "";
-const GOOGLE_MAPS_MAP_ID = import.meta.env.PUBLIC_GOOGLE_MAPS_MAP_ID || "DEMO_MAP_ID";
+import { getRuntimeConfig } from "../lib/runtimeConfig.js";
 
 let googleMapsPromise = null;
 
@@ -24,15 +22,18 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
 
     let map;
     let googleMarkers = [];
+    const config = getRuntimeConfig();
+    const googleMapsApiKey = config.googleMapsApiKey || "";
+    const googleMapsMapId = config.googleMapsMapId || "DEMO_MAP_ID";
 
     async function init() {
-      if (!GOOGLE_MAPS_API_KEY) return;
+      if (!googleMapsApiKey) return;
 
-      const { google, Map } = await loadGoogleMaps(GOOGLE_MAPS_API_KEY);
+      const { google, Map } = await loadGoogleMaps(googleMapsApiKey);
       map = new Map(containerRef.current, {
         center: { lat: Number(latitude), lng: Number(longitude) },
         zoom: 12,
-        mapId: GOOGLE_MAPS_MAP_ID,
+        mapId: googleMapsMapId,
         mapTypeControl: false,
         streetViewControl: false,
         fullscreenControl: false,
