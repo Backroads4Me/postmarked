@@ -29,13 +29,9 @@ if (!detail) {
   return Astro.redirect('/404');
 }
 
-const allMedia = [
-  ...(detail.media || []),
-  ...((detail.posts || []).flatMap(p => p.media || [])),
-];
-// dedupe by id
+const stopMedia = detail.media || [];
 const seen = new Set();
-const gallery = allMedia.filter(m => {
+const gallery = stopMedia.filter(m => {
   if (seen.has(m.id)) return false;
   seen.add(m.id);
   return true;
@@ -54,14 +50,6 @@ function fmtActivityTime(d, timezoneId) {
 
 const activities = (detail.posts || []).filter(p => p.post_type === 'activity');
 const updates = (detail.posts || []).filter(p => p.post_type !== 'activity');
-
-function mediaHref(m) {
-  return m.kind === 'video' ? `/media/${m.id}/original` : `/media/${m.id}/webp`;
-}
-
-function mediaPreviewSrc(m) {
-  return m.kind === 'video' ? `/media/${m.id}/poster` : `/media/${m.id}/webp`;
-}
 
 function fmtRange(start, end) {
   if (!start) return '';
@@ -160,48 +148,7 @@ function fmtRange(start, end) {
                 </div>
               )}
               {p.media && p.media.length > 0 && (
-                <div class="mt-3 flex gap-2 overflow-x-auto">
-                  {p.media.slice(0, 4).map(m => (
-                    <a href={mediaHref(m)} target="_blank" rel="noopener noreferrer"
-                       class="relative rounded block overflow-hidden bg-line-soft"
-                       style="height: 72px; width: 72px; flex-shrink: 0;">
-                      <img src={mediaPreviewSrc(m)} alt={m.alt_text || ''} loading="lazy"
-                           class="w-full h-full object-cover" />
-                      {m.kind === 'video' && <span class="media-play-badge" aria-hidden="true">▶</span>}
-                    </a>
-                  ))}
-                </div>
-              )}
-            </article>
-          ))}
-        </div>
-      </section>
-    )}
-
-    {/* ── Updates ──────────────────────────────────────────── */}
-    {updates.length > 0 && (
-      <section class="mb-10">
-        <h2 class="display text-2xl mb-3">Updates from here</h2>
-        <div class="grid gap-3">
-          {updates.map(p => (
-            <article class="card-flat">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="text-base font-medium" style="color: var(--paper);">{p.title}</h3>
-                <span class="label">{fmtDate(p.posted_at)}</span>
-              </div>
-              {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
-              {p.media && p.media.length > 0 && (
-                <div class="mt-3 flex gap-2 overflow-x-auto">
-                  {p.media.slice(0, 4).map(m => (
-                    <a href={mediaHref(m)} target="_blank" rel="noopener noreferrer"
-                       class="relative rounded block overflow-hidden bg-line-soft"
-                       style="height: 88px; width: 88px; flex-shrink: 0;">
-                      <img src={mediaPreviewSrc(m)} alt={m.alt_text || m.caption || ''} loading="lazy"
-                           class="w-full h-full object-cover" />
-                      {m.kind === 'video' && <span class="media-play-badge" aria-hidden="true">▶</span>}
-                    </a>
-                  ))}
-                </div>
+                <MediaGallery media={p.media} maxWidth="max-w-lg" singleMaxHeight="22rem" limit={4} />
               )}
             </article>
           ))}
@@ -222,6 +169,27 @@ function fmtRange(start, end) {
         <p class="coord mt-2" style="font-size: 11px;">
           {detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}
         </p>
+      </section>
+    )}
+
+    {/* ── Updates ──────────────────────────────────────────── */}
+    {updates.length > 0 && (
+      <section class="mb-10">
+        <h2 class="display text-2xl mb-3">Updates from here</h2>
+        <div class="grid gap-3">
+          {updates.map(p => (
+            <article class="card-flat">
+              <div class="flex items-center justify-between mb-2">
+                <h3 class="text-base font-medium" style="color: var(--paper);">{p.title}</h3>
+                <span class="label">{fmtDate(p.posted_at)}</span>
+              </div>
+              {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
+              {p.media && p.media.length > 0 && (
+                <MediaGallery media={p.media} maxWidth="max-w-lg" singleMaxHeight="22rem" limit={4} />
+              )}
+            </article>
+          ))}
+        </div>
       </section>
     )}
 
@@ -251,24 +219,3 @@ function fmtRange(start, end) {
     </nav>
   </main>
 </Layout>
-
-<style>
-  .media-play-badge {
-    align-items: center;
-    background: rgb(0 0 0 / 0.62);
-    border: 1px solid rgb(255 255 255 / 0.28);
-    border-radius: 999px;
-    color: white;
-    display: flex;
-    font-size: 11px;
-    height: 28px;
-    justify-content: center;
-    left: 50%;
-    line-height: 1;
-    padding-left: 2px;
-    position: absolute;
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 28px;
-  }
-</style>

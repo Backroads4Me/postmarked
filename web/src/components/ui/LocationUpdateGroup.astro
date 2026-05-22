@@ -1,0 +1,191 @@
+---
+/**
+ * LocationUpdateGroup — a stop/location card with nested post updates.
+ */
+import { renderMarkdown } from '../../lib/markdown.js';
+import MediaGallery from './MediaGallery.astro';
+
+interface MediaSummary {
+  id: string;
+  kind?: 'photo' | 'video' | string;
+  width?: number | null;
+  height?: number | null;
+  blurhash?: string | null;
+  dominant_color?: string | null;
+  alt_text?: string | null;
+  caption?: string | null;
+}
+
+interface PostSummary {
+  id?: string;
+  slug?: string;
+  title: string;
+  body?: string | null;
+  summary?: string | null;
+  posted_at?: string;
+  media?: MediaSummary[];
+}
+
+interface StopSummary {
+  id?: string;
+  title: string;
+  displayTitle?: string;
+  detailTitle?: string;
+  slug?: string;
+  tripSlug?: string;
+  trip_slug?: string;
+  summary?: string | null;
+  start_date?: string;
+  posted_at?: string;
+  place_name?: string | null;
+  stop_type?: string;
+}
+
+interface Props {
+  stop: StopSummary;
+  posts?: PostSummary[];
+}
+
+const { stop, posts = [] } = Astro.props;
+const tripSlug = stop.tripSlug || stop.trip_slug;
+const href = stop.slug && tripSlug ? `/trips/${tripSlug}/stops/${stop.slug}` : undefined;
+const primaryTitle = stop.displayTitle || stop.title;
+const secondaryTitle = stop.detailTitle && stop.detailTitle !== primaryTitle
+  ? stop.detailTitle
+  : stop.place_name && stop.place_name !== primaryTitle
+    ? stop.place_name
+    : '';
+const date = stop.start_date || stop.posted_at;
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+
+function postHref(post: PostSummary) {
+  if (!post.slug || !stop.slug || !tripSlug) return undefined;
+  return `/trips/${tripSlug}/stops/${stop.slug}/posts/${post.slug}`;
+}
+---
+
+<article class="location-update-group" id={stop.slug ? `stop-${stop.slug}` : undefined}>
+  <div class="location-update-header">
+    <div class="min-w-0">
+      <div class="flex items-baseline gap-2 mb-2">
+        {date && (
+          <>
+            <span class="display text-xl text-muted">{formatDate(date)}</span>
+            <span class="display text-xl text-muted" aria-hidden="true">-</span>
+          </>
+        )}
+        {href ? (
+          <a href={href} class="display text-xl location-title truncate">
+            {primaryTitle}
+          </a>
+        ) : (
+          <h3 class="display text-xl location-title truncate">{primaryTitle}</h3>
+        )}
+      </div>
+      {secondaryTitle && <p class="coord mt-1">{secondaryTitle}</p>}
+      {stop.summary && <p class="text-muted text-sm mt-2 line-clamp-2">{stop.summary}</p>}
+    </div>
+  </div>
+
+  {posts.length > 0 && (
+    <div class="location-posts">
+      {posts.map((post) => {
+        const renderedBody = renderMarkdown(post.body || post.summary || '');
+        const href = postHref(post);
+        return (
+          <article class="location-post" id={post.slug ? `post-${post.slug}` : undefined}>
+            <div class="flex items-start justify-between gap-3 mb-1">
+              {href ? (
+                <a href={href} class="location-post-title">
+                  {post.title}
+                </a>
+              ) : (
+                <h4 class="location-post-title">{post.title}</h4>
+              )}
+              {post.posted_at && <span class="label shrink-0">{formatDate(post.posted_at)}</span>}
+            </div>
+            {renderedBody && (
+              <div class="location-post-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedBody} />
+            )}
+            {post.media && post.media.length > 0 && (
+              <MediaGallery media={post.media} maxWidth="max-w-sm" singleMaxHeight="18rem" />
+            )}
+          </article>
+        );
+      })}
+    </div>
+  )}
+</article>
+
+<style>
+  .location-update-group {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    box-shadow: var(--shadow-1);
+    overflow: hidden;
+  }
+
+  .location-update-header {
+    padding: 18px;
+  }
+
+  .location-title {
+    color: var(--paper);
+    display: block;
+    text-decoration: none;
+    transition: color 160ms ease;
+  }
+
+  .location-title:hover {
+    color: var(--ember-2);
+  }
+
+  .location-posts {
+    border-top: 1px solid var(--line-soft);
+    display: grid;
+    gap: 1px;
+  }
+
+  .location-post {
+    background: var(--surface-2);
+    padding: 14px 18px;
+  }
+
+  .location-post-title {
+    color: var(--paper);
+    font-size: 0.98rem;
+    font-weight: 600;
+    line-height: 1.35;
+    margin: 0;
+    text-decoration: none;
+  }
+
+  .location-post-title:hover {
+    color: var(--ember);
+  }
+
+  .location-post-markdown :global(p) {
+    margin: 0 0 0.45rem;
+  }
+
+  .location-post-markdown :global(p:last-child),
+  .location-post-markdown :global(ul:last-child),
+  .location-post-markdown :global(h3:last-child),
+  .location-post-markdown :global(h4:last-child),
+  .location-post-markdown :global(h5:last-child) {
+    margin-bottom: 0;
+  }
+
+  .location-post-markdown :global(ul) {
+    list-style: disc;
+    margin: 0.35rem 0 0.45rem 1.1rem;
+    padding: 0;
+  }
+</style>

@@ -1,8 +1,7 @@
 ---
 import Layout from '../layouts/Layout.astro';
 import CurrentLocationCard from '../components/ui/CurrentLocationCard.astro';
-import StopCard from '../components/ui/StopCard.astro';
-import PostCard from '../components/ui/PostCard.astro';
+import LocationUpdateGroup from '../components/ui/LocationUpdateGroup.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
@@ -25,14 +24,6 @@ const current = homeData?.current_stop;
 const activeTrip = homeData?.active_trip_segment;
 const nextStop = homeData?.next_stop;
 const previousStop = homeData?.previous_stop;
-const updates = [
-  ...(homeData?.recent_posts || []).map((post) => ({ kind: 'post', ...post })),
-  ...(homeData?.recent_stops || []).map((stop) => ({ kind: 'stop', ...stop })),
-].sort((a, b) => {
-  const dateA = new Date(a.posted_at || a.start_date || 0).getTime();
-  const dateB = new Date(b.posted_at || b.start_date || 0).getTime();
-  return dateB - dateA;
-});
 const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
 const siteText = await loadSiteText();
 const currentText = sectionText(siteText, 'home.current', {
@@ -72,8 +63,49 @@ function stopCityState(stop) {
   return cityStateFromAddress(stop?.summary || stop?.address || '') || stop?.title || '';
 }
 
+function locationDisplayFields(stop) {
+  const displayTitle = stopCityState(stop) || stop?.title;
+  return {
+    displayTitle,
+    detailTitle: displayTitle && displayTitle !== stop?.title ? stop?.title : stop?.place_name,
+  };
+}
+
+function groupHomeUpdates(stops = [], posts = []) {
+  const groups = new Map();
+
+  function ensureGroup(stop) {
+    if (!stop?.id) return null;
+    if (!groups.has(stop.id)) {
+      groups.set(stop.id, {
+        stop: {
+          ...stop,
+          ...locationDisplayFields(stop),
+        },
+        posts: [],
+        sortDate: new Date(stop.start_date || 0).getTime(),
+      });
+    }
+    return groups.get(stop.id);
+  }
+
+  for (const stop of stops) {
+    ensureGroup(stop);
+  }
+
+  for (const post of posts) {
+    const group = ensureGroup(post.stop);
+    if (!group) continue;
+    group.posts.push(post);
+    group.sortDate = Math.max(group.sortDate, new Date(post.posted_at || 0).getTime());
+  }
+
+  return Array.from(groups.values()).sort((a, b) => b.sortDate - a.sortDate);
+}
+
 const nextStopMention = nextStop ? { cityState: stopCityState(nextStop), slug: nextStop.slug, tripSlug: nextStop.trip_slug } : undefined;
 const prevStopMention = previousStop ? { cityState: stopCityState(previousStop), slug: previousStop.slug, tripSlug: previousStop.trip_slug } : undefined;
+const updateGroups = groupHomeUpdates(homeData?.recent_stops || [], homeData?.recent_posts || []);
 
 function formatStopDate(dateStr) {
   if (!dateStr) return '';
@@ -196,31 +228,10 @@ function formatStopDate(dateStr) {
         )}
       </div>
 
-      {updates.length > 0 ? (
+      {updateGroups.length > 0 ? (
         <div class="grid gap-4">
-          {updates.map(item => (
-            item.kind === 'post' ? (
-              <PostCard
-                title={item.title}
-                body={item.body}
-                date={item.posted_at}
-                tripTitle={item.stop?.trip_title}
-                placeName={item.stop?.place_name}
-                media={item.media}
-              />
-            ) : (
-              <StopCard
-                title={item.title}
-                displayTitle={stopCityState(item) || item.title}
-                detailTitle={stopCityState(item) ? item.title : item.place_name}
-                slug={item.slug}
-                tripSlug={item.trip_slug}
-                summary={item.summary}
-                date={item.start_date}
-                tripTitle={item.trip_title}
-                placeName={item.place_name}
-              />
-            )
+          {updateGroups.map(group => (
+            <LocationUpdateGroup stop={group.stop} posts={group.posts} />
           ))}
         </div>
       ) : (
