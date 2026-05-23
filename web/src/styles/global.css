@@ -1,100 +1,67 @@
 @import "tailwindcss";
 
-
-@theme {
-  /* Dark base — warm-shifted from pure blue-gray */
-  --color-ink-0: #0a0d11;
-  --color-ink-1: #101419;
-  --color-ink-2: #161b22;
-  --color-ink-3: #1d232c;
-  --color-ink-4: #262e3a;
-  --color-line:  #2e3848;
-  --color-line-soft: #1e2530;
-
-  /* Light text — warm cream instead of cold white */
-  --color-paper:    #f0ebe0;
-  --color-paper-2:  #dcd5c6;
-  --color-muted:    #9a9a9f;
-  --color-dim:      #636874;
-  --color-faint:    #3a404e;
-
-  /* Brand — sunset ember */
-  --color-ember:    #e8893f;
-  --color-ember-2:  #f4a663;
-  --color-ember-glow: rgba(232,137,63,.18);
-
-  /* Accent palette */
-  --color-sky:      #6fa3c4;
-  --color-forest:   #4a9f6e;
-  --color-sunset:   #d46b5c;
-  --color-sage:     #8aab7e;
-
-  /* Status colors */
-  --color-status-active:    #4a9f6e;
-  --color-status-published: #8aab7e;
-  --color-status-private:   #d46b5c;
-
-  /* Semantic aliases */
-  --color-bg:        var(--color-ink-0);
-  --color-fg:        var(--color-paper);
-  --color-surface:   var(--color-ink-1);
-  --color-surface-1: var(--color-ink-1);
-  --color-surface-2: var(--color-ink-2);
-  --color-surface-3: var(--color-ink-3);
-
-  /* Typography */
-  --font-display: ui-serif, Georgia, Cambria, "Times New Roman", serif;
-  --font-sans:    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono:    "SFMono-Regular", "Roboto Mono", ui-monospace, monospace;
-
-  /* Radii */
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 16px;
-  --radius-xl: 24px;
-}
+/* ── Theme source variables ─────────────────────────────────────
+   :root defines the hex values (dark theme default).
+   @theme references these via var() so Tailwind utilities follow
+   the same cascade and respond to data-theme overrides.
+   :root[data-theme="light"] overrides the source hex values.
+   ─────────────────────────────────────────────────────────────── */
 
 :root {
-  --ink-0: var(--color-ink-0);
-  --ink-1: var(--color-ink-1);
-  --ink-2: var(--color-ink-2);
-  --ink-3: var(--color-ink-3);
-  --ink-4: var(--color-ink-4);
-  --line:  var(--color-line);
-  --line-soft: var(--color-line-soft);
+  /* Dark base — warm-shifted from pure blue-gray */
+  --ink-0: #0a0d11;
+  --ink-1: #101419;
+  --ink-2: #161b22;
+  --ink-3: #1d232c;
+  --ink-4: #262e3a;
+  --line:  #2e3848;
+  --line-soft: #1e2530;
 
-  --paper:    var(--color-paper);
-  --paper-2:  var(--color-paper-2);
-  --muted:    var(--color-muted);
-  --dim:      var(--color-dim);
-  --faint:    var(--color-faint);
+  /* Light text — warm cream instead of cold white */
+  --paper:    #f0ebe0;
+  --paper-2:  #dcd5c6;
+  --muted:    #9a9a9f;
+  --dim:      #636874;
+  --faint:    #3a404e;
 
-  --ember:    var(--color-ember);
-  --ember-2:  var(--color-ember-2);
-  --ember-glow: var(--color-ember-glow);
-  --sky:      var(--color-sky);
-  --forest:   var(--color-forest);
-  --sunset:   var(--color-sunset);
-  --sage:     var(--color-sage);
+  /* Brand — sunset ember */
+  --ember:    #e8893f;
+  --ember-2:  #f4a663;
+  --ember-glow: rgba(232,137,63,.18);
 
+  /* Accent palette */
+  --sky:      #6fa3c4;
+  --forest:   #4a9f6e;
+  --sunset:   #d46b5c;
+  --sage:     #8aab7e;
+
+  /* Semantic aliases */
   --bg:        var(--ink-0);
+  --fg:        var(--paper);
   --surface:   var(--ink-1);
+  --surface-1: var(--ink-1);
   --surface-2: var(--ink-2);
+  --surface-3: var(--ink-3);
+
+  /* Nav & layout */
   --nav-bg: rgba(10,13,17,.85);
   --nav-bg-strong: rgba(16,20,25,.95);
   --hero-wash: linear-gradient(90deg, rgba(10,13,17,.4), rgba(10,13,17,.08));
   --hover-soft: rgba(255,255,255,.06);
 
-  --display: var(--font-display);
-  --sans:    var(--font-sans);
-  --mono:    var(--font-mono);
+  /* Typography */
+  --display: ui-serif, Georgia, Cambria, "Times New Roman", serif;
+  --sans:    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono:    "SFMono-Regular", "Roboto Mono", ui-monospace, monospace;
 
+  /* Borders & radii */
   --hair: 1px solid var(--line);
   --hair-soft: 1px solid var(--line-soft);
-  --r-sm: var(--radius-sm);
-  --r-md: var(--radius-md);
-  --r-lg: var(--radius-lg);
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 16px;
 
+  /* Shadows */
   --shadow-1: 0 1px 0 rgba(255,255,255,.03) inset, 0 24px 60px -30px rgba(0,0,0,.7);
   --shadow-glow: 0 0 0 1px var(--ember-glow), 0 18px 60px -20px var(--ember-glow);
   --shadow-card: 0 4px 24px -8px rgba(0,0,0,.4), 0 1px 0 rgba(255,255,255,.04) inset;
@@ -103,6 +70,56 @@
   /* Bottom nav safe area */
   --nav-height: 64px;
   --nav-height-safe: calc(64px + env(safe-area-inset-bottom, 0px));
+}
+
+@theme {
+  /* All color tokens reference :root variables so they cascade with data-theme */
+  --color-ink-0: var(--ink-0);
+  --color-ink-1: var(--ink-1);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-ink-4: var(--ink-4);
+  --color-line: var(--line);
+  --color-line-soft: var(--line-soft);
+
+  --color-paper: var(--paper);
+  --color-paper-2: var(--paper-2);
+  --color-muted: var(--muted);
+  --color-dim: var(--dim);
+  --color-faint: var(--faint);
+
+  --color-ember: var(--ember);
+  --color-ember-2: var(--ember-2);
+  --color-ember-glow: var(--ember-glow);
+
+  --color-sky: var(--sky);
+  --color-forest: var(--forest);
+  --color-sunset: var(--sunset);
+  --color-sage: var(--sage);
+
+  /* Status colors */
+  --color-status-active: #4a9f6e;
+  --color-status-published: #8aab7e;
+  --color-status-private: #d46b5c;
+
+  /* Semantic aliases */
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-surface: var(--surface);
+  --color-surface-1: var(--surface-1);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+
+  /* Typography */
+  --font-display: var(--display);
+  --font-sans: var(--sans);
+  --font-mono: var(--mono);
+
+  /* Radii */
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: 24px;
 }
 
 :root[data-theme="light"] {
