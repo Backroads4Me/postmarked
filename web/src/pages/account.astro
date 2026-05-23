@@ -3,9 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import { apiUrl } from '../lib/api.js';
 
 const cookie = Astro.request.headers.get('cookie') || '';
-const res = await fetch(apiUrl('/api/account'), {
-  headers: cookie ? { cookie } : {},
-});
+const [res, configRes] = await Promise.all([
+  fetch(apiUrl('/api/account'), { headers: cookie ? { cookie } : {} }),
+  fetch(apiUrl('/api/config')),
+]);
 if (res.status === 401 || res.status === 403) {
   return Astro.redirect('/auth/login?next=/account');
 }
@@ -13,6 +14,7 @@ if (!res.ok) {
   throw new Error(`Account API returned ${res.status}`);
 }
 const account = await res.json();
+const { email_enabled } = await configRes.json();
 ---
 
 <Layout title="Account — Postmarked">
@@ -42,24 +44,26 @@ const account = await res.json();
           </form>
         </section>
 
-        <section id="email-updates" class="bg-surface border border-line rounded-lg p-6">
-          <h2 class="display text-2xl mb-4">Email Updates</h2>
-          <form class="grid gap-3" onsubmit="event.preventDefault(); updateNotifications(this);">
-            <label class="flex items-start gap-3 text-sm text-muted">
-              <input type="radio" name="notification_frequency" value="all_updates" class="mt-1" checked={account.notification_frequency === 'all_updates'} />
-              <span><strong class="text-paper">Immediate</strong><br />Email me when new updates are posted.</span>
-            </label>
-            <label class="flex items-start gap-3 text-sm text-muted">
-              <input type="radio" name="notification_frequency" value="weekly_digest" class="mt-1" checked={account.notification_frequency === 'weekly_digest'} />
-              <span><strong class="text-paper">Weekly summary</strong><br />Send a weekly roundup of new posts.</span>
-            </label>
-            <label class="flex items-start gap-3 text-sm text-muted">
-              <input type="radio" name="notification_frequency" value="none" class="mt-1" checked={account.notification_frequency === 'none'} />
-              <span><strong class="text-paper">No emails</strong><br />I will check the site myself.</span>
-            </label>
-            <button type="submit" class="btn justify-center sm:justify-self-start mt-2">Save email updates</button>
-          </form>
-        </section>
+        {email_enabled && (
+          <section id="email-updates" class="bg-surface border border-line rounded-lg p-6">
+            <h2 class="display text-2xl mb-4">Email Updates</h2>
+            <form class="grid gap-3" onsubmit="event.preventDefault(); updateNotifications(this);">
+              <label class="flex items-start gap-3 text-sm text-muted">
+                <input type="radio" name="notification_frequency" value="all_updates" class="mt-1" checked={account.notification_frequency === 'all_updates'} />
+                <span><strong class="text-paper">Immediate</strong><br />Email me when new updates are posted.</span>
+              </label>
+              <label class="flex items-start gap-3 text-sm text-muted">
+                <input type="radio" name="notification_frequency" value="weekly_digest" class="mt-1" checked={account.notification_frequency === 'weekly_digest'} />
+                <span><strong class="text-paper">Weekly summary</strong><br />Send a weekly roundup of new posts.</span>
+              </label>
+              <label class="flex items-start gap-3 text-sm text-muted">
+                <input type="radio" name="notification_frequency" value="none" class="mt-1" checked={account.notification_frequency === 'none'} />
+                <span><strong class="text-paper">No emails</strong><br />I will check the site myself.</span>
+              </label>
+              <button type="submit" class="btn justify-center sm:justify-self-start mt-2">Save email updates</button>
+            </form>
+          </section>
+        )}
 
         <section class="bg-surface border border-line rounded-lg p-6">
           <h2 class="display text-2xl mb-4">Password</h2>

@@ -12,6 +12,7 @@ from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
 from app.db import async_session_maker
 from app.routers import account, journey, media, profiles, search, site_text, social, stops, trips
 from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.services.mailer import is_email_configured
 
 
 def _env_list(var: str, default: str) -> list[str]:
@@ -176,6 +177,15 @@ app.include_router(admin_posts.router, prefix="/api/admin")
 app.include_router(admin_imports.router, prefix="/api/admin")
 app.include_router(admin_users.router, prefix="/api/admin")
 app.include_router(admin_site_text.router, prefix="/api/admin")
+
+
+class AppConfig(BaseModel):
+    email_enabled: bool
+
+
+@app.get("/api/config", response_model=AppConfig)
+async def app_config():
+    return {"email_enabled": is_email_configured()}
 
 
 class HealthCheck(BaseModel):

@@ -5,11 +5,13 @@ import { apiUrl } from '../../../lib/api.js';
 const cookie = Astro.request.headers.get('cookie');
 let users = [];
 let loadError = null;
+let email_enabled = false;
 
 try {
-  const res = await fetch(apiUrl('/api/admin/users'), {
-    headers: cookie ? { cookie } : {},
-  });
+  const [res, configRes] = await Promise.all([
+    fetch(apiUrl('/api/admin/users'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl('/api/config')),
+  ]);
   if (res.status === 401 || res.status === 403) {
     return Astro.redirect('/auth/login');
   }
@@ -17,6 +19,9 @@ try {
     users = await res.json();
   } else {
     loadError = `API ${res.status}`;
+  }
+  if (configRes.ok) {
+    ({ email_enabled } = await configRes.json());
   }
 } catch (e) {
   loadError = e?.message || 'Failed to connect';
@@ -49,18 +54,20 @@ function frequencyLabel(value) {
           <div class="card-flat flex items-center justify-between gap-4">
             <div>
               <div style="color: var(--paper); font-weight: 500;">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role} · {frequencyLabel(u.notification_frequency)}</div>
+              <div class="label">{u.email} · {u.role}{email_enabled ? ` · ${frequencyLabel(u.notification_frequency)}` : ''}</div>
             </div>
             <div class="flex items-center gap-2">
-              <select
-                class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                data-original={u.notification_frequency}
-                onchange={`updateUserNotifications('${u.id}', this)`}
-              >
-                <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
-                <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
-                <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
-              </select>
+              {email_enabled && (
+                <select
+                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.notification_frequency}
+                  onchange={`updateUserNotifications('${u.id}', this)`}
+                >
+                  <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
+                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                  <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+                </select>
+              )}
               <button
                 class="btn"
                 style="min-height:36px; font-size:13px;"
@@ -103,18 +110,20 @@ function frequencyLabel(value) {
           <div class="card-flat flex items-center justify-between gap-4">
             <div>
               <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role} · {frequencyLabel(u.notification_frequency)}</div>
+              <div class="label">{u.email} · {u.role}{email_enabled ? ` · ${frequencyLabel(u.notification_frequency)}` : ''}</div>
             </div>
             <div class="flex items-center gap-2">
-              <select
-                class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                data-original={u.notification_frequency}
-                onchange={`updateUserNotifications('${u.id}', this)`}
-              >
-                <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
-                <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
-                <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
-              </select>
+              {email_enabled && (
+                <select
+                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.notification_frequency}
+                  onchange={`updateUserNotifications('${u.id}', this)`}
+                >
+                  <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
+                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                  <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+                </select>
+              )}
               {u.role !== 'admin' && (
                 <button
                   class="btn"
@@ -140,18 +149,20 @@ function frequencyLabel(value) {
           <div class="card-flat flex items-center justify-between gap-4" style="opacity:0.6;">
             <div>
               <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role} · {frequencyLabel(u.notification_frequency)}</div>
+              <div class="label">{u.email} · {u.role}{email_enabled ? ` · ${frequencyLabel(u.notification_frequency)}` : ''}</div>
             </div>
             <div class="flex items-center gap-2">
-              <select
-                class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                data-original={u.notification_frequency}
-                onchange={`updateUserNotifications('${u.id}', this)`}
-              >
-                <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
-                <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
-                <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
-              </select>
+              {email_enabled && (
+                <select
+                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.notification_frequency}
+                  onchange={`updateUserNotifications('${u.id}', this)`}
+                >
+                  <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
+                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                  <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+                </select>
+              )}
               <button
                 class="btn"
                 style="min-height:36px; font-size:13px;"
