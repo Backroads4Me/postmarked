@@ -170,7 +170,7 @@ async def create_upload(
 
 
 @router.head("/tus/{file_id}")
-async def head_upload(file_id: str, user=Depends(current_admin_user)):
+async def head_upload(file_id: uuid.UUID, user=Depends(current_admin_user)):
     info_path = os.path.join(ORIGINALS_PATH, f"{file_id}.json")
     if not os.path.exists(info_path):
         raise HTTPException(status_code=404, detail="Upload not found")
@@ -201,7 +201,7 @@ def _cleanup_temp(file_id: str) -> None:
 
 @router.patch("/tus/{file_id}")
 async def patch_upload(
-    file_id: str,
+    file_id: uuid.UUID,
     request: Request,
     upload_offset: int = Header(..., alias="Upload-Offset"),
     content_type: str = Header(..., alias="Content-Type"),
@@ -250,7 +250,7 @@ async def patch_upload(
         existing_q = select(MediaAsset).where(MediaAsset.original_sha256 == original_sha256)
         existing = (await session.execute(existing_q)).scalar_one_or_none()
         if existing:
-            _cleanup_temp(file_id)
+            _cleanup_temp(str(file_id))
             response_headers["X-Postmarked-Asset-Id"] = str(existing.id)
             response_headers["X-Postmarked-Duplicate-Of"] = str(existing.id)
             response_headers["Access-Control-Expose-Headers"] = (
@@ -263,7 +263,7 @@ async def patch_upload(
         kind = MediaKind.VIDEO if "video" in mime else MediaKind.PHOTO
 
         asset = MediaAsset(
-            id=uuid.UUID(file_id),
+            id=file_id,
             kind=kind,
             original_path=bin_path,
             original_sha256=original_sha256,
@@ -285,7 +285,7 @@ async def patch_upload(
             await session.rollback()
             existing = (await session.execute(existing_q)).scalar_one_or_none()
             if existing:
-                _cleanup_temp(file_id)
+                _cleanup_temp(str(file_id))
                 response_headers["X-Postmarked-Asset-Id"] = str(existing.id)
                 response_headers["X-Postmarked-Duplicate-Of"] = str(existing.id)
                 response_headers["Access-Control-Expose-Headers"] = (
@@ -294,7 +294,7 @@ async def patch_upload(
                 return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
             raise
 
-        process_media_asset.delay(file_id)
+        process_media_asset.delay(str(file_id))
         response_headers["X-Postmarked-Asset-Id"] = str(asset.id)
         response_headers["Access-Control-Expose-Headers"] = (
             "Tus-Resumable, Upload-Offset, X-Postmarked-Asset-Id"

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import or_, select, update
+from sqlalchemy import delete, or_, select, update
 from sqlalchemy.orm import selectinload
 from typing import List
 
@@ -17,6 +17,8 @@ router = APIRouter(prefix="/trips", tags=["admin-trips"])
 
 @router.get("", response_model=List[TripOut])
 async def list_trips_admin(
+    skip: int = 0,
+    limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)
 ):
@@ -24,6 +26,8 @@ async def list_trips_admin(
         select(Trip)
         .options(selectinload(Trip.cover_media))
         .order_by(Trip.start_date.desc().nulls_last())
+        .offset(skip)
+        .limit(limit)
     )
     return result.scalars().all()
 

@@ -29,6 +29,8 @@ router = APIRouter(tags=["admin-posts"])
 
 @router.get("/posts", response_model=List[PostOut])
 async def list_posts(
+    skip: int = 0,
+    limit: int = 100,
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
@@ -36,6 +38,8 @@ async def list_posts(
         select(Post)
         .options(selectinload(Post.media), selectinload(Post.poi))
         .order_by(Post.posted_at.desc())
+        .offset(skip)
+        .limit(limit)
     )
     return result.scalars().all()
 

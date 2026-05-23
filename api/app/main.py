@@ -1,4 +1,5 @@
 import os
+from urllib.parse import urlparse
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -94,13 +95,27 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         origin = request.headers.get("origin")
-        if origin is not None and origin not in ALLOWED_ORIGINS:
-            import logging
-            logging.error(f"CSRF blocked: origin={origin!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
-            return JSONResponse(
-                status_code=403,
-                content={"detail": f"Origin not allowed: {origin}"},
-            )
+        referer = request.headers.get("referer")
+
+        if origin is not None:
+            if origin not in ALLOWED_ORIGINS:
+                import logging
+                logging.error(f"CSRF blocked: origin={origin!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": f"Origin not allowed: {origin}"},
+                )
+        elif referer is not None:
+            parsed = urlparse(referer)
+            referer_origin = f"{parsed.scheme}://{parsed.netloc}"
+            if referer_origin not in ALLOWED_ORIGINS:
+                import logging
+                logging.error(f"CSRF blocked: referer={referer!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
+                return JSONResponse(
+                    status_code=403,
+                    content={"detail": "Referer not allowed"},
+                )
+        # Neither header present: non-browser context (e.g. SSR server), allow through.
         return await call_next(request)
 
 

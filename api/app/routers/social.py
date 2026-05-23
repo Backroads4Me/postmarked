@@ -67,7 +67,7 @@ async def list_comments(
     await _assert_target_visible(session, target_kind, target_id, user)
 
     query = (
-        select(Comment, User.display_name, User.email)
+        select(Comment, User.display_name)
         .join(User, Comment.author_id == User.id)
         .where(
             Comment.target_kind == target_kind,
@@ -79,9 +79,7 @@ async def list_comments(
     rows = (await session.execute(query)).all()
 
     out: list[CommentOut] = []
-    for comment, display_name, email in rows:
-        # Fall back to email-local-part if display_name is unset; never leak the UUID.
-        fallback = email.split("@")[0] if email else None
+    for comment, display_name in rows:
         out.append(
             CommentOut(
                 id=comment.id,
@@ -89,7 +87,7 @@ async def list_comments(
                 target_id=comment.target_id,
                 body=comment.body,
                 author_id=comment.author_id,
-                author_display_name=display_name or fallback,
+                author_display_name=display_name or "Traveler",
                 created_at=comment.created_at,
                 updated_at=comment.updated_at,
             )
@@ -130,7 +128,7 @@ async def create_comment(
         target_id=comment.target_id,
         body=comment.body,
         author_id=comment.author_id,
-        author_display_name=user.display_name or (user.email.split("@")[0] if user.email else None),
+        author_display_name=user.display_name or "Traveler",
         created_at=comment.created_at,
         updated_at=comment.updated_at,
     )

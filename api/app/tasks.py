@@ -9,9 +9,9 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from PIL import Image, ExifTags
 import blurhash
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
 
 from app.models.content import MediaAsset, Post
 from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, Visibility
@@ -218,8 +218,8 @@ def process_media_asset(asset_id: str):
                 logger.exception("Image processing failed for media asset %s", asset.id)
                 asset.processing_state = MediaProcessingState.FAILED
 
-        # Video processing 
-        elif asset.kind.value == "video":
+        # Video processing
+        elif asset.kind == MediaKind.VIDEO:
             try:
                 # Get duration using ffprobe
                 probe_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file_path]
@@ -375,9 +375,15 @@ def scan_filesystem():
                     sort_order=0,
                 )
                 db.add(asset)
-                db.commit()
+                try:
+                    db.commit()
+                except IntegrityError:
+                    # Another worker raced and inserted the same SHA-256 first.
+                    db.rollback()
+                    _move_to_processed(filepath)
+                    continue
                 _move_to_processed(filepath)
-                
+
                 # Delegate
                 process_media_asset.delay(str(new_id))
     finally:

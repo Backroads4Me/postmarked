@@ -179,8 +179,8 @@ class Post(Base):
     __tablename__ = "post"
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
-    trip_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("trip.id", ondelete="SET NULL"), nullable=True)
-    stop_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("stop.id", ondelete="SET NULL"), nullable=True)
+    trip_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("trip.id", ondelete="SET NULL"), nullable=True, index=True)
+    stop_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("stop.id", ondelete="SET NULL"), nullable=True, index=True)
     slug: Mapped[str] = mapped_column(String, unique=True, index=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
     body: Mapped[Optional[str]] = mapped_column(String, nullable=True)
