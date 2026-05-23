@@ -18,7 +18,7 @@ from app.services.mailer import is_email_configured
 
 def _env_list(var: str, default: str) -> list[str]:
     raw = os.getenv(var, default)
-    return [item.strip() for item in raw.split(",") if item.strip()]
+    return [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
 
 
 # Browser origins allowed to fetch the API (CORS) and to make state-changing
@@ -113,7 +113,7 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
                 logging.error(f"CSRF blocked: referer={referer!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
                 return JSONResponse(
                     status_code=403,
-                    content={"detail": "Referer not allowed"},
+                    content={"detail": f"Referer not allowed: {referer_origin}"},
                 )
         # Neither header present: non-browser context (e.g. SSR server), allow through.
         return await call_next(request)

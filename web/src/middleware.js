@@ -45,22 +45,6 @@ async function proxyApiRequest(context) {
   headers.delete('host');
   headers.delete('content-length');
 
-  const origin = headers.get('origin');
-  let originUrl = null;
-  if (origin) {
-    try {
-      originUrl = new URL(origin);
-    } catch {}
-  }
-  const requestHost = context.request.headers.get('host');
-  const sameOriginHost =
-    originUrl &&
-    (origin === context.url.origin || originUrl.host === requestHost);
-
-  if (sameOriginHost) {
-    headers.delete('origin');
-  }
-
   const init = {
     method: context.request.method,
     headers,

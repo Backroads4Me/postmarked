@@ -341,30 +341,55 @@ function createDotMarkerElement({ isActive, isCurrent }) {
 }
 
 function loadGoogleMaps(apiKey) {
+  if (window.google?.maps?.Map) {
+    return Promise.resolve({ google: window.google, Map: window.google.maps.Map });
+  }
+
   if (googleMapsPromise) return googleMapsPromise;
 
   googleMapsPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    const params = new URLSearchParams({
-      key: apiKey,
-      v: 'weekly',
-      libraries: 'marker',
-    });
-    script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      if (!window.google?.maps?.Map) {
-        reject(new Error('Google Maps did not initialize'));
-        return;
-      }
+    let script = document.querySelector('script[src^="https://maps.googleapis.com/maps/api/js"]');
+
+    if (!script) {
+      script = document.createElement('script');
+      const params = new URLSearchParams({
+        key: apiKey,
+        v: 'weekly',
+        libraries: 'marker',
+      });
+      script.src = `https://maps.googleapis.com/maps/api/js?${params.toString()}`;
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    if (window.google?.maps?.Map) {
       resolve({ google: window.google, Map: window.google.maps.Map });
+      return;
+    }
+
+    const onLoad = () => {
+      if (window.google?.maps?.Map) {
+        resolve({ google: window.google, Map: window.google.maps.Map });
+      } else {
+        reject(new Error('Google Maps did not initialize'));
+      }
+      cleanup();
     };
-    script.onerror = (e) => {
+
+    const onError = (e) => {
       console.error('[MapIsland] Google Maps script failed to load', e);
       reject(new Error('Failed to load Google Maps'));
+      cleanup();
     };
-    document.head.appendChild(script);
+
+    function cleanup() {
+      script.removeEventListener('load', onLoad);
+      script.removeEventListener('error', onError);
+    }
+
+    script.addEventListener('load', onLoad);
+    script.addEventListener('error', onError);
   });
 
   return googleMapsPromise;

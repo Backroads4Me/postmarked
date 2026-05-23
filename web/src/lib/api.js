@@ -1,5 +1,5 @@
 // SSR: resolved inside Docker via service name or explicit env
-const _SSR_BASE = import.meta.env.API_BASE_URL || "http://api:8000";
+const _SSR_BASE = (typeof process !== "undefined" && process.env.API_BASE_URL) || import.meta.env.API_BASE_URL || "http://api:8000";
 
 /**
  * Builds a full URL for server-side fetch calls (Astro frontmatter).

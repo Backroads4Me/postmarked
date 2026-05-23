@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from 'react';
 
+function formatDate(dateStr) {
+  if (!dateStr) return '';
+  try {
+    return new Date(dateStr).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  } catch { return ''; }
+}
+
 export default function SearchIsland() {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
@@ -83,7 +90,14 @@ export default function SearchIsland() {
                 <li key={`${r.entity_type}-${r.id}`}>
                   <a href={r.slug} className="block p-4 hover:bg-surface-2 transition-colors">
                     <div className="flex justify-between items-start mb-1">
-                      <span className="font-bold text-fg">{r.title}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-fg">{r.title}</span>
+                        {r.start_date && (
+                          <span style={{ fontFamily: 'var(--mono)', fontSize: '9px', color: 'var(--dim)' }}>
+                            {formatDate(r.start_date)}
+                          </span>
+                        )}
+                      </div>
                       <span className="text-[10px] uppercase font-mono tracking-widest text-dim border border-line px-2 rounded-full">{r.entity_type}</span>
                     </div>
                     {r.summary && <div className="text-sm text-muted clamp-2">{r.summary}</div>}
@@ -92,6 +106,7 @@ export default function SearchIsland() {
               ))}
             </ul>
           )}
+
 
           {!loading && query.length >= 2 && results.length === 0 && (
             <div className="p-8 text-center text-dim">No results found for "{query}"</div>

@@ -1,3 +1,4 @@
+from datetime import datetime
 from pydantic import BaseModel
 from typing import Optional, List
 import uuid
@@ -8,3 +9,5 @@ class SearchResult(BaseModel):
     title: str
     summary: Optional[str]
     slug: str
+    start_date: Optional[datetime] = None
+

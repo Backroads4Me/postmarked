@@ -24,7 +24,6 @@ const current = homeData?.current_stop;
 const activeTrip = homeData?.active_trip_segment;
 const nextStop = homeData?.next_stop;
 const previousStop = homeData?.previous_stop;
-const upcomingStops = homeData?.upcoming_stops ?? [];
 const siteText = await loadSiteText();
 const currentText = sectionText(siteText, 'home.current', {
   label: 'Currently At',
@@ -34,10 +33,6 @@ const homeHeaderText = sectionText(siteText, 'home.header', {
   label: 'Welcome to Postmarked',
   heading: 'On the Road',
   body: "Quick updates from the road — where we are, where we've been, and where we're headed.",
-});
-const upcomingText = sectionText(siteText, 'home.upcoming', {
-  label: 'Upcoming',
-  heading: 'Up Next',
 });
 const updatesText = sectionText(siteText, 'home.updates', {
   label: null,
@@ -165,53 +160,6 @@ function formatStopDate(dateStr) {
         </div>
       )}
     </section>
-
-    {/* ── Up Next: Published itinerary ───────────────────────── */}
-    {upcomingStops.length > 0 && (
-      <section class="mb-10 section-band" id="upcoming-stops">
-        <div class="flex items-center justify-between mb-4">
-          <div>
-            {upcomingText.label && <div class="label mb-1">{upcomingText.label}</div>}
-            <h2 class="display text-2xl">{upcomingText.heading}</h2>
-            {upcomingText.body && <p class="text-sm text-muted mt-1">{upcomingText.body}</p>}
-          </div>
-        </div>
-        <div class="grid gap-3">
-          {upcomingStops.map(stop => (
-            <div class="card-flat">
-              <div class="flex items-center gap-2 mb-1">
-                <span class="badge badge-published text-[10px]">Upcoming</span>
-                {stop.start_date && (
-                  <span class="label">
-                    {new Date(stop.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                  </span>
-                )}
-                {stop.nights && stop.nights > 0 && (
-                  <span class="label">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>
-                )}
-              </div>
-              {cityStateFromAddress(stop.summary || stop.address_label) ? (
-                <>
-                  <h3 class="display text-lg">{cityStateFromAddress(stop.summary || stop.address_label)}</h3>
-                  <p class="coord text-xs mt-1">{stop.title}</p>
-                  {stop.address_label && <p class="text-xs text-muted mt-1">{stop.address_label}</p>}
-                </>
-              ) : (
-                <>
-                  <h3 class="display text-lg">{stop.title}</h3>
-                  {stop.place_name && <p class="coord text-xs mt-1">{stop.place_name}</p>}
-                </>
-              )}
-              {stop.miles_from_previous && (
-                <p class="text-xs text-dim mt-1">
-                  ~{Math.round(stop.miles_from_previous)} mi from previous
-                </p>
-              )}
-            </div>
-          ))}
-        </div>
-      </section>
-    )}
 
     {/* ── Recent Updates Feed ────────────────────────────────── */}
     <section id="recent-updates">

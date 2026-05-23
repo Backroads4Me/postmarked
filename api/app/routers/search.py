@@ -40,7 +40,8 @@ async def global_search(
             id=t.id,
             title=t.title,
             summary=t.summary,
-            slug=f"/trips/{t.slug}"
+            slug=f"/trips/{t.slug}",
+            start_date=t.start_date
         ))
 
     # 2. Search Stops
@@ -61,7 +62,9 @@ async def global_search(
             id=s.id,
             title=s.title,
             summary=s.summary,
-            slug=f"/trips/{trip_slug}/stops/{s.slug}"
+            slug=f"/trips/{trip_slug}/stops/{s.slug}",
+            start_date=s.start_date
         ))
+
 
     return results
