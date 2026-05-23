@@ -1,5 +1,5 @@
 import uuid
-from datetime import date, datetime
+from datetime import datetime
 from typing import List, Literal, Optional
 
 from pydantic import BaseModel
@@ -117,25 +117,6 @@ class PublicStopDetail(PublicStopSummary):
     next: Optional[PublicStopSibling] = None
 
 
-class PublicPlannedStopSummary(BaseResponse):
-    """
-    Public-safe view of an imported PlannedStop. Strips cost/fuel/reservation/
-    contact fields by simply not declaring them — the schema is an allowlist,
-    not a denylist (avoid future leakage by addition).
-    """
-    id: uuid.UUID
-    trip_id: uuid.UUID
-    name: str
-    arrival_date: Optional[date] = None
-    departure_date: Optional[date] = None
-    nights: Optional[int] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address: Optional[str] = None
-    miles_from_previous: Optional[float] = None
-    estimated_travel_time: Optional[str] = None
-
-
 class HomeOut(BaseModel):
     current_stop: Optional[PublicStopSummary] = None
     next_stop: Optional[PublicStopSummary] = None
@@ -143,7 +124,7 @@ class HomeOut(BaseModel):
     recent_stops: List[PublicStopSummary] = []
     recent_posts: List[PublicPostSummary] = []
     active_trip_segment: Optional[PublicTripSegmentSummary] = None
-    upcoming_planned_stops: List[PublicPlannedStopSummary] = []
+    upcoming_stops: List[PublicStopSummary] = []
 
 
 class RecentUpdate(BaseModel):

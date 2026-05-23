@@ -106,55 +106,33 @@ Fields:
 - `start_date`
 - `end_date`
 - `notes`
-- `status`: `planned`, `active`, `completed`, `archived`
+- `status`: `draft`, `published`, `unpublished`, `archived`
 - `visibility`
 
 The current implementation uses the existing `Trip` model for this concept. Product language should still treat trips as segments inside the continuous journey.
 
-### PlannedStop
+### Imported Stop Data
 
-Represents one row from the imported RV Trip Wizard plan.
+Represents one row from the imported RV Trip Wizard itinerary. The current implementation applies these rows directly to normal `Stop` records and stores import-specific private/source fields in `Stop.rv_details`.
 
 Fields:
 
 - `id`
-- `journey_id`
-- `trip_segment_id`
 - `source_import_run_id`
-- `source_row_number`
 - `source_fingerprint`
-- `source_sequence`
-- `name`
-- `arrival_date`
-- `departure_date`
+- `sort_order`
+- `title`
+- `start_date`
+- `end_date`
 - `nights`
-- `latitude`
-- `longitude`
-- `address`
-- `url`
-- `phone`
-- `email`
-- `features_raw`
-- `features`: normalized array
-- `comments_private`
+- `location`
+- `address_label`
+- `rv_features`: normalized array
+- `private_note`
 - `reservation_private`
 - `miles_from_previous`
-- `total_miles`
 - `estimated_travel_time`
-- `camping_cost`
-- `meals_cost`
-- `misc_cost`
-- `fuel_cost`
-- `stop_total_cost`
-- `starting_fuel`
-- `fuel_used`
-- `arrival_fuel`
-- `fuel_added`
-- `departure_fuel`
-- `import_state`: `planned`, `changed`, `removed_from_latest_import`, `converted_to_stop`
-- `matched_stop_id`: nullable FK to lived stop
-- `created_at`
-- `updated_at`
+- `rv_details`: private/source metadata such as cost, fuel, URL, phone, email, and fingerprint
 
 ### ImportStopMatch
 
@@ -164,7 +142,7 @@ Fields:
 
 - `id`
 - `import_run_id`
-- `planned_stop_id`
+- `stop_id`
 - `incoming_fingerprint`
 - `match_kind`: `exact`, `fuzzy`, `manual`, `new`, `removed`
 - `confidence`
@@ -198,7 +176,7 @@ If exact fingerprint does not match, attempt fuzzy matching within the same trip
 - Same or highly similar normalized stop name.
 - Arrival/departure within 3 days.
 
-If exactly one high-confidence match is found, update that planned stop.
+If exactly one high-confidence match is found, update that stop.
 
 If multiple matches are found, require manual resolution.
 
@@ -212,8 +190,8 @@ Reimport must be preview-first. Never silently mutate lived journal content.
 2. Store file hash and metadata.
 3. Parse `Trip Summary`.
 4. Validate required columns.
-5. Generate incoming planned stop records in memory.
-6. Compare to latest active plan for the same segment or selected segment.
+5. Generate incoming stop records in memory.
+6. Compare to existing stops for the same segment or selected segment.
 7. Produce diff preview.
 
 ### Diff Categories
@@ -221,25 +199,25 @@ Reimport must be preview-first. Never silently mutate lived journal content.
 - `added`: incoming row has no match.
 - `unchanged`: exact fingerprint and fields unchanged.
 - `changed`: matched row has field differences.
-- `removed`: existing planned stop not present in incoming file.
+- `removed`: existing imported stop not present in incoming file.
 - `needs_review`: fuzzy conflict or dangerous change.
 
 ### Apply Phase
 
 When owner confirms:
 
-- Add new planned stops.
-- Update changed planned stops.
-- Mark missing planned stops as `removed_from_latest_import`, not deleted.
-- Preserve `matched_stop_id` and all lived content.
+- Add new draft stops.
+- Update changed imported stops.
+- Archive missing imported stops rather than deleting them.
+- Preserve all lived content.
 - Write import audit summary.
 
 ### Dangerous Changes
 
 Require explicit confirmation if:
 
-- A planned stop linked to a lived stop is removed.
-- A planned stop linked to a lived stop changes location.
+- An imported stop with lived content is removed.
+- An imported stop with lived content changes location.
 - Date changes move an active/current stop.
 - Reservation/private fields change.
 
@@ -324,7 +302,7 @@ Request:
 Response:
 
 - Counts.
-- Created/updated planned stop IDs.
+- Created/updated stop IDs.
 
 ### Import History
 
@@ -346,7 +324,7 @@ Flow:
 4. Highlight private fields detected.
 5. Let owner choose target trip segment or create one.
 6. Confirm apply.
-7. After apply, show "Review Plan" page.
+7. After apply, show the trip/stops admin page.
 
 Diff table columns:
 
@@ -365,9 +343,9 @@ Diff table columns:
 
 - Import example Excel file successfully.
 - Create a trip segment titled `Michigan, NY 2026`.
-- Create planned stops with dates, coordinates, addresses, mileage, features, reservation/private notes, costs, and fuel fields.
+- Create draft stops with dates, coordinates, addresses, mileage, features, reservation/private notes, costs, and fuel fields.
 - Reimport same file yields all unchanged.
 - Editing one date in a copy yields one changed stop in preview.
-- Removing one row in a copy marks one planned stop as removed, not deleted.
+- Removing one row in a copy archives one imported stop rather than deleting it.
 - Lived stops and posts are never deleted by reimport.
 - Private reservation/cost/fuel fields are not exposed in public reader API.

@@ -25,24 +25,6 @@ PRIVATE_STOP_FIELDS = {
     "private_note",
 }
 
-PRIVATE_PLANNED_STOP_FIELDS = {
-    "reservation_private",
-    "comments_private",
-    "camping_cost",
-    "meals_cost",
-    "misc_cost",
-    "fuel_cost",
-    "stop_total_cost",
-    "starting_fuel",
-    "fuel_used",
-    "arrival_fuel",
-    "fuel_added",
-    "departure_fuel",
-    "phone",
-    "email",
-}
-
-
 def is_admin(user) -> bool:
     if not user:
         return False

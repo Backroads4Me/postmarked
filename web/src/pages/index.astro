@@ -24,7 +24,7 @@ const current = homeData?.current_stop;
 const activeTrip = homeData?.active_trip_segment;
 const nextStop = homeData?.next_stop;
 const previousStop = homeData?.previous_stop;
-const upcomingPlanned = homeData?.upcoming_planned_stops ?? [];
+const upcomingStops = homeData?.upcoming_stops ?? [];
 const siteText = await loadSiteText();
 const currentText = sectionText(siteText, 'home.current', {
   label: 'Currently At',
@@ -35,14 +35,14 @@ const homeHeaderText = sectionText(siteText, 'home.header', {
   heading: 'On the Road',
   body: "Quick updates from the road — where we are, where we've been, and where we're headed.",
 });
-const plannedText = sectionText(siteText, 'home.planned', {
-  label: 'From the trip plan',
+const upcomingText = sectionText(siteText, 'home.upcoming', {
+  label: 'Upcoming',
   heading: 'Up Next',
 });
 const updatesText = sectionText(siteText, 'home.updates', {
   label: null,
   heading: 'Latest Updates',
-  cta_label: 'View All',
+  cta_label: 'See full timeline',
   cta_href: '/timeline',
 });
 
@@ -166,45 +166,45 @@ function formatStopDate(dateStr) {
       )}
     </section>
 
-    {/* ── Up Next: Planned Itinerary ─────────────────────────── */}
-    {upcomingPlanned.length > 0 && (
-      <section class="mb-10 section-band" id="upcoming-planned">
+    {/* ── Up Next: Published itinerary ───────────────────────── */}
+    {upcomingStops.length > 0 && (
+      <section class="mb-10 section-band" id="upcoming-stops">
         <div class="flex items-center justify-between mb-4">
           <div>
-            {plannedText.label && <div class="label mb-1">{plannedText.label}</div>}
-            <h2 class="display text-2xl">{plannedText.heading}</h2>
-            {plannedText.body && <p class="text-sm text-muted mt-1">{plannedText.body}</p>}
+            {upcomingText.label && <div class="label mb-1">{upcomingText.label}</div>}
+            <h2 class="display text-2xl">{upcomingText.heading}</h2>
+            {upcomingText.body && <p class="text-sm text-muted mt-1">{upcomingText.body}</p>}
           </div>
         </div>
         <div class="grid gap-3">
-          {upcomingPlanned.map(p => (
+          {upcomingStops.map(stop => (
             <div class="card-flat">
               <div class="flex items-center gap-2 mb-1">
-                <span class="badge badge-planned text-[10px]">Planned</span>
-                {p.arrival_date && (
+                <span class="badge badge-published text-[10px]">Upcoming</span>
+                {stop.start_date && (
                   <span class="label">
-                    {new Date(p.arrival_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    {new Date(stop.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                   </span>
                 )}
-                {p.nights && p.nights > 0 && (
-                  <span class="label">{p.nights} night{p.nights !== 1 ? 's' : ''}</span>
+                {stop.nights && stop.nights > 0 && (
+                  <span class="label">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>
                 )}
               </div>
-              {cityStateFromAddress(p.address) ? (
+              {cityStateFromAddress(stop.summary || stop.address_label) ? (
                 <>
-                  <h3 class="display text-lg">{cityStateFromAddress(p.address)}</h3>
-                  <p class="coord text-xs mt-1">{p.name}</p>
-                  <p class="text-xs text-muted mt-1">{p.address}</p>
+                  <h3 class="display text-lg">{cityStateFromAddress(stop.summary || stop.address_label)}</h3>
+                  <p class="coord text-xs mt-1">{stop.title}</p>
+                  {stop.address_label && <p class="text-xs text-muted mt-1">{stop.address_label}</p>}
                 </>
               ) : (
                 <>
-                  <h3 class="display text-lg">{p.name}</h3>
-                  {p.address && <p class="coord text-xs mt-1">{p.address}</p>}
+                  <h3 class="display text-lg">{stop.title}</h3>
+                  {stop.place_name && <p class="coord text-xs mt-1">{stop.place_name}</p>}
                 </>
               )}
-              {p.miles_from_previous && (
+              {stop.miles_from_previous && (
                 <p class="text-xs text-dim mt-1">
-                  ~{Math.round(p.miles_from_previous)} mi from previous
+                  ~{Math.round(stop.miles_from_previous)} mi from previous
                 </p>
               )}
             </div>
@@ -222,7 +222,7 @@ function formatStopDate(dateStr) {
           {updatesText.body && <p class="text-sm text-muted mt-1">{updatesText.body}</p>}
         </div>
         {updatesText.cta_label && updatesText.cta_href && (
-          <a href={updatesText.cta_href} class="btn btn-sm btn-ghost" aria-label="View all timeline updates">
+          <a href={updatesText.cta_href} class="btn btn-ghost btn-display text-2xl" aria-label="View all timeline updates">
             {updatesText.cta_label}
           </a>
         )}
@@ -247,7 +247,7 @@ function formatStopDate(dateStr) {
     <footer class="mt-16 mb-8 text-center">
       <div class="divider"></div>
       <p class="text-dim text-xs mt-6">
-        <a href="/about" class="text-ember hover:text-ember-2 transition-colors">Postmarked</a> — a self-hosted travel journal
+        <a href="/about" class="text-ember hover:text-ember-2 transition-colors">Postmarked</a> — Digital postcards from the road.
       </p>
     </footer>
 

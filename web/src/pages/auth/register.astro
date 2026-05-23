@@ -1,5 +1,7 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+
+const isSubscribeIntent = Astro.url.searchParams.get('subscribe') === '1';
 ---
 
 <Layout title="Register">
@@ -17,8 +19,8 @@ import Layout from '../../layouts/Layout.astro';
       <!-- Registration form -->
       <div id="form-panel">
         <div class="mb-8 text-center">
-          <h1 class="display text-3xl mb-2">Join Postmarked</h1>
-          <p class="text-sm text-muted">Create a new account</p>
+          <h1 class="display text-3xl mb-2">{isSubscribeIntent ? 'Subscribe to Updates' : 'Join Postmarked'}</h1>
+          <p class="text-sm text-muted">{isSubscribeIntent ? 'Create an account and choose email updates' : 'Create a new account'}</p>
         </div>
 
         <div id="error-banner" class="hidden mb-4 p-3 rounded border text-sm" style="color: var(--ember); border-color: var(--ember); background: var(--ember-glow);"></div>
@@ -38,6 +40,22 @@ import Layout from '../../layouts/Layout.astro';
             <label class="label" for="password">Password</label>
             <input type="password" id="password" name="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required minlength="8">
           </div>
+
+          <fieldset class="flex flex-col gap-2">
+            <legend class="label">Email updates</legend>
+            <label class="flex items-start gap-3 text-sm text-muted">
+              <input type="radio" name="notification_frequency" value="all_updates" class="mt-1" />
+              <span><strong class="text-paper">Immediate</strong><br />Email me when new updates are posted.</span>
+            </label>
+            <label class="flex items-start gap-3 text-sm text-muted">
+              <input type="radio" name="notification_frequency" value="weekly_digest" class="mt-1" />
+              <span><strong class="text-paper">Weekly summary</strong><br />Send a weekly roundup of new posts.</span>
+            </label>
+            <label class="flex items-start gap-3 text-sm text-muted">
+              <input type="radio" name="notification_frequency" value="none" class="mt-1" checked />
+              <span><strong class="text-paper">No emails</strong><br />I will check the site myself.</span>
+            </label>
+          </fieldset>
 
           <button type="submit" id="submit-btn" class="btn justify-center mt-4">Create account</button>
         </form>
@@ -68,6 +86,7 @@ import Layout from '../../layouts/Layout.astro';
           email: form.email.value,
           password: form.password.value,
           display_name: form.display_name.value.trim() || null,
+          notification_frequency: form.notification_frequency.value,
         }),
       });
 

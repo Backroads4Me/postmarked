@@ -25,16 +25,16 @@ These checks passed on 2026-05-04:
 
 ```bash
 docker compose ps
-docker exec postmarked-api-1 alembic current
-docker exec postmarked-api-1 python -c "import app.main; print('api import ok')"
-docker exec postmarked-api-1 python scripts/seed.py
-docker exec postmarked-web-1 npm run build
+docker exec api alembic current
+docker exec api python -c "import app.main; print('api import ok')"
+docker exec api python scripts/seed.py
+docker exec web npm run build
 ```
 
 Verified API/page behavior:
 
 - `/api/health/ready` returns `200`.
-- `/api/home` returns the active journey, current stop, next/previous stops, recent posts, recent stops, active trip segment, and upcoming planned stops.
+- `/api/home` returns the active journey, current stop, next/previous stops, recent posts, recent stops, active trip segment, and upcoming published stops.
 - `/api/timeline` returns a paginated unified feed of recent `post` and `stop` updates.
 - `/api/trip-segments` returns visible trip segment summaries.
 - `/api/trip-segments/michigan-ny-2026` returns ordered stops with coordinates.
@@ -67,7 +67,7 @@ Use http://localhost:4321 for normal testing.
 Admin credentials for local seed data:
 
 - Email: `admin@example.com`
-- Password: `admin123`
+- Password: `changeme`
 
 ## Ready For Family Testing?
 

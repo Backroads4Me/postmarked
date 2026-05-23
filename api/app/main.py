@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
 from app.db import async_session_maker
-from app.routers import journey, media, profiles, search, site_text, social, stops, trips
+from app.routers import account, journey, media, profiles, search, site_text, social, stops, trips
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 
 
@@ -128,12 +128,18 @@ app.include_router(
     prefix="/api/auth",
     tags=["auth"],
 )
+app.include_router(
+    fastapi_users_app.get_reset_password_router(),
+    prefix="/api/auth",
+    tags=["auth"],
+)
 # /api/users/me — lets the frontend check auth state without a custom endpoint
 app.include_router(
     fastapi_users_app.get_users_router(UserRead, UserUpdate),
     prefix="/api/users",
     tags=["users"],
 )
+app.include_router(account.router, prefix="/api")
 
 
 # Public read API

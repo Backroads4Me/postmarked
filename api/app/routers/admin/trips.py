@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, or_, select, update
+from sqlalchemy import or_, select, update
 from sqlalchemy.orm import selectinload
 from typing import List
 
 from app.db import get_async_session
-from app.models.content import MediaAsset, Trip, Stop, PlannedStop
+from app.models.content import MediaAsset, Trip, Stop
 from app.models.enums import Visibility
 from app.schemas.trip import TripOut, TripCreate, TripUpdate
 from app.auth.dependencies import current_admin_user
@@ -132,7 +132,6 @@ async def delete_trip_admin(
         await session.delete(asset)
 
     await session.execute(delete(Stop).where(Stop.trip_id == trip.id))
-    await session.execute(delete(PlannedStop).where(PlannedStop.trip_id == trip.id))
     await session.delete(trip)
     await log_audit_event(session, user.id, "DELETE", "Trip", trip.id)
     await session.commit()

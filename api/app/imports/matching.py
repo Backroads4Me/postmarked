@@ -1,7 +1,7 @@
 """
 Import matching and diff logic.
 
-Compares incoming parsed stops against existing planned stops
+Compares incoming parsed stops against existing normal stops
 to produce a preview diff before applying changes.
 """
 import math
@@ -36,7 +36,7 @@ def name_similarity(a: str, b: str) -> float:
 
 
 def find_exact_match(incoming: ParsedStop, existing: list) -> Optional[dict]:
-    """Find an exact fingerprint match in existing planned stops."""
+    """Find an exact fingerprint match in existing stops."""
     for ex in existing:
         if ex.get("source_fingerprint") == incoming.fingerprint:
             return ex
@@ -124,9 +124,9 @@ def is_dangerous_change(changes: list[str], existing: dict) -> bool:
     return has_lived_link and bool(dangerous_fields & set(changes))
 
 
-def diff_import(incoming_stops: list[ParsedStop], existing_planned: list[dict]) -> list[dict]:
+def diff_import(incoming_stops: list[ParsedStop], existing_stops: list[dict]) -> list[dict]:
     """
-    Produce a diff preview comparing incoming parsed stops against existing planned stops.
+    Produce a diff preview comparing incoming parsed stops against existing stops.
 
     Returns list of diff items with status: added, unchanged, changed, removed, needs_review
     """
@@ -135,7 +135,7 @@ def diff_import(incoming_stops: list[ParsedStop], existing_planned: list[dict]) 
 
     for stop in incoming_stops:
         # Try exact match
-        match = find_exact_match(stop, existing_planned)
+        match = find_exact_match(stop, existing_stops)
         if match:
             matched_ids.add(match["id"])
             changes = compute_field_changes(stop, match)
@@ -169,13 +169,13 @@ def diff_import(incoming_stops: list[ParsedStop], existing_planned: list[dict]) 
             continue
 
         # Try fuzzy match
-        fuzzy = find_fuzzy_match(stop, [e for e in existing_planned if e["id"] not in matched_ids])
+        fuzzy = find_fuzzy_match(stop, [e for e in existing_stops if e["id"] not in matched_ids])
         if fuzzy:
             matched_ids.add(fuzzy["id"])
             changes = compute_field_changes(stop, fuzzy)
             dangerous = is_dangerous_change(changes, fuzzy)
             diff.append({
-                "status": "needs_review" if len([e for e in existing_planned if e["id"] not in matched_ids]) > 0 else "changed",
+                "status": "needs_review" if len([e for e in existing_stops if e["id"] not in matched_ids]) > 0 else "changed",
                 "sequence": stop.sequence,
                 "name": stop.name,
                 "arrival_date": stop.arrival_date,
@@ -203,7 +203,7 @@ def diff_import(incoming_stops: list[ParsedStop], existing_planned: list[dict]) 
         })
 
     # Check for removed stops
-    for ex in existing_planned:
+    for ex in existing_stops:
         if ex["id"] not in matched_ids:
             diff.append({
                 "status": "removed",

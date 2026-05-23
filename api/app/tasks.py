@@ -2,29 +2,109 @@ import os
 import uuid
 import logging
 import json
+from html import escape
 from celery import Celery
+from celery.schedules import crontab
 import subprocess
+from datetime import datetime, timedelta, timezone
 from PIL import Image, ExifTags
 import blurhash
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select
 
-from app.models.content import MediaAsset
-from app.models.enums import MediaKind, MediaProcessingState, Visibility
+from app.models.content import MediaAsset, Post
+from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, Visibility
+from app.models.system import NotificationLog
+from app.models.user import NotificationPreference, User
+from app.services.mailer import send_email
 
 logger = logging.getLogger(__name__)
 
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 DATABASE_URL_SYNC = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postmarked")
 
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
 
 celery_app = Celery("postmarked_tasks", broker=REDIS_URL)
+celery_app.conf.timezone = os.getenv("CELERY_TIMEZONE", "UTC")
+celery_app.conf.beat_schedule = {
+    "weekly-digest-monday-morning": {
+        "task": "dispatch_weekly_digest",
+        "schedule": crontab(hour=8, minute=0, day_of_week="monday"),
+    },
+}
 
 engine = create_engine(DATABASE_URL_SYNC)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+def _base_url() -> str:
+    return os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
+
+
+def _post_url(post: Post) -> str:
+    if post.trip and post.stop:
+        return f"{_base_url()}/trips/{post.trip.slug}/stops/{post.stop.slug}/posts/{post.slug}"
+    return f"{_base_url()}/timeline"
+
+
+def _post_is_published(post: Post) -> bool:
+    return post.status == PostStatus.PUBLISHED
+
+
+def _approved_notification_users(db, frequency: NotificationFrequency):
+    return (
+        db.execute(
+            select(User, NotificationPreference)
+            .join(NotificationPreference, NotificationPreference.user_id == User.id)
+            .where(
+                User.is_active == True,
+                User.approval_state == ApprovalState.APPROVED,
+                NotificationPreference.frequency == frequency,
+            )
+        )
+        .all()
+    )
+
+
+def _notification_already_logged(db, user_id, kind: str) -> bool:
+    return (
+        db.execute(
+            select(NotificationLog.id)
+            .where(NotificationLog.user_id == user_id, NotificationLog.kind == kind)
+            .limit(1)
+        )
+        .first()
+        is not None
+    )
+
+
+def _record_notification(db, user_id, kind: str, payload: dict, sent: bool, error_message: str | None = None):
+    db.add(
+        NotificationLog(
+            user_id=user_id,
+            kind=kind,
+            payload=payload,
+            sent_at=datetime.now(timezone.utc) if sent else None,
+            delivery_status="sent" if sent else "skipped",
+            error_message=error_message,
+        )
+    )
+
+
+def _post_email_bodies(post: Post) -> tuple[str, str, str]:
+    url = _post_url(post)
+    subject = f"New Postmarked update: {post.title}"
+    body = post.body or ""
+    text = f"{post.title}\n\n{body}\n\nRead it here: {url}\n"
+    html = (
+        f"<h1>{escape(post.title)}</h1>"
+        f"<p>{escape(body)}</p>"
+        f'<p><a href="{url}">Read the update</a></p>'
+    )
+    return subject, text, html
 
 def _dms_to_decimal(dms, ref) -> float | None:
     """Convert EXIF DMS tuple + hemisphere ref to signed decimal degrees."""
@@ -174,6 +254,39 @@ def process_media_asset(asset_id: str):
     finally:
         db.close()
 
+
+@celery_app.task(name="dispatch_post_notification")
+def dispatch_post_notification(post_id: str):
+    db = SessionLocal()
+    try:
+        post = db.get(Post, uuid.UUID(post_id))
+        if not post or not _post_is_published(post):
+            return "Post is not published"
+
+        post.trip
+        post.stop
+        subject, text, html = _post_email_bodies(post)
+        sent_count = 0
+        for user, _preference in _approved_notification_users(db, NotificationFrequency.ALL_UPDATES):
+            kind = f"post_immediate:{post.id}"
+            if _notification_already_logged(db, user.id, kind):
+                continue
+            sent = send_email(user.email, subject, text, html)
+            _record_notification(
+                db,
+                user.id,
+                kind,
+                {"post_id": str(post.id), "frequency": NotificationFrequency.ALL_UPDATES.value},
+                sent,
+                None if sent else "SMTP not configured or send failed",
+            )
+            if sent:
+                sent_count += 1
+        db.commit()
+        return f"Sent {sent_count} immediate post notifications"
+    finally:
+        db.close()
+
 import hashlib
 import shutil
 
@@ -271,31 +384,65 @@ def scan_filesystem():
 
 @celery_app.task(name="dispatch_weekly_digest")
 def dispatch_weekly_digest():
-    """
-    Mock digest email dispatcher.
-    Queries users with NotificationPreference enabled, checks for recent trips,
-    and logs the payload without sending actual SMTP emails.
-    """
     db = SessionLocal()
     try:
-        from app.models.user import User
-        from app.models.system import NotificationLog
-        from datetime import datetime, timezone
-        
-        # In a real app we would join on notification preferences
-        query = select(User).where(User.is_active == True)
-        users = db.execute(query).scalars().all()
-        
-        for user in users:
-            log_entry = NotificationLog(
-                user_id=user.id,
-                kind="WEEKLY_DIGEST",
-                payload={"mocked": True, "note": "Email dispatch disabled for local deployment."},
-                delivery_status="SENT",
+        now = datetime.now(timezone.utc)
+        since = now - timedelta(days=7)
+        posts = (
+            db.execute(
+                select(Post)
+                .where(
+                    Post.status == PostStatus.PUBLISHED,
+                    Post.posted_at >= since,
+                    Post.posted_at < now,
+                )
+                .order_by(Post.posted_at.asc())
             )
-            db.add(log_entry)
-            logger.info("[DIGEST MOCK] Would have sent digest email to user %s", user.id)
-            
+            .scalars()
+            .all()
+        )
+        if not posts:
+            logger.info("[digest] No public posts found for weekly digest window")
+            return "No posts"
+
+        for post in posts:
+            post.trip
+            post.stop
+
+        kind = f"weekly_digest:{since.date().isoformat()}:{now.date().isoformat()}"
+        sent_count = 0
+        for user, _preference in _approved_notification_users(db, NotificationFrequency.WEEKLY_DIGEST):
+            if _notification_already_logged(db, user.id, kind):
+                continue
+            subject = "Your weekly Postmarked update"
+            lines = ["Here are this week's Postmarked updates:", ""]
+            html_items = []
+            for post in posts:
+                url = _post_url(post)
+                lines.append(f"- {post.title}: {url}")
+                html_items.append(f'<li><a href="{url}">{escape(post.title)}</a></li>')
+            sent = send_email(
+                user.email,
+                subject,
+                "\n".join(lines) + "\n",
+                f"<p>Here are this week's Postmarked updates:</p><ul>{''.join(html_items)}</ul>",
+            )
+            _record_notification(
+                db,
+                user.id,
+                kind,
+                {
+                    "post_ids": [str(post.id) for post in posts],
+                    "frequency": NotificationFrequency.WEEKLY_DIGEST.value,
+                    "since": since.isoformat(),
+                    "until": now.isoformat(),
+                },
+                sent,
+                None if sent else "SMTP not configured or send failed",
+            )
+            if sent:
+                sent_count += 1
         db.commit()
+        return f"Sent {sent_count} weekly digests"
     finally:
         db.close()

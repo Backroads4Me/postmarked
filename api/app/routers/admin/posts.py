@@ -61,6 +61,16 @@ async def _unique_post_slug(session: AsyncSession, title: str) -> str:
     return f"{base}-{uuid.uuid4().hex}"
 
 
+def _should_notify(post: Post) -> bool:
+    return post.status == PostStatus.PUBLISHED
+
+
+def _queue_post_notification(post_id: uuid.UUID) -> None:
+    from app.tasks import dispatch_post_notification
+
+    dispatch_post_notification.delay(str(post_id))
+
+
 @router.post("/posts", response_model=PostOut)
 async def create_post(
     post_in: PostCreate,
@@ -122,6 +132,8 @@ async def create_post(
 
     await log_audit_event(session, user.id, "CREATE", "Post", post.id)
     await session.commit()
+    if _should_notify(post):
+        _queue_post_notification(post.id)
 
     result = await session.execute(
         select(Post)
@@ -146,6 +158,7 @@ async def update_post(
     post = result.scalars().first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    was_notifiable = _should_notify(post)
 
     update_data = post_in.model_dump(exclude_unset=True)
     if "visibility" in update_data:
@@ -164,6 +177,8 @@ async def update_post(
     await log_audit_event(session, user.id, "UPDATE", "Post", post.id, update_data)
     await session.commit()
     await session.refresh(post)
+    if not was_notifiable and _should_notify(post):
+        _queue_post_notification(post.id)
     return post
 
 
@@ -218,11 +233,6 @@ async def set_current_stop(
         update(Stop)
         .where(Stop.is_current == True)
         .values(is_current=False)
-    )
-    await session.execute(
-        update(Stop)
-        .where(Stop.status == StopStatus.ACTIVE)
-        .values(status=StopStatus.PUBLISHED)
     )
     stop.is_current = True
     if stop.status != StopStatus.ARCHIVED:

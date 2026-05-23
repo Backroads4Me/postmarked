@@ -44,11 +44,9 @@ Browser code should never call `http://api:8000` directly.
 The default map provider is Google Maps:
 
 ```env
-PUBLIC_MAP_PROVIDER=google
 PUBLIC_GOOGLE_MAPS_API_KEY=<your browser API key>
+PUBLIC_GOOGLE_MAPS_MAP_ID=<optional cloud map ID>
 ```
-
-Set `PUBLIC_MAP_PROVIDER=maplibre` to use the optional PMTiles-backed MapLibre path instead.
 
 ## Useful Commands
 

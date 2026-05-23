@@ -1,7 +1,7 @@
 # API Contracts
 
 Status: current public reader contract
-Last updated: 2026-05-04
+Last updated: 2026-05-23
 
 Public endpoints omit private fields such as reservation numbers, site numbers, private notes, costs, and fuel data.
 
@@ -17,14 +17,14 @@ Returns:
 - `recent_stops`: recent visible stops.
 - `recent_posts`: recent visible journal updates.
 - `active_trip_segment`: current trip/chapter summary.
-- `upcoming_planned_stops`: public-safe planned stops from imports.
+- `upcoming_stops`: future published stops.
 
 Use this for:
 
 - Home page current-location panel.
 - Recent updates feed.
 - Next/previous stop navigation on the current location card.
-- "Up next" planned route hints.
+- "Up next" published route hints.
 
 ## `GET /api/timeline`
 

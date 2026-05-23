@@ -1,64 +1,56 @@
 name: postmarked
 
-x-api-image: &api-image ghcr.io/backroads4me/postmarked-api:${IMAGE_TAG:-latest}
+x-app-base: &app-base
+  image: ghcr.io/backroads4me/postmarked-api:${IMAGE_TAG:-latest}
+  env_file: .env
+  environment:
+    - PYTHONPATH=/app
+    - ORIGINALS_PATH=/originals
+    - DERIVATIVES_PATH=/derivatives
+    - INGEST_PATH=/ingest
+    - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postmarked}
+    - APP_BASE_URL=${APP_BASE_URL:-http://localhost:4321}
+    - SMTP_HOST=${SMTP_HOST:-}
+    - SMTP_PORT=${SMTP_PORT:-587}
+    - SMTP_USERNAME=${SMTP_USERNAME:-}
+    - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+    - SMTP_FROM_EMAIL=${SMTP_FROM_EMAIL:-}
+    - SMTP_FROM_NAME=${SMTP_FROM_NAME:-Postmarked}
+    - SMTP_USE_TLS=${SMTP_USE_TLS:-false}
+    - SMTP_USE_STARTTLS=${SMTP_USE_STARTTLS:-true}
+  depends_on:
+    db:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+  restart: unless-stopped
 
 services:
   api:
-    image: *api-image
-    env_file: .env
-    environment:
-      - PYTHONPATH=/app
-      - ORIGINALS_PATH=/originals
-      - DERIVATIVES_PATH=/derivatives
-      - INGEST_PATH=/ingest
-      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postmarked}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+    <<: *app-base
+    container_name: api
     volumes:
       - ${ORIGINALS_SOURCE:-originals}:/originals
       - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
       - ${INGEST_SOURCE:-ingest}:/ingest
-    restart: unless-stopped
 
   worker:
-    image: *api-image
+    <<: *app-base
+    container_name: worker
     command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
-    env_file: .env
-    environment:
-      - PYTHONPATH=/app
-      - ORIGINALS_PATH=/originals
-      - DERIVATIVES_PATH=/derivatives
-      - INGEST_PATH=/ingest
-      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postmarked}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
     volumes:
       - ${ORIGINALS_SOURCE:-originals}:/originals
       - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
       - ${INGEST_SOURCE:-ingest}:/ingest
-    restart: unless-stopped
 
   beat:
-    image: *api-image
+    <<: *app-base
+    container_name: beat
     command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
-    env_file: .env
-    environment:
-      - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postmarked}
-    depends_on:
-      db:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    restart: unless-stopped
 
   web:
     image: ghcr.io/backroads4me/postmarked-web:${IMAGE_TAG:-latest}
+    container_name: web
     build:
       context: ./web
     env_file: .env
@@ -76,7 +68,9 @@ services:
   flower:
     profiles: ["tools"]
     image: mher/flower
-    command: ["celery", "--broker", "redis://redis:6379/0", "flower", "--port=5555"]
+    container_name: flower
+    command:
+      ["celery", "--broker", "redis://redis:6379/0", "flower", "--port=5555"]
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - FLOWER_PORT=5555
@@ -89,9 +83,10 @@ services:
 
   db:
     image: postgis/postgis:16-3.4-alpine
+    container_name: postgis_db
     env_file: .env
     volumes:
-      - db_data:/var/lib/postgresql/data
+      - ${DB_SOURCE:-db_data}:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -101,6 +96,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    container_name: redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s

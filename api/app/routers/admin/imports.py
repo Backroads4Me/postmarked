@@ -16,14 +16,14 @@ from sqlalchemy import cast, func, select
 
 from app.db import get_async_session
 from app.auth.dependencies import current_admin_user
-from app.models.content import ImportRun, PlannedStop, Stop, Trip
-from app.models.enums import PlannedStopImportState, StopStatus, StopType, TripStatus, Visibility
+from app.models.content import ImportRun, Stop, Trip
+from app.models.enums import StopStatus, StopType, TripStatus, Visibility
 from app.models.user import User
 from app.imports.rv_trip_wizard import parse_excel
 from app.imports.matching import diff_import
 from app.schemas.imports import (
     ImportPreviewResponse, ImportDiffItem, ImportRunOut,
-    ImportApplyRequest, ImportApplyResponse, PlannedStopOut,
+    ImportApplyRequest, ImportApplyResponse,
 )
 from app.services.audit import log_audit_event
 from app.services.timezone import timezone_for_coords
@@ -146,47 +146,6 @@ async def _apply_payload_to_stop(
     stop.private_note = payload.get("comments")
     stop.reservation_private = payload.get("reservation")
     stop.rv_details = _stop_private_details(payload)
-
-
-def _apply_payload_to_planned_stop(
-    planned_stop: PlannedStop,
-    payload: dict,
-    trip_id: uuid.UUID,
-    import_run_id: uuid.UUID,
-) -> None:
-    planned_stop.trip_id = trip_id
-    planned_stop.source_import_run_id = import_run_id
-    planned_stop.source_row_number = payload.get("row_number")
-    planned_stop.source_fingerprint = payload["fingerprint"]
-    planned_stop.source_sequence = payload["sequence"]
-    planned_stop.name = payload["name"]
-    planned_stop.arrival_date = _parse_date(payload.get("arrival_date"))
-    planned_stop.departure_date = _parse_date(payload.get("departure_date"))
-    planned_stop.nights = payload.get("nights")
-    planned_stop.latitude = payload.get("latitude")
-    planned_stop.longitude = payload.get("longitude")
-    planned_stop.address = payload.get("address")
-    planned_stop.url = payload.get("url")
-    planned_stop.phone = payload.get("phone")
-    planned_stop.email = payload.get("email")
-    planned_stop.features_raw = payload.get("features_raw")
-    planned_stop.features = payload.get("features") or []
-    planned_stop.comments_private = payload.get("comments")
-    planned_stop.reservation_private = payload.get("reservation")
-    planned_stop.miles_from_previous = payload.get("miles_from_previous")
-    planned_stop.total_miles = payload.get("total_miles")
-    planned_stop.estimated_travel_time = payload.get("estimated_travel_time")
-    planned_stop.camping_cost = payload.get("camping_cost")
-    planned_stop.meals_cost = payload.get("meals_cost")
-    planned_stop.misc_cost = payload.get("misc_cost")
-    planned_stop.fuel_cost = payload.get("fuel_cost")
-    planned_stop.stop_total_cost = payload.get("stop_total_cost")
-    planned_stop.starting_fuel = payload.get("starting_fuel")
-    planned_stop.fuel_used = payload.get("fuel_used")
-    planned_stop.arrival_fuel = payload.get("arrival_fuel")
-    planned_stop.fuel_added = payload.get("fuel_added")
-    planned_stop.departure_fuel = payload.get("departure_fuel")
-    planned_stop.import_state = PlannedStopImportState.PLANNED
 
 
 @router.post("/rv-trip-wizard/preview", response_model=ImportPreviewResponse)
@@ -445,25 +404,6 @@ async def list_imports(
     """List all import runs."""
     result = await session.execute(
         select(ImportRun).order_by(ImportRun.created_at.desc())
-    )
-    return result.scalars().all()
-
-
-@router.get("/planned-stops/{trip_id}", response_model=List[PlannedStopOut])
-async def list_planned_stops_for_trip(
-    trip_id: uuid.UUID,
-    session: AsyncSession = Depends(get_async_session),
-    user: User = Depends(current_admin_user),
-):
-    """List imported planned itinerary rows for a trip."""
-    trip = await session.get(Trip, trip_id)
-    if not trip:
-        raise HTTPException(status_code=404, detail="Trip not found")
-
-    result = await session.execute(
-        select(PlannedStop)
-        .where(PlannedStop.trip_id == trip_id)
-        .order_by(PlannedStop.source_sequence.asc())
     )
     return result.scalars().all()
 

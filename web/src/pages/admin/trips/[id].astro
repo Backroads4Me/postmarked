@@ -6,7 +6,6 @@ const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
 
 let trip = null;
-let plannedStops = [];
 try {
   // First verify authorization via trips list or detail endpoint
   const authRes = await fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} });
@@ -20,8 +19,6 @@ try {
     const dRes = await fetch(apiUrl(`/api/trips/${trip.slug}`), { headers: cookie ? { cookie } : {} });
     if (dRes.ok) trip = await dRes.json();
 
-    const plannedRes = await fetch(apiUrl(`/api/admin/imports/planned-stops/${id}`), { headers: cookie ? { cookie } : {} });
-    if (plannedRes.ok) plannedStops = await plannedRes.json();
   }
 } catch(e) {}
 
@@ -132,7 +129,7 @@ function formatDate(value) {
         <div class="label mb-2" style="color: var(--sunset);">Danger Zone</div>
         <h2 class="text-lg font-semibold mb-2">Delete this trip</h2>
         <p class="text-sm text-muted mb-4">
-          Removes the trip, its stops, planned itinerary rows, and trip-only cover/uploads. Posts and attached media are kept but detached where possible.
+          Removes the trip, its stops, and trip-only cover/uploads. Posts and attached media are kept but detached where possible.
         </p>
         <button
           type="button"
@@ -164,31 +161,9 @@ function formatDate(value) {
               </div>
             ))}
           </div>
-        ) : plannedStops.length > 0 ? (
-          <div class="divide-y divide-line">
-            <div class="p-4 bg-surface-1">
-              <div class="label">Imported itinerary</div>
-              <p class="text-xs text-muted mt-1">
-                Legacy import rows: {plannedStops.length} stop{plannedStops.length === 1 ? '' : 's'} imported before Excel imports created normal stops.
-              </p>
-            </div>
-            {plannedStops.map(stop => (
-              <div class="p-4 flex flex-col gap-1">
-                <div class="flex items-center justify-between gap-4">
-                  <div class="font-bold text-base">{stop.name}</div>
-                  <span class="badge badge-planned text-[9px]">{stop.import_state}</span>
-                </div>
-                <div class="text-xs text-dim font-mono tracking-widest">
-                  {formatDate(stop.arrival_date)} → {formatDate(stop.departure_date)}
-                  {stop.nights != null ? ` · ${stop.nights} night${stop.nights === 1 ? '' : 's'}` : ''}
-                </div>
-                {stop.address && <div class="text-xs text-muted">{stop.address}</div>}
-              </div>
-            ))}
-          </div>
         ) : (
           <div class="p-8 text-center text-muted">
-            No stops imported or added yet.
+            No stops added yet.
           </div>
         )}
       </div>
@@ -238,7 +213,7 @@ function formatDate(value) {
       const errorDiv = document.getElementById('form-error');
       if (!id) return;
 
-      const confirmed = window.confirm(`Delete "${title}"? This also removes its stops and planned stops. This cannot be undone.`);
+      const confirmed = window.confirm(`Delete "${title}"? This also removes its stops. This cannot be undone.`);
       if (!confirmed) return;
 
       errorDiv.classList.add('hidden');

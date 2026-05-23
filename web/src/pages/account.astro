@@ -1,0 +1,142 @@
+---
+import Layout from '../layouts/Layout.astro';
+import { apiUrl } from '../lib/api.js';
+
+const cookie = Astro.request.headers.get('cookie') || '';
+const res = await fetch(apiUrl('/api/account'), {
+  headers: cookie ? { cookie } : {},
+});
+if (res.status === 401 || res.status === 403) {
+  return Astro.redirect('/auth/login?next=/account');
+}
+if (!res.ok) {
+  throw new Error(`Account API returned ${res.status}`);
+}
+const account = await res.json();
+---
+
+<Layout title="Account — Postmarked">
+  <main class="frame py-16">
+    <section class="max-w-2xl mx-auto">
+      <div class="mb-8">
+        <h1 class="display text-4xl mb-2">Account</h1>
+        <p class="text-muted">Manage your profile, password, and email updates.</p>
+        <button type="button" class="btn mt-4" onclick="signOut()">Sign out</button>
+      </div>
+
+      <div id="message-banner" class="hidden mb-6 p-3 rounded border text-sm"></div>
+
+      <div class="grid gap-6">
+        <section class="bg-surface border border-line rounded-lg p-6">
+          <h2 class="display text-2xl mb-4">Profile</h2>
+          <form class="grid gap-4" onsubmit="event.preventDefault(); updateProfile(this);">
+            <div class="grid gap-1">
+              <label class="label" for="display_name">Display name</label>
+              <input id="display_name" name="display_name" value={account.display_name || ''} class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+            </div>
+            <div class="grid gap-1">
+              <label class="label" for="email">Email address</label>
+              <input id="email" name="email" type="email" value={account.email} required class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+            </div>
+            <button type="submit" class="btn justify-center sm:justify-self-start">Save profile</button>
+          </form>
+        </section>
+
+        <section id="email-updates" class="bg-surface border border-line rounded-lg p-6">
+          <h2 class="display text-2xl mb-4">Email Updates</h2>
+          <form class="grid gap-3" onsubmit="event.preventDefault(); updateNotifications(this);">
+            <label class="flex items-start gap-3 text-sm text-muted">
+              <input type="radio" name="notification_frequency" value="all_updates" class="mt-1" checked={account.notification_frequency === 'all_updates'} />
+              <span><strong class="text-paper">Immediate</strong><br />Email me when new updates are posted.</span>
+            </label>
+            <label class="flex items-start gap-3 text-sm text-muted">
+              <input type="radio" name="notification_frequency" value="weekly_digest" class="mt-1" checked={account.notification_frequency === 'weekly_digest'} />
+              <span><strong class="text-paper">Weekly summary</strong><br />Send a weekly roundup of new posts.</span>
+            </label>
+            <label class="flex items-start gap-3 text-sm text-muted">
+              <input type="radio" name="notification_frequency" value="none" class="mt-1" checked={account.notification_frequency === 'none'} />
+              <span><strong class="text-paper">No emails</strong><br />I will check the site myself.</span>
+            </label>
+            <button type="submit" class="btn justify-center sm:justify-self-start mt-2">Save email updates</button>
+          </form>
+        </section>
+
+        <section class="bg-surface border border-line rounded-lg p-6">
+          <h2 class="display text-2xl mb-4">Password</h2>
+          <form class="grid gap-4" onsubmit="event.preventDefault(); updatePassword(this);">
+            <div class="grid gap-1">
+              <label class="label" for="current_password">Current password</label>
+              <input id="current_password" name="current_password" type="password" required class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+            </div>
+            <div class="grid gap-1">
+              <label class="label" for="new_password">New password</label>
+              <input id="new_password" name="new_password" type="password" required minlength="8" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+            </div>
+            <button type="submit" class="btn justify-center sm:justify-self-start">Update password</button>
+          </form>
+        </section>
+      </div>
+    </section>
+  </main>
+</Layout>
+
+<script is:inline>
+  async function updateProfile(form) {
+    await saveJson('/api/account/profile', {
+      display_name: form.display_name.value.trim() || null,
+      email: form.email.value,
+    }, 'Profile saved.');
+  }
+
+  async function updateNotifications(form) {
+    await saveJson('/api/account/notifications', {
+      notification_frequency: form.notification_frequency.value,
+    }, 'Email update preferences saved.');
+  }
+
+  async function updatePassword(form) {
+    await saveJson('/api/account/password', {
+      current_password: form.current_password.value,
+      new_password: form.new_password.value,
+    }, 'Password updated.');
+    form.reset();
+  }
+
+  async function signOut() {
+    try {
+      await fetch('/api/auth/jwt/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } finally {
+      window.location.href = '/auth/login';
+    }
+  }
+
+  async function saveJson(path, payload, successMessage) {
+    try {
+      const res = await fetch(path, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.detail || 'Save failed.');
+      }
+      showMessage(successMessage, false);
+    } catch (err) {
+      showMessage(err.message || 'Save failed.', true);
+    }
+  }
+
+  function showMessage(msg, error) {
+    const banner = document.getElementById('message-banner');
+    banner.textContent = msg;
+    banner.style.color = error ? 'var(--ember)' : 'var(--paper)';
+    banner.style.borderColor = error ? 'var(--ember)' : 'var(--line)';
+    banner.style.background = error ? 'var(--ember-glow)' : 'var(--surface-2)';
+    banner.classList.remove('hidden');
+  }
+</script>

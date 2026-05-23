@@ -9,7 +9,7 @@ from pydantic import BaseModel, ConfigDict
 from app.schemas.common import BaseResponse
 
 
-class PlannedStopPreview(BaseModel):
+class ParsedStopPreview(BaseModel):
     """One parsed stop from the Excel file."""
     model_config = ConfigDict(from_attributes=True)
 
@@ -68,7 +68,6 @@ class ImportApplyResponse(BaseModel):
     trip_slug: str
     counts: dict = {}  # { added, updated, removed, unchanged }
     stop_ids: List[uuid.UUID] = []
-    planned_stop_ids: List[uuid.UUID] = []
 
 
 class ImportRunOut(BaseResponse):
@@ -80,17 +79,3 @@ class ImportRunOut(BaseResponse):
     summary_json: Optional[dict] = None
     error_message: Optional[str] = None
     created_at: datetime
-
-
-class PlannedStopOut(BaseResponse):
-    id: uuid.UUID
-    name: str
-    arrival_date: Optional[date] = None
-    departure_date: Optional[date] = None
-    nights: Optional[int] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address: Optional[str] = None
-    features: List[str] = []
-    import_state: str
-    source_sequence: int

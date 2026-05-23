@@ -10,14 +10,16 @@ from app.models.user import User
 
 
 async def seed():
-    admin_email = os.getenv("ADMIN_EMAIL", "admin@example.com").strip().lower()
-    admin_password = os.getenv("ADMIN_PASSWORD", "admin123")
-    admin_display_name = os.getenv("ADMIN_DISPLAY_NAME", "Ted & Family")
+    admin_email = os.getenv("ADMIN_EMAIL").strip().lower()
+    admin_password = os.getenv("ADMIN_PASSWORD")
+    admin_display_name = os.getenv("ADMIN_DISPLAY_NAME")
 
     if not admin_email:
-        raise RuntimeError("ADMIN_EMAIL must not be empty")
+        raise RuntimeError("ADMIN_EMAIL must be set in .env")
     if not admin_password:
-        raise RuntimeError("ADMIN_PASSWORD must not be empty")
+        raise RuntimeError("ADMIN_PASSWORD must be set in .env")
+    if not admin_display_name:
+        raise RuntimeError("ADMIN_DISPLAY_NAME must be set in .env")
 
     password_helper = PasswordHelper()
 

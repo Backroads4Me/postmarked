@@ -25,6 +25,12 @@ try {
 const pending = users.filter(u => u.approval_state === 'pending');
 const approved = users.filter(u => u.approval_state === 'approved');
 const rejected = users.filter(u => u.approval_state === 'rejected');
+
+function frequencyLabel(value) {
+  if (value === 'all_updates') return 'Immediate';
+  if (value === 'weekly_digest') return 'Weekly';
+  return 'No emails';
+}
 ---
 
 <AdminLayout title="Users">
@@ -43,9 +49,18 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           <div class="card-flat flex items-center justify-between gap-4">
             <div>
               <div style="color: var(--paper); font-weight: 500;">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email}</div>
+              <div class="label">{u.email} · {u.role} · {frequencyLabel(u.notification_frequency)}</div>
             </div>
-            <div class="flex gap-2">
+            <div class="flex items-center gap-2">
+              <select
+                class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                data-original={u.notification_frequency}
+                onchange={`updateUserNotifications('${u.id}', this)`}
+              >
+                <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
+                <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+              </select>
               <button
                 class="btn"
                 style="min-height:36px; font-size:13px;"
@@ -60,6 +75,15 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
               >
                 Reject
               </button>
+              {u.role !== 'admin' && (
+                <button
+                  class="btn"
+                  style="min-height:36px; font-size:13px;"
+                  onclick={`promoteUser('${u.id}', this)`}
+                >
+                  Promote
+                </button>
+              )}
             </div>
           </div>
         ))}
@@ -79,9 +103,29 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           <div class="card-flat flex items-center justify-between gap-4">
             <div>
               <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role}</div>
+              <div class="label">{u.email} · {u.role} · {frequencyLabel(u.notification_frequency)}</div>
             </div>
-            <span class="badge badge-active text-[10px]">approved</span>
+            <div class="flex items-center gap-2">
+              <select
+                class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                data-original={u.notification_frequency}
+                onchange={`updateUserNotifications('${u.id}', this)`}
+              >
+                <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
+                <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+              </select>
+              {u.role !== 'admin' && (
+                <button
+                  class="btn"
+                  style="min-height:36px; font-size:13px;"
+                  onclick={`promoteUser('${u.id}', this)`}
+                >
+                  Promote
+                </button>
+              )}
+              <span class="badge badge-active text-[10px]">approved</span>
+            </div>
           </div>
         ))}
       </div>
@@ -96,15 +140,35 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           <div class="card-flat flex items-center justify-between gap-4" style="opacity:0.6;">
             <div>
               <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email}</div>
+              <div class="label">{u.email} · {u.role} · {frequencyLabel(u.notification_frequency)}</div>
             </div>
-            <button
-              class="btn"
-              style="min-height:36px; font-size:13px;"
-              onclick={`approveUser('${u.id}', this)`}
-            >
-              Re-approve
-            </button>
+            <div class="flex items-center gap-2">
+              <select
+                class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                data-original={u.notification_frequency}
+                onchange={`updateUserNotifications('${u.id}', this)`}
+              >
+                <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
+                <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+              </select>
+              <button
+                class="btn"
+                style="min-height:36px; font-size:13px;"
+                onclick={`approveUser('${u.id}', this)`}
+              >
+                Re-approve
+              </button>
+              {u.role !== 'admin' && (
+                <button
+                  class="btn"
+                  style="min-height:36px; font-size:13px;"
+                  onclick={`promoteUser('${u.id}', this)`}
+                >
+                  Promote
+                </button>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -154,6 +218,52 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
     } catch (e) {
       btn.disabled = false;
       btn.textContent = 'Reject';
+    }
+  }
+
+  async function updateUserNotifications(userId, select) {
+    const original = select.dataset.original || select.value;
+    select.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/notifications`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notification_frequency: select.value }),
+      });
+      if (res.ok) {
+        select.dataset.original = select.value;
+      } else {
+        const d = await res.json().catch(() => ({}));
+        select.value = original;
+        alert(d.detail || 'Failed');
+      }
+    } catch (e) {
+      select.value = original;
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  async function promoteUser(userId, btn) {
+    btn.disabled = true;
+    btn.textContent = '…';
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/promote`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        btn.disabled = false;
+        btn.textContent = 'Promote';
+        alert(d.detail || 'Failed');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      btn.textContent = 'Promote';
     }
   }
 </script>

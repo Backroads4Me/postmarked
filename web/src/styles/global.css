@@ -31,7 +31,6 @@
 
   /* Status colors */
   --color-status-active:    #4a9f6e;
-  --color-status-planned:   #6fa3c4;
   --color-status-published: #8aab7e;
   --color-status-private:   #d46b5c;
 
@@ -343,6 +342,11 @@
     color: var(--paper);
     background: var(--hover-soft);
   }
+  .btn.btn-display {
+    font-family: var(--display);
+    font-weight: bold;
+    color: var(--paper);
+  }
   .btn-ghost-ember {
     background: transparent;
     border-color: var(--ember);
@@ -370,11 +374,6 @@
     background: rgba(74,159,110,.15);
     color: var(--forest);
     border-color: rgba(74,159,110,.3);
-  }
-  .badge-planned {
-    background: rgba(111,163,196,.15);
-    color: var(--sky);
-    border-color: rgba(111,163,196,.3);
   }
   .badge-draft {
     background: rgba(154,154,159,.15);

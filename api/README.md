@@ -68,9 +68,9 @@ mypy app
 Docker equivalents:
 
 ```bash
-docker exec postmarked-api-1 alembic current
-docker exec postmarked-api-1 python -c "import app.main; print('api import ok')"
-docker exec postmarked-api-1 python scripts/seed.py
+docker exec api alembic current
+docker exec api python -c "import app.main; print('api import ok')"
+docker exec api python scripts/seed.py
 ```
 
 The runtime Docker image installs production dependencies only, so `ruff` and

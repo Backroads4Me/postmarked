@@ -6,17 +6,12 @@ class Visibility(str, enum.Enum):
 
 class TripStatus(str, enum.Enum):
     DRAFT = "draft"
-    PLANNED = "planned"
-    ACTIVE = "active"
-    COMPLETED = "completed"
     PUBLISHED = "published"
     UNPUBLISHED = "unpublished"
     ARCHIVED = "archived"
 
 class StopStatus(str, enum.Enum):
     DRAFT = "draft"
-    PLANNED = "planned"
-    ACTIVE = "active"
     PUBLISHED = "published"
     UNPUBLISHED = "unpublished"
     ARCHIVED = "archived"
@@ -26,12 +21,6 @@ class PostStatus(str, enum.Enum):
     PUBLISHED = "published"
     UNPUBLISHED = "unpublished"
     ARCHIVED = "archived"
-
-class PlannedStopImportState(str, enum.Enum):
-    PLANNED = "planned"
-    CHANGED = "changed"
-    REMOVED_FROM_LATEST_IMPORT = "removed_from_latest_import"
-    CONVERTED_TO_STOP = "converted_to_stop"
 
 class ImportRunStatus(str, enum.Enum):
     PARSED = "parsed"

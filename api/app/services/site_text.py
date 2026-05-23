@@ -29,8 +29,8 @@ DEFAULT_SITE_TEXT_SECTIONS = [
     },
     {
         "page_key": "home",
-        "section_key": "planned",
-        "label": "From the trip plan",
+        "section_key": "upcoming",
+        "label": "Upcoming",
         "heading": "Up Next",
         "body": None,
         "sort_order": 40,
@@ -41,7 +41,7 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "label": None,
         "heading": "Latest Updates",
         "body": None,
-        "cta_label": "View All",
+        "cta_label": "See full timeline",
         "cta_href": "/timeline",
         "sort_order": 50,
     },
@@ -50,7 +50,7 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "section_key": "header",
         "label": "Journeys",
         "heading": "All Trips",
-        "body": "Every journey, documented.",
+        "body": "Miles become memories.",
         "sort_order": 10,
     },
     {
@@ -58,7 +58,7 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "section_key": "header",
         "label": None,
         "heading": "Timeline",
-        "body": "Every stop, story, and moment — in order.",
+        "body": "Every stop, story, and moment.",
         "sort_order": 10,
     },
 ]

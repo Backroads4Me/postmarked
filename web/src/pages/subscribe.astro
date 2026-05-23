@@ -1,0 +1,14 @@
+---
+import { apiUrl } from '../lib/api.js';
+
+const cookie = Astro.request.headers.get('cookie') || '';
+const res = await fetch(apiUrl('/api/account'), {
+  headers: cookie ? { cookie } : {},
+});
+
+if (res.ok) {
+  return Astro.redirect('/account#email-updates');
+}
+
+return Astro.redirect('/auth/register?subscribe=1');
+---

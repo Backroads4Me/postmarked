@@ -4,8 +4,6 @@ Postmarked is a self-hosted travel journal for sharing your journey with friends
 
 It is not a trip planning tool, a blogging platform, or a journaling app. Just quick, lightweight updates from the road.
 
-Learn more and find self-hosting guides at [postmarked.io](https://postmarked.io).
-
 ## Current Status
 
 The local MVP is ready for owner testing. The stabilization pass is complete:
@@ -15,7 +13,7 @@ The local MVP is ready for owner testing. The stabilization pass is complete:
 - Seed data creates a journey with trip segments, a current stop, a future stop, and recent posts.
 - Public reader APIs are wired to the frontend.
 - Admin can manage trips, stops, journeys, posts, imports, media, and pending users.
-- RV Trip Wizard Excel preview/apply creates and updates `PlannedStop` rows.
+- RV Trip Wizard Excel preview/apply creates and updates normal draft stops.
 - Frontend production build passes.
 
 Open polish work remains, but it is not blocking local testing.
@@ -34,7 +32,7 @@ Admin:
 
 - URL: http://localhost:4321/admin
 - Email: `ADMIN_EMAIL` from `.env` (`admin@example.com` by default)
-- Password: `ADMIN_PASSWORD` from `.env` (`admin123` by default)
+- Password: `ADMIN_PASSWORD` from `.env` (`changeme` by default)
 
 Change the seeded admin credentials before any real deployment.
 
@@ -74,10 +72,10 @@ Useful smoke checks:
 
 ```bash
 docker compose ps
-docker exec postmarked-api-1 alembic current
-docker exec postmarked-api-1 python -c "import app.main; print('api import ok')"
-docker exec postmarked-api-1 python scripts/seed.py
-docker exec postmarked-web-1 npm run build
+docker exec api alembic current
+docker exec api python -c "import app.main; print('api import ok')"
+docker exec api python scripts/seed.py
+docker exec web npm run build
 ./scripts/check-media-storage.sh
 ./scripts/smoke-media-upload.sh
 ```
@@ -93,7 +91,7 @@ curl http://localhost:8000/api/trip-segments
 
 ## RV Trip Wizard Excel Import
 
-The app supports RV Trip Wizard `.xlsx` exports for importing planned itineraries.
+The app supports RV Trip Wizard `.xlsx` exports for importing route itineraries as normal stops.
 
 Browser flow:
 
@@ -148,13 +146,11 @@ For direct API development you still need PostgreSQL/PostGIS and Redis. The easi
 The default map provider is Google Maps because it avoids requiring a local basemap file:
 
 ```env
-PUBLIC_MAP_PROVIDER=google
 PUBLIC_GOOGLE_MAPS_API_KEY=<your browser API key>
 PUBLIC_GOOGLE_MAPS_MAP_ID=<optional cloud map ID>
 ```
 
 Create a Google Maps Platform API key, restrict it by HTTP referrer, and set budget/quota alerts in Google Cloud. If the key is missing, the app still renders a simple route schematic instead of a blank map. The optional map ID enables Google Advanced Markers and cloud map styling; local testing falls back to Google's demo map ID when it is blank.
-
 
 ## Deployment Notes
 

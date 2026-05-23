@@ -10,11 +10,10 @@ from sqlalchemy.orm import selectinload
 
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
-from app.models.content import PlannedStop, Post, Stop, Trip
-from app.models.enums import PlannedStopImportState, PostStatus, StopStatus, TripStatus, Visibility
+from app.models.content import Post, Stop, Trip
+from app.models.enums import PostStatus, StopStatus, TripStatus, Visibility
 from app.schemas.journey import (
     HomeOut,
-    PublicPlannedStopSummary,
     PublicPostSummary,
     PublicStopSummary,
     PublicTripSegmentDetail,
@@ -291,49 +290,11 @@ async def get_home(
         active_trip = (await session.execute(trip_query)).scalars().first()
         active_trip_stops = [s for s in stops if active_trip and s.trip_id == active_trip.id]
 
-    today = datetime.now(timezone.utc).date()
-    planned_query = (
-        select(PlannedStop)
-        .where(
-            PlannedStop.import_state.notin_(
-                [
-                    PlannedStopImportState.REMOVED_FROM_LATEST_IMPORT,
-                    PlannedStopImportState.CONVERTED_TO_STOP,
-                ]
-            ),
-            PlannedStop.matched_stop_id.is_(None),
-        )
-        .order_by(
-            PlannedStop.arrival_date.asc().nulls_last(),
-            PlannedStop.source_sequence.asc(),
-        )
-        .limit(5)
-    )
-    planned_query = planned_query.join(Trip, PlannedStop.trip_id == Trip.id).where(
-        Trip.status == TripStatus.PUBLISHED,
-    )
-    if not user:
-        planned_query = planned_query.where(Trip.visibility == Visibility.PUBLIC)
-    planned_rows = (await session.execute(planned_query)).scalars().all()
-    upcoming_planned = [
-        PublicPlannedStopSummary(
-            id=ps.id,
-            trip_id=ps.trip_id,
-            name=ps.name,
-            arrival_date=ps.arrival_date,
-            departure_date=ps.departure_date,
-            nights=ps.nights,
-            latitude=ps.latitude,
-            longitude=ps.longitude,
-            address=ps.address,
-            miles_from_previous=ps.miles_from_previous,
-            estimated_travel_time=ps.estimated_travel_time,
-        )
-        for ps in planned_rows
-        if ps.arrival_date is None or ps.arrival_date >= today
-    ]
-
     now = datetime.now(timezone.utc)
+    upcoming_stop_models = sorted(
+        [stop for stop in stops if stop.start_date > now],
+        key=lambda stop: stop.start_date,
+    )[:5]
     recent_stop_models = sorted(
         [stop for stop in stops if stop.start_date <= now],
         key=lambda stop: stop.start_date,
@@ -347,7 +308,7 @@ async def get_home(
         recent_stops=[stop_out for s in recent_stop_models if (stop_out := _stop_out(s, coords, user))],
         recent_posts=[await _post_out(post, coords, user) for post in posts],
         active_trip_segment=_trip_summary_out(active_trip, active_trip_stops, user),
-        upcoming_planned_stops=upcoming_planned,
+        upcoming_stops=[stop_out for s in upcoming_stop_models if (stop_out := _stop_out(s, coords, user))],
     )
 
 

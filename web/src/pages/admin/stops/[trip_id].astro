@@ -7,13 +7,11 @@ const cookie = Astro.request.headers.get('cookie');
 
 let trip = null;
 let stops = [];
-let plannedStops = [];
 
 try {
-  const [tripsRes, stopsRes, plannedRes] = await Promise.all([
+  const [tripsRes, stopsRes] = await Promise.all([
     fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} }),
     fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
-    fetch(apiUrl(`/api/admin/imports/planned-stops/${trip_id}`), { headers: cookie ? { cookie } : {} }),
   ]);
 
   if (tripsRes.status === 401 || tripsRes.status === 403) return Astro.redirect('/auth/login');
@@ -25,9 +23,6 @@ try {
   if (stopsRes.ok) {
     const all = await stopsRes.json();
     stops = all.filter(s => s.trip_id === trip_id);
-  }
-  if (plannedRes.ok) {
-    plannedStops = await plannedRes.json();
   }
 } catch (e) {
   console.error(e);
@@ -251,7 +246,7 @@ const tripIsPrivate = trip.visibility === 'private';
                 </span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'published' ? 'badge-published' : stop.status === 'unpublished' ? 'badge-unpublished' : stop.status === 'archived' ? 'badge-private' : 'badge-planned'}`}>
+                <span class={`badge text-[9px] ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'published' ? 'badge-published' : stop.status === 'unpublished' ? 'badge-unpublished' : stop.status === 'archived' ? 'badge-private' : 'badge-draft'}`}>
                   {stop.status}
                 </span>
               </td>
@@ -277,48 +272,6 @@ const tripIsPrivate = trip.visibility === 'private';
         </tbody>
       </table>
       </div>
-    </div>
-  ) : plannedStops.length > 0 ? (
-    <div class="card-flat overflow-x-auto" style="padding: 0;">
-      <div class="p-4 bg-surface-1" style="border-bottom: 1px solid var(--line);">
-        <div class="label">Imported itinerary</div>
-        <p class="text-xs text-muted mt-1">
-          Legacy import rows: {plannedStops.length} stop{plannedStops.length === 1 ? '' : 's'} imported before Excel imports created normal stops.
-        </p>
-      </div>
-      <table style="width: 100%; min-width: 720px; border-collapse: collapse; font-size: 13px;">
-        <thead>
-          <tr style="border-bottom: 1px solid var(--line);">
-            <th class="label" style="padding: 10px 16px; text-align: left;">Name</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Arrival</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Departure</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Nights</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">State</th>
-          </tr>
-        </thead>
-        <tbody>
-          {plannedStops.map(stop => (
-            <tr style="border-bottom: 1px solid var(--line-soft);">
-              <td style="padding: 10px 16px;">
-                <div style="color: var(--paper); font-weight: 600;">{stop.name}</div>
-                {stop.address && <span class="coord block mt-0.5">{stop.address}</span>}
-              </td>
-              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
-                {formatDate(stop.arrival_date)}
-              </td>
-              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
-                {formatDate(stop.departure_date)}
-              </td>
-              <td style="padding: 10px 12px; text-align: center; color: var(--muted);">
-                {stop.nights ?? '—'}
-              </td>
-              <td style="padding: 10px 12px; text-align: center;">
-                <span class="badge badge-planned text-[9px]">{stop.import_state}</span>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
     </div>
   ) : (
     <div class="empty-state">

@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+from urllib.parse import quote
 from typing import Optional
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
@@ -12,7 +13,10 @@ from fastapi_users.authentication import (
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
 from app.db import get_async_session
-from app.models.user import User
+from app.models.enums import NotificationFrequency
+from app.models.user import NotificationPreference, User
+from app.schemas.user import PUBLIC_NOTIFICATION_FREQUENCIES
+from app.services.mailer import send_email
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +47,17 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
+    async def create(self, user_create, safe: bool = False, request: Optional[Request] = None):
+        frequency = getattr(user_create, "notification_frequency", None) or NotificationFrequency.NONE
+        if frequency not in PUBLIC_NOTIFICATION_FREQUENCIES:
+            frequency = NotificationFrequency.NONE
+
+        user = await super().create(user_create, safe=safe, request=request)
+        self.user_db.session.add(NotificationPreference(user_id=user.id, frequency=frequency))
+        await self.user_db.session.commit()
+        await self.user_db.session.refresh(user)
+        return user
+
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         logger.info("User %s has registered.", user.id)
 
@@ -50,6 +65,22 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         self, user: User, token: str, request: Optional[Request] = None
     ):
         logger.info("Password reset requested for user %s.", user.id)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
+        reset_url = f"{base_url}/auth/reset-password?token={quote(token)}"
+        send_email(
+            user.email,
+            "Reset your Postmarked password",
+            (
+                "A password reset was requested for your Postmarked account.\n\n"
+                f"Reset your password here: {reset_url}\n\n"
+                "If you did not request this, you can ignore this email."
+            ),
+            (
+                "<p>A password reset was requested for your Postmarked account.</p>"
+                f'<p><a href="{reset_url}">Reset your password</a></p>'
+                "<p>If you did not request this, you can ignore this email.</p>"
+            ),
+        )
 
     async def on_after_request_verify(
         self, user: User, token: str, request: Optional[Request] = None

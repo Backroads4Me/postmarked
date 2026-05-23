@@ -33,7 +33,7 @@ function statusBadge(status) {
           ? 'badge-unpublished'
         : status === 'archived'
           ? 'badge-private'
-          : 'badge-planned';
+          : 'badge-draft';
 }
 ---
 
@@ -133,7 +133,7 @@ function statusBadge(status) {
       const tripTitle = target.dataset.tripTitle || 'this trip';
       if (!tripId) return;
 
-      const confirmed = window.confirm(`Delete "${tripTitle}"? This also removes its stops and planned stops. This cannot be undone.`);
+      const confirmed = window.confirm(`Delete "${tripTitle}"? This also removes its stops. This cannot be undone.`);
       if (!confirmed) return;
 
       target.disabled = true;
