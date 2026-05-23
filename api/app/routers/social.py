@@ -171,6 +171,38 @@ async def toggle_like(
     return {"liked": True}
 
 
+@router.get("/likes/{target_kind}/{target_id}/status")
+async def get_like_status(
+    target_kind: str,
+    target_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_user_optional),
+):
+    """Returns like count and whether the current user has liked the target."""
+    await _assert_target_visible(session, target_kind, target_id, user)
+
+    count_result = await session.execute(
+        select(func.count(Like.id)).where(
+            Like.target_kind == target_kind,
+            Like.target_id == target_id,
+        )
+    )
+    count = count_result.scalar_one()
+
+    liked = None
+    if user:
+        existing = (await session.execute(
+            select(Like).where(
+                Like.author_id == user.id,
+                Like.target_kind == target_kind,
+                Like.target_id == target_id,
+            )
+        )).scalar_one_or_none()
+        liked = existing is not None
+
+    return {"count": count, "liked": liked}
+
+
 @router.get("/likes/{target_kind}/{target_id}/count")
 async def get_like_count(
     target_kind: str,

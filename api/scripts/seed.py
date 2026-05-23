@@ -10,7 +10,7 @@ from app.models.user import User
 
 
 async def seed():
-    admin_email = os.getenv("ADMIN_EMAIL").strip().lower()
+    admin_email = os.getenv("ADMIN_EMAIL", "").strip().lower()
     admin_password = os.getenv("ADMIN_PASSWORD")
     admin_display_name = os.getenv("ADMIN_DISPLAY_NAME")
 

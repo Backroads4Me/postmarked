@@ -9,14 +9,15 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 DB_BACKUP_SQL="${ARCHIVE_DIR}/postmarked_db_${TIMESTAMP}.sql"
 VOL_BACKUP_TAR="${ARCHIVE_DIR}/postmarked_volumes_${TIMESTAMP}.tar.gz"
 
+PGUSER="${POSTGRES_USER:-postgres}"
+PGDB="${POSTGRES_DB:-postmarked}"
+
 mkdir -p "$ARCHIVE_DIR"
 
 echo "[1/2] Dumping PostgreSQL database..."
-# Assuming standard postmarked compose stack running locally
-docker compose exec -T db pg_dump -U postgres postmarked > "$DB_BACKUP_SQL"
+docker compose exec -T db pg_dump -U "$PGUSER" "$PGDB" > "$DB_BACKUP_SQL"
 
 echo "[2/2] Tarballing /originals and /derivatives volumes..."
-# Spin up an ephemeral alpine container to zip the volumes safely
 docker run --rm \
   -v postmarked_originals:/originals \
   -v postmarked_derivatives:/derivatives \

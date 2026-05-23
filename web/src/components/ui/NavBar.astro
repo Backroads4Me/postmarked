@@ -6,6 +6,7 @@
 
 import ThemeToggle from './ThemeToggle.astro';
 import { apiUrl } from '../../lib/api.js';
+import SearchIsland from '../SearchIsland.jsx';
 
 const { pathname } = Astro.url;
 const cookie = Astro.request.headers.get('cookie') || '';
@@ -65,6 +66,7 @@ function isActive(href: string) {
         <span>{item.label}</span>
       </a>
     ))}
+    <SearchIsland client:load />
     <ThemeToggle class="theme-toggle--desktop" />
   </div>
 </nav>

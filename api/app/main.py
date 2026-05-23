@@ -10,7 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
 from app.db import async_session_maker
-from app.routers import account, journey, media, profiles, search, site_text, social, stops, trips
+from app.routers import account, journey, media, search, site_text, social, stops, trips
 from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.mailer import is_email_configured
 
@@ -147,7 +147,6 @@ app.include_router(account.router, prefix="/api")
 app.include_router(trips.router, prefix="/api")
 app.include_router(stops.router, prefix="/api")
 app.include_router(journey.router, prefix="/api")
-app.include_router(profiles.router, prefix="/api")
 app.include_router(social.router, prefix="/api")
 app.include_router(search.router, prefix="/api")
 app.include_router(site_text.router, prefix="/api")

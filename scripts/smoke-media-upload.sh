@@ -5,7 +5,7 @@ cd "$(dirname "$0")/.."
 
 api_url="${API_URL:-http://localhost:8000}"
 admin_email="${ADMIN_EMAIL:-admin@example.com}"
-admin_password="${ADMIN_PASSWORD:-admin123}"
+admin_password="${ADMIN_PASSWORD:-changeme}"
 
 tmp_dir="$(mktemp -d)"
 cookie_jar="$tmp_dir/cookies.txt"
@@ -107,7 +107,7 @@ fi
 for _ in $(seq 1 30); do
   state="$(
     docker compose exec -T db \
-      psql -U postgres -d postmarked -At \
+      psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postmarked}" -At \
       -c "select processing_state from media_asset where id='$asset_id';"
   )"
   if [[ "$state" == "READY" ]]; then
@@ -115,7 +115,7 @@ for _ in $(seq 1 30); do
   fi
   if [[ "$state" == "FAILED" ]]; then
     docker compose exec -T db \
-      psql -U postgres -d postmarked \
+      psql -U "${POSTGRES_USER:-postgres}" -d "${POSTGRES_DB:-postmarked}" \
       -c "select error_message from media_asset where id='$asset_id';" >&2
     exit 1
   fi

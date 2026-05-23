@@ -44,7 +44,7 @@ async def global_search(
         ))
 
     # 2. Search Stops
-    query_stops = select(Stop).join(Trip, Stop.trip_id == Trip.id).where(
+    query_stops = select(Stop, Trip.slug.label("trip_slug")).join(Trip, Stop.trip_id == Trip.id).where(
         Trip.status == TripStatus.PUBLISHED,
         Stop.status == StopStatus.PUBLISHED,
         or_(
@@ -55,13 +55,13 @@ async def global_search(
     if not user:
         query_stops = query_stops.where(Trip.visibility == Visibility.PUBLIC, Stop.visibility == Visibility.PUBLIC)
     res_stops = await session.execute(query_stops)
-    for s in res_stops.scalars().all():
+    for s, trip_slug in res_stops.all():
         results.append(SearchResult(
             entity_type="stop",
             id=s.id,
             title=s.title,
             summary=s.summary,
-            slug=f"/trips/search-redirect?stop={s.id}" # Simplified routing payload
+            slug=f"/trips/{trip_slug}/stops/{s.slug}"
         ))
 
     return results

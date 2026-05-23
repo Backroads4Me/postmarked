@@ -5,9 +5,7 @@ from app.models.content import (
     Trip, Stop, PointOfInterest, MediaAsset,
     ImportRun, Post, SiteTextSection,
 )
-from app.models.profile import RvProfile, TravelerProfile
 from app.models.system import (
-    Comment, Like, Collection, CollectionItem,
-    ScanSource, ScanJob, ImportCandidate,
-    NotificationLog, RedirectSlug, AuditLog,
+    Comment, Like,
+    NotificationLog, AuditLog,
 )

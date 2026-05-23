@@ -102,12 +102,12 @@ async def create_post(
         posted_at=posted_at,
         visibility=visibility,
         status=post_in.status,
-        post_type=PostType.UPDATE,
-        activity_type=None,
-        summary=None,
-        activity_started_at=None,
-        activity_ended_at=None,
-        poi_id=None,
+        post_type=post_in.post_type,
+        activity_type=post_in.activity_type,
+        summary=post_in.summary,
+        activity_started_at=post_in.activity_started_at,
+        activity_ended_at=post_in.activity_ended_at,
+        poi_id=post_in.poi_id,
     )
     session.add(post)
 
@@ -165,12 +165,6 @@ async def update_post(
         update_data["visibility"] = Visibility(update_data["visibility"])
     if "status" in update_data and update_data["status"] == PostStatus.PUBLISHED:
         post.posted_at = post.posted_at or datetime.now(timezone.utc)
-    update_data["post_type"] = PostType.UPDATE
-    update_data["activity_type"] = None
-    update_data["summary"] = None
-    update_data["activity_started_at"] = None
-    update_data["activity_ended_at"] = None
-    update_data["poi_id"] = None
     for key, value in update_data.items():
         setattr(post, key, value)
 

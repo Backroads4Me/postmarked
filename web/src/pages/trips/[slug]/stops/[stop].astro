@@ -2,6 +2,7 @@
 import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
+import LikesIsland from '../../../../components/LikesIsland.jsx';
 import StopMapIsland from '../../../../components/StopMapIsland.jsx';
 import MediaGallery from '../../../../components/ui/MediaGallery.astro';
 
@@ -193,8 +194,11 @@ function fmtRange(start, end) {
       </section>
     )}
 
-    {/* ── Comments ────────────────────────────────────────── */}
+    {/* ── Likes + Comments ────────────────────────────────── */}
     <section class="mb-10">
+      <div class="mb-4">
+        <LikesIsland client:load targetKind="stop" targetId={detail.id} />
+      </div>
       <CommentsIsland client:load targetKind="stop" targetId={detail.id} />
     </section>
 

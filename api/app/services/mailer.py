@@ -13,7 +13,8 @@ def _truthy(value: str | None) -> bool:
 
 
 SMTP_HOST = os.getenv("SMTP_HOST", "").strip()
-SMTP_PORT = int(os.getenv("SMTP_PORT", "465" if _truthy(os.getenv("SMTP_USE_TLS")) else "587"))
+_raw_port = os.getenv("SMTP_PORT", "").strip()
+SMTP_PORT = int(_raw_port) if _raw_port.isdigit() else (465 if _truthy(os.getenv("SMTP_USE_TLS")) else 587)
 SMTP_USERNAME = os.getenv("SMTP_USERNAME", "").strip()
 SMTP_PASSWORD = os.getenv("SMTP_PASSWORD", "")
 SMTP_FROM_EMAIL = os.getenv("SMTP_FROM_EMAIL", "").strip()
