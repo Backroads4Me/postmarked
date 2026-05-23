@@ -43,14 +43,23 @@ export default function SearchIsland() {
 
   if (!isOpen) {
     return (
-      <button onClick={() => setIsOpen(true)} className="btn ghost hidden md:inline-flex">
-        Search (⌘K)
+      <button
+        onClick={() => setIsOpen(true)}
+        className="nav-link hidden md:inline-flex"
+        style={{ flexDirection: 'row', gap: '6px', fontSize: '12px', fontFamily: 'var(--mono)', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+      >
+        <span className="nav-symbol">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <span>Search</span>
       </button>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-32 bg-bg/80 backdrop-blur-sm" onClick={() => setIsOpen(false)}>
+    <div className="fixed inset-x-0 bottom-0 z-50 flex items-start justify-center pt-8 bg-bg/80 backdrop-blur-sm" style={{ top: '56px' }} onClick={() => setIsOpen(false)}>
       <div className="w-full max-w-2xl bg-surface-1 border border-line rounded-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex border-b border-line items-center px-4 py-3">
           <span className="text-muted mr-3">🔍</span>
