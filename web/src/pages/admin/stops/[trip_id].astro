@@ -96,19 +96,6 @@ const tripIsPrivate = trip.visibility === 'private';
       </div>
 
       <div class="flex flex-col gap-1">
-        <label class="text-xs font-bold">Type</label>
-        <select name="stop_type" class="bg-surface-2 border border-line p-2 text-sm">
-          <option value="campground">Campground</option>
-          <option value="boondocking">Boondocking</option>
-          <option value="overnight">Overnight</option>
-          <option value="attraction">Attraction</option>
-          <option value="restaurant">Restaurant</option>
-          <option value="service">Service</option>
-          <option value="other">Other</option>
-        </select>
-      </div>
-
-      <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Status</label>
         <select name="status" class="bg-surface-2 border border-line p-2 text-sm">
           <option value="draft" selected>Draft</option>
@@ -148,7 +135,7 @@ const tripIsPrivate = trip.visibility === 'private';
           <div>
             <div class="label mb-1">Bulk edit</div>
             <p class="text-xs text-muted">
-              <span id="bulk-selected-count">0</span> selected. Change status, type, or delete selected stops.
+              <span id="bulk-selected-count">0</span> selected. Change status or delete selected stops.
             </p>
           </div>
           <div class="flex flex-col sm:flex-row gap-2">
@@ -160,19 +147,6 @@ const tripIsPrivate = trip.visibility === 'private';
                 <option value="published">Published</option>
                 <option value="unpublished">Unpublished</option>
                 <option value="archived">Archived</option>
-              </select>
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="label">Type</span>
-              <select id="bulk-type" class="bg-surface-2 border border-line p-2 text-sm min-w-36">
-                <option value="">No change</option>
-                <option value="campground">Campground</option>
-                <option value="boondocking">Boondocking</option>
-                <option value="overnight">Overnight</option>
-                <option value="attraction">Attraction</option>
-                <option value="restaurant">Restaurant</option>
-                <option value="service">Service</option>
-                <option value="other">Other</option>
               </select>
             </label>
             <label class="flex flex-col gap-1">
@@ -208,7 +182,6 @@ const tripIsPrivate = trip.visibility === 'private';
               <input type="checkbox" id="bulk-select-all" aria-label="Select all stops" />
             </th>
             <th class="label" style="padding: 10px 16px; text-align: left;">Title</th>
-            <th class="label" style="padding: 10px 12px; text-align: center;">Type</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Visibility</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Status</th>
             <th class="label" style="padding: 10px 12px; text-align: center;">Date</th>
@@ -232,9 +205,6 @@ const tripIsPrivate = trip.visibility === 'private';
                   <span style="color: var(--paper);">{stop.title}</span>
                 </div>
                 {stop.place_name && <span class="coord block mt-0.5">{stop.place_name}</span>}
-              </td>
-              <td style="padding: 10px 12px; text-align: center;">
-                <span class="text-xs text-muted">{stop.stop_type || '—'}</span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
                 <span class={`badge text-[9px] ${stop.visibility === 'public' ? 'badge-public' : 'badge-draft'}`}>
@@ -367,7 +337,6 @@ const tripIsPrivate = trip.visibility === 'private';
   const bulkDeleteButton = document.getElementById('bulk-delete') as HTMLButtonElement | null;
   const bulkSelectAll = document.getElementById('bulk-select-all') as HTMLInputElement | null;
   const bulkStatus = document.getElementById('bulk-status') as HTMLSelectElement | null;
-  const bulkType = document.getElementById('bulk-type') as HTMLSelectElement | null;
   const bulkVisibility = document.getElementById('bulk-visibility') as HTMLSelectElement | null;
   const bulkCount = document.getElementById('bulk-selected-count');
   const bulkError = document.getElementById('bulk-error');
@@ -411,7 +380,6 @@ const tripIsPrivate = trip.visibility === 'private';
         bulkSelectAll.indeterminate = false;
       }
       if (bulkStatus) bulkStatus.value = '';
-      if (bulkType) bulkType.value = '';
       if (bulkVisibility) bulkVisibility.value = '';
       setBulkError(null);
       updateBulkCount();
@@ -467,10 +435,9 @@ const tripIsPrivate = trip.visibility === 'private';
   bulkApplyButton?.addEventListener('click', async () => {
     const payload: Record<string, unknown> = {};
     if (bulkStatus?.value) payload.status = bulkStatus.value;
-    if (bulkType?.value) payload.stop_type = bulkType.value;
     if (bulkVisibility?.value) payload.visibility = bulkVisibility.value;
-    if (!payload.status && !payload.stop_type && !payload.visibility) {
-      setBulkError('Choose a status, type, or visibility to update.');
+    if (!payload.status && !payload.visibility) {
+      setBulkError('Choose a status or visibility to update.');
       return;
     }
     if (await runBulkAction(payload)) location.reload();

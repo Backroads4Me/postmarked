@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import BaseResponse, GeoJsonPoint
 from app.schemas.media import MediaAssetOut
-from app.models.enums import StopStatus, StopType, Visibility
+from app.models.enums import StopStatus, Visibility
 
 class StopBase(BaseResponse):
     id: uuid.UUID
@@ -18,7 +18,6 @@ class StopBase(BaseResponse):
     end_date: Optional[datetime] = None
 
     status: StopStatus
-    stop_type: StopType
     visibility: Visibility
 
     sort_order: int
@@ -44,7 +43,6 @@ class StopCreate(BaseModel):
     start_date: datetime
     end_date: Optional[datetime] = None
     status: StopStatus = StopStatus.DRAFT
-    stop_type: StopType = StopType.BOONDOCKING
     visibility: Visibility = Visibility.PRIVATE
     sort_order: int = 1
     place_name: Optional[str] = None
@@ -58,7 +56,6 @@ class StopUpdate(BaseModel):
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
     status: Optional[StopStatus] = None
-    stop_type: Optional[StopType] = None
     visibility: Optional[Visibility] = None
     sort_order: Optional[int] = None
     place_name: Optional[str] = None
@@ -68,6 +65,5 @@ class StopUpdate(BaseModel):
 class StopBulkUpdate(BaseModel):
     stop_ids: List[uuid.UUID] = Field(min_length=1)
     status: Optional[StopStatus] = None
-    stop_type: Optional[StopType] = None
     visibility: Optional[Visibility] = None
     delete: bool = False

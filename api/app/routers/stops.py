@@ -196,7 +196,6 @@ async def get_stop(
         end_date=stop.end_date,
         nights=stop.nights,
         status=stop.status,
-        stop_type=stop.stop_type,
         sort_order=stop.sort_order,
         latitude=latitude,
         longitude=longitude,

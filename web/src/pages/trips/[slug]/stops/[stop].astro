@@ -5,6 +5,7 @@ import CommentsIsland from '../../../../components/CommentsIsland.jsx';
 import LikesIsland from '../../../../components/LikesIsland.jsx';
 import StopMapIsland from '../../../../components/StopMapIsland.jsx';
 import MediaGallery from '../../../../components/ui/MediaGallery.astro';
+import PostCard from '../../../../components/ui/PostCard.astro';
 
 const { slug, stop } = Astro.params;
 
@@ -79,7 +80,6 @@ function fmtRange(start, end) {
     <section class="mb-8">
       <div class="flex items-center gap-2 mb-3 flex-wrap">
         {detail.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
-        {detail.stop_type && <span class="badge text-[10px]">{detail.stop_type}</span>}
         {detail.start_date && <span class="label">{fmtRange(detail.start_date, detail.end_date)}</span>}
         {detail.nights && <span class="label">{detail.nights} night{detail.nights !== 1 ? 's' : ''}</span>}
       </div>
@@ -148,7 +148,7 @@ function fmtRange(start, end) {
                 </div>
               )}
               {p.media && p.media.length > 0 && (
-                <MediaGallery media={p.media} maxWidth="max-w-lg" singleMaxHeight="22rem" limit={4} />
+                <MediaGallery media={p.media} singleMaxHeight="18rem" />
               )}
             </article>
           ))}
@@ -166,9 +166,6 @@ function fmtRange(start, end) {
           pois={detail.pois || []}
           mediaGps={detail.media_with_gps || []}
         />
-        <p class="coord mt-2" style="font-size: 11px;">
-          {detail.latitude.toFixed(4)}, {detail.longitude.toFixed(4)}
-        </p>
       </section>
     )}
 
@@ -178,16 +175,15 @@ function fmtRange(start, end) {
         <h2 class="display text-2xl mb-3">Updates from here</h2>
         <div class="grid gap-3">
           {updates.map(p => (
-            <article class="card-flat">
-              <div class="flex items-center justify-between mb-2">
-                <h3 class="text-base font-medium" style="color: var(--paper);">{p.title}</h3>
-                <span class="label">{fmtDate(p.posted_at)}</span>
-              </div>
-              {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
-              {p.media && p.media.length > 0 && (
-                <MediaGallery media={p.media} maxWidth="max-w-lg" singleMaxHeight="22rem" limit={4} />
-              )}
-            </article>
+            <PostCard
+              title={p.title}
+              posted_at={p.posted_at}
+              body={p.body}
+              summary={p.summary}
+              media={p.media}
+              href={`/trips/${detail.trip_slug}/stops/${detail.slug}/posts/${p.slug}`}
+              cardClass="card-flat"
+            />
           ))}
         </div>
       </section>

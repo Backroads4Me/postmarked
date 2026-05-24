@@ -138,7 +138,6 @@ function fmtRange(start, end) {
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
-                      {stop.stop_type && <span class="badge text-[10px]">{stop.stop_type}</span>}
                       {stop.start_date && <span class="label">{fmtRange(stop.start_date, stop.end_date)}</span>}
                       {stop.nights && <span class="label">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>}
                       {stop.is_current && <span class="badge badge-active text-[10px]">currently here</span>}

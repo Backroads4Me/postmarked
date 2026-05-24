@@ -127,7 +127,6 @@ def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]]
         end_date=stop.end_date,
         nights=stop.nights,
         status=stop.status,
-        stop_type=stop.stop_type,
         sort_order=stop.sort_order,
         latitude=latitude,
         longitude=longitude,
@@ -211,7 +210,6 @@ def _stop_to_update(stop: Stop, user) -> RecentUpdate:
         stop_title=stop.title,
         stop_slug=stop.slug,
         place_name=stop.place_name,
-        stop_type=stop.stop_type,
         cover_media=visible_ready_cover_media(stop.cover_media, user),
     )
 

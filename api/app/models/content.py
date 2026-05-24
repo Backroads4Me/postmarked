@@ -17,7 +17,6 @@ from app.models.enums import (
     PostType,
     PostStatus,
     StopStatus,
-    StopType,
     TripStatus,
     Visibility,
 )
@@ -119,7 +118,6 @@ class Stop(Base):
         SAEnum(StopStatus, values_callable=lambda x: [e.value for e in x], name="stopstatus", create_type=False),
         default=StopStatus.DRAFT,
     )
-    stop_type: Mapped[StopType] = mapped_column(default=StopType.OTHER)
     visibility: Mapped[Visibility] = mapped_column(default=Visibility.PRIVATE)
 
     is_favorite: Mapped[bool] = mapped_column(Boolean, default=False)

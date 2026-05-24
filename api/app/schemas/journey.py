@@ -4,7 +4,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
-from app.models.enums import ActivityType, PostType, StopStatus, StopType, TripStatus, Visibility
+from app.models.enums import ActivityType, PostType, StopStatus, TripStatus, Visibility
 from app.schemas.common import BaseResponse
 from app.schemas.media import MediaAssetOut
 
@@ -40,7 +40,6 @@ class PublicStopSummary(BaseResponse):
     end_date: Optional[datetime] = None
     nights: Optional[int] = None
     status: StopStatus
-    stop_type: StopType
     sort_order: int
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -148,7 +147,6 @@ class RecentUpdate(BaseModel):
     stop_title: Optional[str] = None
     stop_slug: Optional[str] = None
     place_name: Optional[str] = None
-    stop_type: Optional[StopType] = None
     cover_media: Optional[MediaAssetOut] = None
     media: List[MediaAssetOut] = []
 

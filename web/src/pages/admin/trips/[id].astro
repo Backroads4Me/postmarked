@@ -155,7 +155,7 @@ function formatDate(value) {
               <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
                   <div class="font-bold text-lg">{stop.title}</div>
-                  <div class="text-xs text-dim font-mono tracking-widest">{stop.stop_type} · {new Date(stop.start_date).toLocaleDateString()}</div>
+                  <div class="text-xs text-dim font-mono tracking-widest">{new Date(stop.start_date).toLocaleDateString()}</div>
                 </div>
               </div>
             ))}

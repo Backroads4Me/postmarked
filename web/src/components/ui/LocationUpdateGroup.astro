@@ -2,8 +2,7 @@
 /**
  * LocationUpdateGroup — a stop/location card with nested post updates.
  */
-import { renderMarkdown } from '../../lib/markdown.js';
-import MediaGallery from './MediaGallery.astro';
+import PostCard from './PostCard.astro';
 
 interface MediaSummary {
   id: string;
@@ -38,7 +37,6 @@ interface StopSummary {
   start_date?: string;
   posted_at?: string;
   place_name?: string | null;
-  stop_type?: string;
 }
 
 interface Props {
@@ -95,30 +93,17 @@ function postHref(post: PostSummary) {
 
   {posts.length > 0 && (
     <div class="location-posts">
-      {posts.map((post) => {
-        const renderedBody = renderMarkdown(post.body || post.summary || '');
-        const href = postHref(post);
-        return (
-          <article class="location-post" id={post.slug ? `post-${post.slug}` : undefined}>
-            <div class="flex items-start justify-between gap-3 mb-1">
-              {href ? (
-                <a href={href} class="location-post-title">
-                  {post.title}
-                </a>
-              ) : (
-                <h4 class="location-post-title">{post.title}</h4>
-              )}
-              {post.posted_at && <span class="label shrink-0">{formatDate(post.posted_at)}</span>}
-            </div>
-            {renderedBody && (
-              <div class="location-post-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedBody} />
-            )}
-            {post.media && post.media.length > 0 && (
-              <MediaGallery media={post.media} singleMaxHeight="18rem" />
-            )}
-          </article>
-        );
-      })}
+      {posts.map((post) => (
+        <PostCard
+          title={post.title}
+          posted_at={post.posted_at}
+          body={post.body}
+          summary={post.summary}
+          media={post.media}
+          href={postHref(post)}
+          cardClass="location-post"
+        />
+      ))}
     </div>
   )}
 </article>
@@ -156,36 +141,5 @@ function postHref(post: PostSummary) {
   .location-post {
     background: var(--surface-2);
     padding: 14px 18px;
-  }
-
-  .location-post-title {
-    color: var(--paper);
-    font-size: 0.98rem;
-    font-weight: 600;
-    line-height: 1.35;
-    margin: 0;
-    text-decoration: none;
-  }
-
-  .location-post-title:hover {
-    color: var(--ember);
-  }
-
-  .location-post-markdown :global(p) {
-    margin: 0 0 0.45rem;
-  }
-
-  .location-post-markdown :global(p:last-child),
-  .location-post-markdown :global(ul:last-child),
-  .location-post-markdown :global(h3:last-child),
-  .location-post-markdown :global(h4:last-child),
-  .location-post-markdown :global(h5:last-child) {
-    margin-bottom: 0;
-  }
-
-  .location-post-markdown :global(ul) {
-    list-style: disc;
-    margin: 0.35rem 0 0.45rem 1.1rem;
-    padding: 0;
   }
 </style>

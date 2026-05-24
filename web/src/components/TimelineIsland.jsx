@@ -14,21 +14,6 @@ export default function TimelineIsland({ stops, activeStopId, onStopClick }) {
     } catch { return ''; }
   }
 
-  function getStopTypeLabel(type) {
-    const labels = {
-      campground: 'Camp',
-      boondocking: 'Wild',
-      harvest_host: 'Host',
-      service: 'Svc',
-      attraction: 'See',
-      family: 'Fam',
-      overnight: 'Night',
-      fuel: 'Fuel',
-      restaurant: 'Food',
-    };
-    return labels[type] || 'Stop';
-  }
-
   return (
     <div className="w-full h-full flex flex-col overflow-hidden" style={{ background: 'var(--surface)', borderTop: '1px solid var(--line)' }}>
       <div className="px-4 py-2 flex justify-between items-center" style={{ borderBottom: '1px solid var(--line-soft)' }}>
@@ -79,11 +64,6 @@ export default function TimelineIsland({ stops, activeStopId, onStopClick }) {
                     boxShadow: isCurrent || isActive ? '0 2px 8px rgba(0,0,0,.3)' : 'none',
                   }}
                 />
-
-                {/* Type */}
-                <span className="label" style={{ fontSize: '8px', color: isActive ? 'var(--ember)' : 'var(--dim)' }}>
-                  {getStopTypeLabel(stop.stop_type)}
-                </span>
 
                 {/* Label */}
                 <span

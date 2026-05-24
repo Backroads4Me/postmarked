@@ -148,12 +148,6 @@ export default function CommentsIsland({ targetKind, targetId }) {
         </div>
       )}
 
-      {!loading && !error && comments.length === 0 && (
-        <div className="card-flat" style={{ padding: 14, color: "var(--muted)", fontSize: 13 }}>
-          No comments yet. Be the first to share.
-        </div>
-      )}
-
       {comments.length > 0 && (
         <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
           {comments.map((c) => (

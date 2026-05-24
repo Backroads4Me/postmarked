@@ -17,7 +17,7 @@ from sqlalchemy import cast, func, select
 from app.db import get_async_session
 from app.auth.dependencies import current_admin_user
 from app.models.content import ImportRun, Stop, Trip
-from app.models.enums import StopStatus, StopType, TripStatus, Visibility
+from app.models.enums import StopStatus, TripStatus, Visibility
 from app.models.user import User
 from app.imports.rv_trip_wizard import parse_excel
 from app.imports.matching import diff_import
@@ -137,7 +137,6 @@ async def _apply_payload_to_stop(
     stop.nights = payload.get("nights")
     stop.sort_order = sequence
     stop.status = StopStatus.DRAFT
-    stop.stop_type = StopType.CAMPGROUND
     stop.visibility = Visibility.PRIVATE
     stop.timezone_id = timezone_for_coords(lat, lon)
     stop.rv_features = payload.get("features") or []

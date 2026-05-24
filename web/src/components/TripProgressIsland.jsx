@@ -25,21 +25,6 @@ export default function TripProgressIsland({ trip }) {
     } catch { return ''; }
   }
 
-  function getStopTypeIcon(type) {
-    const icons = {
-      campground: '⛺',
-      boondocking: '🏕️',
-      harvest_host: '🍇',
-      service: '🔧',
-      attraction: '🎡',
-      family: '👨‍👩‍👧‍👦',
-      overnight: '🌙',
-      fuel: '⛽',
-      restaurant: '🍽️',
-    };
-    return icons[type] || '📍';
-  }
-
   return (
     <div className="flex flex-col w-full h-full" style={{ background: 'var(--bg)' }}>
 
@@ -63,7 +48,6 @@ export default function TripProgressIsland({ trip }) {
             }}
           >
             <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{getStopTypeIcon(activeStop.stop_type)}</span>
               {activeStop.is_current && (
                 <span className="badge badge-active text-[9px] py-0.5">
                   <span className="pulse-dot mr-1" style={{ width: '6px', height: '6px' }}></span>

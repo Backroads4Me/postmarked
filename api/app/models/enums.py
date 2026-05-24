@@ -27,15 +27,6 @@ class ImportRunStatus(str, enum.Enum):
     APPLIED = "applied"
     FAILED = "failed"
 
-class StopType(str, enum.Enum):
-    CAMPGROUND = "campground"
-    BOONDOCKING = "boondocking"
-    OVERNIGHT = "overnight"
-    ATTRACTION = "attraction"
-    RESTAURANT = "restaurant"
-    SERVICE = "service"
-    OTHER = "other"
-
 class MediaKind(str, enum.Enum):
     PHOTO = "photo"
     VIDEO = "video"
