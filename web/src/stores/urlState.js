@@ -4,9 +4,6 @@ import { map } from 'nanostores';
 export const urlState = map({
   stop_id: null,
   media_id: null,
-  lat: null,
-  lon: null,
-  z: null
 });
 
 // Avoid executing browser APIs when SSR rendering in Astro
@@ -46,7 +43,7 @@ if (isBrowser) {
   // Watch for back/forward events to update store natively
   window.addEventListener('popstate', () => {
     const popParams = new URLSearchParams(window.location.search);
-    const update = { stop_id: null, media_id: null, lat: null, lon: null, z: null };
+    const update = { stop_id: null, media_id: null };
     for (const [key, value] of popParams.entries()) {
       update[key] = value;
     }

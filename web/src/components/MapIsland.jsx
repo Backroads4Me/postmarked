@@ -1,7 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useStore } from '@nanostores/react';
 import { getRuntimeConfig } from '../lib/runtimeConfig.js';
-import { urlState } from '../stores/urlState';
 
 let googleMapsPromise = null;
 
@@ -14,7 +12,6 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
   const fittedStopsKeyRef = useRef(null);
   const [mapReady, setMapReady] = useState(false);
   const [fallbackReason, setFallbackReason] = useState('');
-  const state = useStore(urlState);
 
   const stopPoints = useMemo(() => {
     const coords = (stops || [])
@@ -67,17 +64,6 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
 
         mapRef.current = map;
         setMapReady(true);
-
-        map.addListener('idle', () => {
-          const center = map.getCenter();
-          if (!center) return;
-          urlState.set({
-            ...urlState.get(),
-            lat: center.lat().toFixed(4),
-            lon: center.lng().toFixed(4),
-            z: map.getZoom().toFixed(2),
-          });
-        });
       })
       .catch((err) => {
         console.error('[MapIsland] Google Maps load failed:', err);
@@ -109,29 +95,6 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
     if ((map.getZoom() || 0) < 10) map.setZoom(10);
   }, [activeStopId, stops]);
 
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || !state.lat || !state.lon || !state.z) return;
-
-    if (!initialViewportSkippedRef.current) {
-      initialViewportSkippedRef.current = true;
-      return;
-    }
-
-    const newLat = parseFloat(state.lat);
-    const newLon = parseFloat(state.lon);
-    const newZ = parseFloat(state.z);
-    if (!Number.isFinite(newLat) || !Number.isFinite(newLon) || !Number.isFinite(newZ)) return;
-
-    const currentLoc = map.getCenter();
-    const currentZoom = map.getZoom();
-    if (!currentLoc) return;
-    if (Math.abs(currentLoc.lat() - newLat) > 0.01 || Math.abs(currentLoc.lng() - newLon) > 0.01 || Math.abs(currentZoom - newZ) > 0.1) {
-      map.setCenter({ lat: newLat, lng: newLon });
-      map.setZoom(newZ);
-    }
-  }, [state.lat, state.lon, state.z]);
-
   const showFallbackRoute = Boolean(fallbackReason) && stopPoints.length > 0;
 
   return (
@@ -142,7 +105,7 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
       )}
       <div className="map-overlay top-4 left-4">
         GOOGLE MAPS • {stops?.length || 0} STOPS
-        <div className="mt-1" style={{ color: 'var(--dim)' }} suppressHydrationWarning>{fallbackReason || `${state.lat || '-'}, ${state.lon || '-'}`}</div>
+        {fallbackReason && <div className="mt-1" style={{ color: 'var(--dim)' }}>{fallbackReason}</div>}
       </div>
       <style>{`
         @keyframes pulse-ring {
