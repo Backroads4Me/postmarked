@@ -1,27 +1,111 @@
 ---
 interface Props {
+  /** Full stop object. Preferred so every view derives labels the same way. */
+  stop?: {
+    title?: string | null;
+    displayTitle?: string | null;
+    detailTitle?: string | null;
+    summary?: string | null;
+    address?: string | null;
+    address_label?: string | null;
+    addressLabel?: string | null;
+    place_name?: string | null;
+    placeName?: string | null;
+  };
   /** City, State — shown as primary heading */
-  primaryTitle: string;
+  primaryTitle?: string | null;
   /** Campground/stop name — shown as muted secondary, omitted if same as primaryTitle */
   detailTitle?: string | null;
+  /** Stop/campground name, used when `stop` is not provided */
+  title?: string | null;
+  /** Address-like text, used to derive City, State */
+  summary?: string | null;
+  address?: string | null;
+  address_label?: string | null;
+  addressLabel?: string | null;
+  /** Optional place label fallback */
+  place_name?: string | null;
+  placeName?: string | null;
+  displayTitle?: string | null;
+  /** Larger page-title treatment */
+  variant?: 'default' | 'hero';
+  /** Semantic element for the primary line */
+  as?: 'span' | 'h1' | 'h2' | 'h3';
   /** If true, renders primaryTitle as an h3 element; otherwise as a span */
   heading?: boolean;
   /** Extra CSS class on the wrapper */
   class?: string;
 }
 
-const { primaryTitle, detailTitle, heading = false, class: cls = '' } = Astro.props;
-const showDetail = detailTitle && detailTitle !== primaryTitle;
+const {
+  stop,
+  primaryTitle,
+  detailTitle,
+  title,
+  summary,
+  address,
+  address_label,
+  addressLabel,
+  place_name,
+  placeName,
+  displayTitle,
+  variant = 'default',
+  as,
+  heading = false,
+  class: cls = '',
+} = Astro.props;
+
+const stopTitle = title ?? stop?.title ?? '';
+const cityStateTitle = cityStateFromAddress(
+  addressLabel ?? address_label ?? address ?? stop?.addressLabel ?? stop?.address_label ?? stop?.address ?? summary ?? stop?.summary
+);
+const placeTitle = placeName ?? place_name ?? stop?.placeName ?? stop?.place_name ?? '';
+const resolvedPrimary = primaryTitle || displayTitle || stop?.displayTitle || cityStateTitle || stopTitle;
+const resolvedDetail = detailTitle && detailTitle !== resolvedPrimary
+  ? detailTitle
+  : stop?.detailTitle && stop.detailTitle !== resolvedPrimary
+    ? stop.detailTitle
+    : cityStateTitle && stopTitle && stopTitle !== resolvedPrimary
+      ? stopTitle
+      : placeTitle && placeTitle !== resolvedPrimary
+        ? placeTitle
+        : '';
+const showDetail = resolvedDetail && resolvedDetail !== resolvedPrimary;
+const primaryTag = as || (heading ? 'h3' : 'span');
+const primaryClass = variant === 'hero'
+  ? 'stop-identity-primary display text-3xl md:text-5xl'
+  : 'stop-identity-primary display text-xl';
+const detailClass = variant === 'hero'
+  ? 'stop-identity-detail lede mt-4 text-base'
+  : 'stop-identity-detail text-muted text-sm mt-0.5';
+
+function cityStateFromAddress(address?: string | null) {
+  if (!address) return '';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 3) return '';
+
+  const stateRe = /^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
+  for (let i = parts.length - 1; i > 0; i -= 1) {
+    const match = parts[i].match(stateRe);
+    if (match && parts[i - 1]) return `${parts[i - 1]}, ${match[1]}`;
+  }
+
+  return '';
+}
 ---
 
-<div class:list={['stop-identity', cls]}>
-  {heading ? (
-    <h3 class="stop-identity-primary display text-xl">{primaryTitle}</h3>
+<div class:list={['stop-identity', `stop-identity-${variant}`, cls]}>
+  {primaryTag === 'h1' ? (
+    <h1 class={primaryClass}>{resolvedPrimary}</h1>
+  ) : primaryTag === 'h2' ? (
+    <h2 class={primaryClass}>{resolvedPrimary}</h2>
+  ) : primaryTag === 'h3' ? (
+    <h3 class={primaryClass}>{resolvedPrimary}</h3>
   ) : (
-    <span class="stop-identity-primary display text-xl">{primaryTitle}</span>
+    <span class={primaryClass}>{resolvedPrimary}</span>
   )}
   {showDetail && (
-    <p class="stop-identity-detail text-muted text-sm mt-0.5">{detailTitle}</p>
+    <p class={detailClass}>{resolvedDetail}</p>
   )}
 </div>
 
@@ -38,5 +122,10 @@ const showDetail = detailTitle && detailTitle !== primaryTitle;
   .stop-identity-detail {
     margin: 0;
     transition: color 160ms ease;
+  }
+
+  .stop-identity-hero .stop-identity-detail {
+    color: var(--paper-muted);
+    font-family: var(--sans);
   }
 </style>

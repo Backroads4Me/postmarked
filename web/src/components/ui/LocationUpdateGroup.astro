@@ -38,6 +38,7 @@ interface StopSummary {
   start_date?: string;
   posted_at?: string;
   place_name?: string | null;
+  address_label?: string | null;
 }
 
 interface Props {
@@ -48,12 +49,6 @@ interface Props {
 const { stop, posts = [] } = Astro.props;
 const tripSlug = stop.tripSlug || stop.trip_slug;
 const href = stop.slug && tripSlug ? `/trips/${tripSlug}/stops/${stop.slug}` : undefined;
-const primaryTitle = stop.displayTitle || stop.title;
-const secondaryTitle = stop.detailTitle && stop.detailTitle !== primaryTitle
-  ? stop.detailTitle
-  : stop.place_name && stop.place_name !== primaryTitle
-    ? stop.place_name
-    : '';
 const date = stop.start_date || stop.posted_at;
 
 function formatDate(dateStr?: string) {
@@ -80,7 +75,7 @@ function postHref(post: PostSummary) {
               <span class="display text-xl text-muted" aria-hidden="true">-</span>
             </>
           )}
-          <StopIdentity primaryTitle={primaryTitle} detailTitle={secondaryTitle || stop.detailTitle} />
+          <StopIdentity stop={stop} />
         </div>
       </a>
     ) : (
@@ -92,7 +87,7 @@ function postHref(post: PostSummary) {
               <span class="display text-xl text-muted" aria-hidden="true">-</span>
             </>
           )}
-          <StopIdentity primaryTitle={primaryTitle} detailTitle={secondaryTitle || stop.detailTitle} heading />
+          <StopIdentity stop={stop} heading />
         </div>
       </div>
     )}

@@ -63,14 +63,6 @@ function stopCityState(stop) {
   return cityStateFromAddress(stop?.summary || stop?.address || '') || stop?.title || '';
 }
 
-function locationDisplayFields(stop) {
-  const cityState = stopCityState(stop);
-  return {
-    displayTitle: cityState || stop?.title || '',
-    detailTitle: cityState && cityState !== stop?.title ? stop?.title : null,
-  };
-}
-
 function groupHomeUpdates(stops = [], posts = []) {
   const groups = new Map();
 
@@ -78,11 +70,7 @@ function groupHomeUpdates(stops = [], posts = []) {
     if (!stop?.id) return null;
     if (!groups.has(stop.id)) {
       groups.set(stop.id, {
-        stop: {
-          ...stop,
-          ...locationDisplayFields(stop),
-          summary: undefined,
-        },
+        stop,
         posts: [],
         sortDate: new Date(stop.start_date || 0).getTime(),
       });

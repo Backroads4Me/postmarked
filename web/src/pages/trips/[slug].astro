@@ -89,22 +89,6 @@ function fmtRange(start, end) {
   return `${fmtDate(start)} – ${fmtDate(end)}`;
 }
 
-function cityStateFromAddress(address) {
-  if (!address) return '';
-  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  if (parts.length < 3) return '';
-  const stateRe = /^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
-  for (let i = parts.length - 1; i >= 1; i--) {
-    const match = parts[i].match(stateRe);
-    if (match) {
-      const city = parts[i - 1];
-      if (city) return `${city}, ${match[1]}`;
-    }
-  }
-  return '';
-}
-
-
 ---
 
 <Layout title={`${trip.title} — Postmarked`}>
@@ -197,16 +181,7 @@ function cityStateFromAddress(address) {
                       {stop.nights && <span class="label stop-meta">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>}
                       {stop.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
                     </div>
-                    {(() => {
-                      const cityState = cityStateFromAddress(stop.summary || '');
-                      return (
-                        <StopIdentity
-                          primaryTitle={cityState || stop.title}
-                          detailTitle={cityState && cityState !== stop.title ? stop.title : null}
-                          heading
-                        />
-                      );
-                    })()}
+                    <StopIdentity stop={stop} heading />
                   </div>
                   {(() => {
                     const thumbs = stopThumbs(stop);

@@ -64,7 +64,7 @@ const renderedBody = renderMarkdown(body || summary || '');
     </div>
   )}
   {media && media.length > 0 && (
-    <MediaGallery media={media} singleMaxHeight="18rem" />
+    <MediaGallery media={media} singleMaxHeight="18rem" linkHref={href} />
   )}
 </article>
 

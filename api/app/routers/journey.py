@@ -192,6 +192,7 @@ def _post_to_update(post: Post, user) -> RecentUpdate:
         stop_title=post.stop.title if post.stop else None,
         stop_slug=post.stop.slug if post.stop else None,
         place_name=post.stop.place_name if post.stop else None,
+        address_label=post.stop.address_label if post.stop else None,
         media=visible,
     )
 
@@ -211,6 +212,7 @@ def _stop_to_update(stop: Stop, user) -> RecentUpdate:
         stop_title=stop.title,
         stop_slug=stop.slug,
         place_name=stop.place_name,
+        address_label=stop.address_label,
         cover_media=visible_ready_cover_media(stop.cover_media, user),
     )
 

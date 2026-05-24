@@ -148,6 +148,7 @@ class RecentUpdate(BaseModel):
     stop_title: Optional[str] = None
     stop_slug: Optional[str] = None
     place_name: Optional[str] = None
+    address_label: Optional[str] = None
     cover_media: Optional[MediaAssetOut] = None
     media: List[MediaAssetOut] = []
 

@@ -26,12 +26,22 @@ interface Props {
   bentoGrid?: boolean;
   /** Number of photos to show. Default 4. */
   limit?: number;
+  /** When set, all tiles navigate to this URL instead of opening a lightbox. */
+  linkHref?: string;
 }
 
-const { media, maxWidth = 'none', singleMaxHeight = '20rem', bentoGrid = true, limit = 4 } = Astro.props;
-const items = (media || []).slice(0, limit);
+const { media, maxWidth = 'none', singleMaxHeight = '20rem', bentoGrid = true, limit = 4, linkHref } = Astro.props;
+const allMedia = media || [];
+const items = allMedia.slice(0, limit);
+const hiddenCount = allMedia.length - items.length;
 const isSingle = items.length === 1;
 const galleryId = 'media-gallery-' + Math.random().toString(36).slice(2);
+const allMediaData = JSON.stringify(allMedia.map(m => ({
+  id: m.id,
+  kind: m.kind || 'photo',
+  alt: m.alt_text || m.caption || '',
+  caption: m.caption || '',
+})));
 
 function isVideo(m: MediaSummary) {
   return m.kind === 'video';
@@ -55,13 +65,47 @@ function tileClass(m: MediaSummary) {
   <div
     id={galleryId}
     data-media-gallery
+    data-all-media={allMediaData}
     class:list={[
       'media-gallery mt-3 rounded-md overflow-hidden',
       isSingle ? 'media-gallery-single' : bentoGrid ? 'media-gallery-bento' : 'media-gallery-grid',
       maxWidth !== 'none' ? maxWidth : '',
     ]}
   >
-    {items.map((m, index) => isSingle && isVideo(m) ? (
+    {items.map((m, index) => linkHref ? (
+      <a
+        href={linkHref}
+        class:list={['media-gallery-item block overflow-hidden bg-line-soft', isSingle ? 'media-gallery-link-single' : '']}
+        style={isSingle ? tileStyle(m) : tileStyle(m)}
+      >
+        {isSingle ? (
+          <img
+            src={posterSrc(m)}
+            alt={m.alt_text || m.caption || ''}
+            loading="lazy"
+            decoding="async"
+            class="block mx-auto h-auto max-w-full"
+            style={'max-height: ' + singleMaxHeight + ';'}
+          />
+        ) : (
+          <div class="media-gallery-thumb">
+            <img
+              src={posterSrc(m)}
+              alt={m.alt_text || m.caption || ''}
+              loading={index < 4 ? 'eager' : 'lazy'}
+              decoding="async"
+              width={m.width || undefined}
+              height={m.height || undefined}
+              class="media-gallery-image"
+            />
+            {isVideo(m) && <span class="media-gallery-play" aria-hidden="true">▶</span>}
+            {index === items.length - 1 && hiddenCount > 0 && (
+              <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
+            )}
+          </div>
+        )}
+      </a>
+    ) : isSingle && isVideo(m) ? (
       <button
         type="button"
         class="media-gallery-item media-gallery-button block overflow-hidden"
@@ -118,6 +162,7 @@ function tileClass(m: MediaSummary) {
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
+        data-open-at-index={index === items.length - 1 && hiddenCount > 0 ? items.length : undefined}
         style={tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
@@ -132,6 +177,9 @@ function tileClass(m: MediaSummary) {
             class="media-gallery-image"
           />
           <span class="media-gallery-play" aria-hidden="true">▶</span>
+          {index === items.length - 1 && hiddenCount > 0 && (
+            <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
+          )}
         </div>
       </button>
     ) : (
@@ -144,6 +192,7 @@ function tileClass(m: MediaSummary) {
         data-media-src={posterSrc(m)}
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
+        data-open-at-index={index === items.length - 1 && hiddenCount > 0 ? items.length : undefined}
         style={tileStyle(m)}
       >
         <div class="media-gallery-thumb">
@@ -156,6 +205,9 @@ function tileClass(m: MediaSummary) {
             height={m.height || undefined}
             class="media-gallery-image"
           />
+          {index === items.length - 1 && hiddenCount > 0 && (
+            <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
+          )}
         </div>
       </button>
     ))}
@@ -260,17 +312,28 @@ function tileClass(m: MediaSummary) {
       const triggers = Array.from(gallery.querySelectorAll('[data-media-lightbox-trigger]'));
       if (!triggers.length) return;
 
+      const allMediaRaw = gallery.dataset.allMedia;
+      const allItems = allMediaRaw ? JSON.parse(allMediaRaw).map((m) => ({
+        kind: m.kind || 'photo',
+        src: m.kind === 'video' ? '/media/' + m.id + '/original' : '/media/' + m.id + '/webp',
+        poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
+        alt: m.alt || '',
+        caption: m.caption || '',
+      })) : triggers.map((item) => ({
+        kind: item.dataset.mediaKind || 'photo',
+        src: item.dataset.mediaSrc || '',
+        poster: item.dataset.mediaPoster || '',
+        alt: item.dataset.mediaAlt || '',
+        caption: item.dataset.mediaCaption || '',
+      }));
+
       triggers.forEach((trigger, index) => {
         trigger.addEventListener('click', () => {
           const dialog = ensureMediaLightbox();
-          const items = triggers.map((item) => ({
-            kind: item.dataset.mediaKind || 'photo',
-            src: item.dataset.mediaSrc || '',
-            poster: item.dataset.mediaPoster || '',
-            alt: item.dataset.mediaAlt || '',
-            caption: item.dataset.mediaCaption || '',
-          }));
-          dialog.__mediaLightboxOpen(items, index);
+          const openAt = trigger.dataset.openAtIndex !== undefined
+            ? parseInt(trigger.dataset.openAtIndex, 10)
+            : index;
+          dialog.__mediaLightboxOpen(allItems, openAt);
         });
       });
     });
@@ -335,6 +398,11 @@ function tileClass(m: MediaSummary) {
     font: inherit;
   }
 
+  .media-gallery-link-single {
+    display: block;
+    text-decoration: none;
+  }
+
   .media-gallery-thumb {
     height: 100%;
     min-height: 100%;
@@ -357,6 +425,21 @@ function tileClass(m: MediaSummary) {
     content: "";
     inset: 0;
     pointer-events: none;
+    position: absolute;
+  }
+
+  .media-gallery-more {
+    align-items: center;
+    background: rgb(0 0 0 / 0.55);
+    bottom: 0;
+    color: white;
+    display: flex;
+    font-family: var(--sans);
+    font-size: 1.1rem;
+    font-weight: 600;
+    inset: 0;
+    justify-content: center;
+    letter-spacing: 0.02em;
     position: absolute;
   }
 
