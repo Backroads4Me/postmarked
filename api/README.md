@@ -89,7 +89,6 @@ extras.
 | `/api/admin/trips` | `routers/admin/trips.py` | Admin trip CRUD |
 | `/api/admin/stops` | `routers/admin/stops.py` | Admin stop CRUD |
 | `/api/admin/posts` | `routers/admin/posts.py` | Quick updates CRUD and current-stop endpoint |
-| `/api/admin/journeys` | `routers/admin/journeys.py` | Journey CRUD and activation |
 | `/api/admin/imports` | `routers/admin/imports.py` | RV Trip Wizard preview/apply/history |
 | `/api/admin/media` | `routers/admin/media.py` | TUS-style uploads and media assignment |
 | `/api/admin/users` | `routers/admin/users.py` | Pending/approved user list and approval actions |

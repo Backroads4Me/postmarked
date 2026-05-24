@@ -1,23 +1,26 @@
 # Postmarked Testing Checklist
 
-Status: local MVP ready for owner testing
-Last updated: 2026-05-04
+Status: ready for beta testing
+Last updated: 2026-05-24
 
 ## What Is Ready
 
 - Docker Compose dev stack.
 - Automatic Alembic migration on compose startup.
-- Seeded demo journey data.
-- Public home, timeline, trips index, trip segment detail, and stop detail pages.
+- Seeded demo data (trips, stops, recent posts).
+- Public home, timeline, trips index, trip segment detail, stop detail, and post detail pages.
+- Breadcrumb navigation across all detail pages.
+- Current location card with trip context and prev/next stop navigation.
 - Admin dashboard.
 - Current stop picker.
 - Manual stop management.
 - Quick post composer with photo attachment.
-- Journey management.
+- Activity posts with optional Google Maps POI enrichment.
 - Pending user approval page.
 - RV Trip Wizard Excel preview/apply flow.
 - Media streaming through `/media/{asset_id}/{variant}`.
 - Google Maps provider with route schematic fallback when no API key is configured.
+- Weather display on current location card.
 
 ## Verified Checks
 
@@ -69,11 +72,9 @@ Admin credentials for local seed data:
 - Email: `admin@example.com`
 - Password: `changeme`
 
-## Ready For Family Testing?
+## Ready For Beta Testing?
 
-Start with owner testing first. After that, the app is suitable for one or two trusted family testers once obvious mobile and visual issues from the polish backlog are addressed.
-
-Do not treat the local seeded password or default Flower auth as production-safe.
+Yes, with caveats. The app is suitable for beta testers once deployed. Do not treat the local seeded password or default Flower auth as production-safe — change both before any real deployment.
 
 ## Non-Blocking Polish Backlog
 

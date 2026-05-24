@@ -6,17 +6,17 @@ It is not a trip planning tool, a blogging platform, or a journaling app. Just q
 
 ## Current Status
 
-The local MVP is ready for owner testing. The stabilization pass is complete:
+Ready for beta testing. The stabilization pass is complete:
 
 - Docker stack boots with Astro, FastAPI, Postgres/PostGIS, Redis, and Celery.
-- Alembic migrations are at head.
-- Seed data creates a journey with trip segments, a current stop, a future stop, and recent posts.
+- Alembic migrations are at head (`a2b3c4d5e6f7`).
+- Seed data creates trips with stops, a current stop, a future stop, and recent posts.
 - Public reader APIs are wired to the frontend.
-- Admin can manage trips, stops, journeys, posts, imports, media, and pending users.
+- Admin can manage trips, stops, posts, activities, imports, media, and pending users.
 - RV Trip Wizard Excel preview/apply creates and updates normal draft stops.
 - Frontend production build passes.
 
-Open polish work remains, but it is not blocking local testing.
+Open polish work remains but is not blocking beta testing.
 
 ## Local URLs
 
@@ -176,10 +176,10 @@ files present in the active Docker media volumes.
 
 ## Remaining Non-Blocking Work
 
-See `docs/path-to-testing.md` for the current test checklist and polish backlog. The highest-value items before wider family testing are:
+See `docs/path-to-testing.md` for the current test checklist and polish backlog. The highest-value items before wider beta testing are:
 
 - Self-host fonts.
 - Clean up visible icon/emoji polish.
-- Add friendly SSR error states.
 - Run a mobile-width admin and reader pass.
 - Add deeper regression tests for import and visibility edge cases.
+- Finish production reverse-proxy/TLS/header review before deploying on a public domain.

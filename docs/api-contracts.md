@@ -46,7 +46,7 @@ Each update has:
 - `kind`: `post` or `stop`
 - shared display fields: `id`, `title`, `posted_at`, optional trip/stop handles, optional media
 - post-specific: `body`
-- stop-specific: `place_name`, `stop_type`, `cover_media`
+- stop-specific: `place_name`, `cover_media`
 
 ## `GET /api/trip-segments`
 
@@ -86,7 +86,7 @@ Included:
 - title, slug, summary
 - public place/address label
 - date range and nights
-- status and stop type
+- status
 - latitude and longitude
 - feature chips
 - miles from previous stop

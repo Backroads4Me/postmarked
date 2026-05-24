@@ -137,12 +137,12 @@ function formatStopDate(dateStr) {
 
     {/* ── Hero: Current Location ─────────────────────────────── */}
     <section class="mb-6" id="current-location-section">
-      {current ? (
+      {current && activeTrip ? (
         <CurrentLocationCard
           stopTitle={current.title}
           stopSlug={current.slug}
-          tripTitle={activeTrip?.title || 'Current Trip'}
-          tripSlug={activeTrip?.slug || ''}
+          tripTitle={activeTrip.title}
+          tripSlug={activeTrip.slug}
           placeName={current.place_name}
           summary={current.summary}
           arrivalDate={current.start_date}

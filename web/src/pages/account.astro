@@ -14,7 +14,9 @@ if (!res.ok) {
   throw new Error(`Account API returned ${res.status}`);
 }
 const account = await res.json();
-const { email_enabled } = await configRes.json();
+const email_enabled = configRes.ok
+  ? await configRes.json().then((d) => d.email_enabled).catch(() => false)
+  : false;
 ---
 
 <Layout title="Account — Postmarked">
