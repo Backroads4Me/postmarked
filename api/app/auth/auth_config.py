@@ -32,13 +32,13 @@ if not _secret:
     if APP_ENV == "dev":
         logger.warning(
             "[auth] WARNING: SECRET_KEY not set; using insecure dev fallback. "
-            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+            "Generate one with: python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
         )
         _secret = _DEV_SECRET_FALLBACK
     else:
         raise RuntimeError(
             "SECRET_KEY environment variable is required when APP_ENV is not 'dev'. "
-            "Generate one with: python -c 'import secrets; print(secrets.token_urlsafe(64))'"
+            "Generate one with: python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
         )
 
 SECRET = _secret

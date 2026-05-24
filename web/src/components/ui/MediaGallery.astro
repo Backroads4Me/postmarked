@@ -37,10 +37,6 @@ function isVideo(m: MediaSummary) {
   return m.kind === 'video';
 }
 
-function mediaHref(m: MediaSummary) {
-  return isVideo(m) ? '/media-player/' + m.id : '/media/' + m.id + '/webp';
-}
-
 function posterSrc(m: MediaSummary) {
   return isVideo(m) ? '/media/' + m.id + '/poster' : '/media/' + m.id + '/webp';
 }
@@ -66,11 +62,15 @@ function tileClass(m: MediaSummary) {
     ]}
   >
     {items.map((m, index) => isSingle && isVideo(m) ? (
-      <a
-        href={mediaHref(m)}
-        target="_blank"
-        rel="noopener noreferrer"
-        class="media-gallery-item block overflow-hidden"
+      <button
+        type="button"
+        class="media-gallery-item media-gallery-button block overflow-hidden"
+        data-media-lightbox-trigger
+        data-media-index={index}
+        data-media-kind="video"
+        data-media-src={'/media/' + m.id + '/original'}
+        data-media-poster={posterSrc(m)}
+        data-media-alt={m.alt_text || m.caption || ''}
         style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
@@ -84,13 +84,14 @@ function tileClass(m: MediaSummary) {
           style={'max-height: ' + singleMaxHeight + ';'}
         />
         <span class="media-gallery-play" aria-hidden="true">▶</span>
-      </a>
+      </button>
     ) : isSingle ? (
       <button
         type="button"
         class="media-gallery-item media-gallery-button block overflow-hidden"
         data-media-lightbox-trigger
         data-media-index={index}
+        data-media-kind="photo"
         data-media-src={posterSrc(m)}
         data-media-alt={m.alt_text || m.caption || ''}
         style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
@@ -105,11 +106,15 @@ function tileClass(m: MediaSummary) {
         />
       </button>
     ) : isVideo(m) ? (
-      <a
-        href={mediaHref(m)}
-        target="_blank"
-        rel="noopener noreferrer"
-        class:list={['media-gallery-item block overflow-hidden bg-line-soft', tileClass(m)]}
+      <button
+        type="button"
+        class:list={['media-gallery-item media-gallery-button block overflow-hidden bg-line-soft', tileClass(m)]}
+        data-media-lightbox-trigger
+        data-media-index={index}
+        data-media-kind="video"
+        data-media-src={'/media/' + m.id + '/original'}
+        data-media-poster={posterSrc(m)}
+        data-media-alt={m.alt_text || m.caption || ''}
         style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
@@ -125,13 +130,14 @@ function tileClass(m: MediaSummary) {
           />
           <span class="media-gallery-play" aria-hidden="true">▶</span>
         </div>
-      </a>
+      </button>
     ) : (
       <button
         type="button"
         class:list={['media-gallery-item media-gallery-button block overflow-hidden bg-line-soft', tileClass(m)]}
         data-media-lightbox-trigger
         data-media-index={index}
+        data-media-kind="photo"
         data-media-src={posterSrc(m)}
         data-media-alt={m.alt_text || m.caption || ''}
         style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
@@ -160,10 +166,11 @@ function tileClass(m: MediaSummary) {
     dialog = document.createElement('dialog');
     dialog.className = 'media-lightbox';
     dialog.dataset.globalMediaLightbox = 'true';
-    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous image">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next image">›</button><div class="media-lightbox-count" data-media-lightbox-count></div>';
+    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button><div class="media-lightbox-count" data-media-lightbox-count></div>';
     document.body.append(dialog);
 
     const image = dialog.querySelector('[data-media-lightbox-image]');
+    const video = dialog.querySelector('[data-media-lightbox-video]');
     const count = dialog.querySelector('[data-media-lightbox-count]');
     const prev = dialog.querySelector('[data-media-lightbox-prev]');
     const next = dialog.querySelector('[data-media-lightbox-next]');
@@ -175,8 +182,22 @@ function tileClass(m: MediaSummary) {
       if (!state.items.length) return;
       state.activeIndex = Math.max(0, Math.min(index, state.items.length - 1));
       const item = state.items[state.activeIndex];
-      image.src = item.src || '';
+      video.pause();
+      video.removeAttribute('src');
+      video.removeAttribute('poster');
+      video.load();
+      image.removeAttribute('src');
       image.alt = item.alt || '';
+      if (item.kind === 'video') {
+        image.hidden = true;
+        video.hidden = false;
+        video.src = item.src || '';
+        if (item.poster) video.poster = item.poster;
+      } else {
+        video.hidden = true;
+        image.hidden = false;
+        image.src = item.src || '';
+      }
       count.textContent = String(state.activeIndex + 1) + ' / ' + String(state.items.length);
       prev.hidden = state.activeIndex === 0;
       next.hidden = state.activeIndex === state.items.length - 1;
@@ -191,6 +212,12 @@ function tileClass(m: MediaSummary) {
     prev.addEventListener('click', () => show(state.activeIndex - 1));
     next.addEventListener('click', () => show(state.activeIndex + 1));
     close.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('close', () => {
+      video.pause();
+      video.removeAttribute('src');
+      video.removeAttribute('poster');
+      video.load();
+    });
     dialog.addEventListener('click', (event) => {
       if (event.target === dialog) dialog.close();
     });
@@ -221,7 +248,9 @@ function tileClass(m: MediaSummary) {
         trigger.addEventListener('click', () => {
           const dialog = ensureMediaLightbox();
           const items = triggers.map((item) => ({
+            kind: item.dataset.mediaKind || 'photo',
             src: item.dataset.mediaSrc || '',
+            poster: item.dataset.mediaPoster || '',
             alt: item.dataset.mediaAlt || '',
           }));
           dialog.__mediaLightboxOpen(items, index);
@@ -323,7 +352,8 @@ function tileClass(m: MediaSummary) {
     background: rgb(0 0 0 / 0.72);
   }
 
-  :global(.media-lightbox-image) {
+  :global(.media-lightbox-image),
+  :global(.media-lightbox-video) {
     height: 100%;
     margin: 0 auto;
     max-height: calc(90vh - 104px);

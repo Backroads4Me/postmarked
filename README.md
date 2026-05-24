@@ -157,7 +157,10 @@ Create a Google Maps Platform API key, restrict it by HTTP referrer, and set bud
 For a single-host deployment:
 
 1. Copy `.env.example` to `.env`.
-2. Set a strong `SECRET_KEY`.
+2. Set a strong `SECRET_KEY`:
+   ```bash
+   python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+   ```
 3. Set production `ALLOWED_ORIGINS`, `ALLOWED_HOSTS`, and `FLOWER_BASIC_AUTH`.
 4. Point your own reverse proxy at the `web` service and expose only the routes you intend to publish. The bundled Compose file does not ship a Caddy container.
 5. Run:
