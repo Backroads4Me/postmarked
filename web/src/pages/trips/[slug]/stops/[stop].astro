@@ -73,8 +73,8 @@ function fmtRange(start, end) {
 
     {/* ── Breadcrumb ───────────────────────────────────────── */}
     <Breadcrumb items={[
-      { label: 'All Trips', href: '/trips' },
-      { label: 'Trip', href: `/trips/${detail.trip_slug}` },
+      { label: 'Home', href: '/' },
+      { label: detail.trip_title, href: `/trips/${detail.trip_slug}` },
     ]} />
 
     {/* ── Hero ─────────────────────────────────────────────── */}

@@ -48,10 +48,8 @@ function fmtTime(d, timezoneId) {
 
     {/* ── Breadcrumb ───────────────────────────────────────── */}
     <Breadcrumb items={[
-      { label: 'All Trips', href: '/trips' },
-      { label: 'Trip', href: `/trips/${post.trip_slug}` },
-      { label: 'Stop', href: `/trips/${post.trip_slug}/stops/${post.stop_slug}` },
-      { label: 'Post' },
+      { label: 'Home', href: '/' },
+      { label: post.stop_place_name || post.stop_title, href: `/trips/${post.trip_slug}/stops/${post.stop_slug}` },
     ]} />
 
     {/* ── Hero ─────────────────────────────────────────────── */}
