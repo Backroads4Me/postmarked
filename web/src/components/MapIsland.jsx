@@ -153,15 +153,15 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
         .fallback-marker.is-current {
           width: 34px;
           height: 34px;
-          background: #4a9f6e;
-          color: #06100a;
+          background: #e05252;
+          color: #17080a;
           border-color: #fff;
         }
         .fallback-marker.is-current::after {
           content: "";
           position: absolute;
           inset: -8px;
-          border: 2px solid rgba(74,159,110,.72);
+          border: 2px solid rgba(224,82,82,.72);
           border-radius: inherit;
           animation: pulse-ring 2s ease-out infinite;
         }
@@ -215,6 +215,9 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
   const bounds = new google.maps.LatLngBounds();
   const route = [];
 
+  const sharedInfoWindow = new google.maps.InfoWindow({ headerDisabled: true });
+  map.addListener('click', () => sharedInfoWindow.close());
+
   stops.forEach((stop) => {
     const coords = readStopCoords(stop);
     if (!coords) return;
@@ -234,17 +237,19 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
       content: markerElement,
     });
 
-    const infoWindow = new google.maps.InfoWindow({
-      content: `
-        <div style="font-family: system-ui, sans-serif; color: #101419;">
-          <div style="font-size: 13px; font-weight: 700;">${escapeHtml(stop.title)}</div>
-          ${stop.place_name ? `<div style="font-size: 12px; margin-top: 2px;">${escapeHtml(stop.place_name)}</div>` : ''}
-        </div>
-      `,
-    });
+    const cityState = extractCityState(stop.summary || stop.address_label || '');
+    const locationLine = cityState
+      ? `<div style="font-size: 11px; margin-top: 3px; opacity: 0.7;">${escapeHtml(cityState)}</div>`
+      : '';
 
     marker.addListener('gmp-click', () => {
-      infoWindow.open({ map, anchor: marker });
+      sharedInfoWindow.setContent(
+        `<div style="font-family: system-ui, sans-serif; color: #101419; padding: 2px 4px;">
+          <div style="font-size: 13px; font-weight: 700;">${escapeHtml(stop.title)}</div>
+          ${locationLine}
+        </div>`
+      );
+      sharedInfoWindow.open({ map, anchor: marker });
       onStopClick?.(stop.id);
     });
 
@@ -284,7 +289,7 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
 function createDotMarkerElement({ isActive, isCurrent }) {
   const el = document.createElement('button');
   const size = isCurrent ? 16 : isActive ? 14 : 10;
-  const color = isCurrent ? '#4a9f6e' : isActive ? '#e8893f' : '#1d7f9d';
+  const color = isCurrent ? '#e05252' : isActive ? '#e8893f' : '#4a9f6e';
   el.type = 'button';
   el.className = 'gp-dot-marker';
   el.style.cssText = `
@@ -384,6 +389,17 @@ function readStopCoords(stop) {
   lon = Number(lon);
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
   return { lat, lon };
+}
+
+function extractCityState(address) {
+  if (!address) return '';
+  const parts = address.split(',').map(p => p.trim()).filter(Boolean);
+  if (parts.length < 3) return '';
+  const city = parts.at(-2);
+  const stateZip = parts.at(-1) || '';
+  const state = stateZip.match(/^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/)?.[1];
+  if (!city || !state) return '';
+  return `${city}, ${state}`;
 }
 
 function escapeHtml(value) {

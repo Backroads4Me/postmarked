@@ -48,6 +48,7 @@ class PublicStopSummary(BaseResponse):
     estimated_travel_time: Optional[str] = None
     public_note: Optional[str] = None
     cover_media: Optional[MediaAssetOut] = None
+    is_current: bool = False
 
 
 class PublicPostSummary(BaseResponse):

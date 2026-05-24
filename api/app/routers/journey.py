@@ -135,6 +135,7 @@ def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]]
         estimated_travel_time=stop.estimated_travel_time,
         public_note=stop.public_note,
         cover_media=visible_ready_cover_media(stop.cover_media, user),
+        is_current=stop.is_current,
     )
 
 

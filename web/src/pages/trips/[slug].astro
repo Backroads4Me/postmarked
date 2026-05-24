@@ -30,9 +30,46 @@ if (!trip) {
 const stops = trip.stops || [];
 const posts = trip.posts || [];
 
-const stopsWithCoords = stops.filter(s => s.latitude != null && s.longitude != null);
+// Identify current stop by date range (mirrors home page API logic)
+const todayMs = Date.now();
+function containsToday(stop) {
+  if (!stop.start_date) return false;
+  const start = new Date(stop.start_date).setHours(0, 0, 0, 0);
+  const end = stop.end_date ? new Date(stop.end_date).setHours(23, 59, 59, 999) : Infinity;
+  return start <= todayMs && todayMs <= end;
+}
+const todayStops = stops.filter(containsToday);
+const currentStopId = todayStops.length === 1
+  ? todayStops[0].id
+  : todayStops.length > 1
+    ? todayStops.reduce((a, b) => new Date(a.start_date) >= new Date(b.start_date) ? a : b).id
+    : null;
+
+const stopsWithCoords = stops
+  .filter(s => s.latitude != null && s.longitude != null)
+  .map(s => ({ ...s, is_current: s.is_current || String(s.id) === String(currentStopId) }));
+
 const photoCount = posts.reduce((n, p) => n + (p.media?.length || 0), 0);
 const milesTotal = stops.reduce((n, s) => n + (s.miles_from_previous || 0), 0);
+
+// Build stop-id → media map from posts so stop cards can show thumbnails
+const stopMediaMap = new Map<string, any[]>();
+for (const post of posts) {
+  if (!post.stop?.id) continue;
+  const key = String(post.stop.id);
+  if (!stopMediaMap.has(key)) stopMediaMap.set(key, []);
+  for (const m of (post.media || [])) {
+    stopMediaMap.get(key)!.push(m);
+  }
+}
+
+function stopThumbs(stop: any, limit = 5) {
+  return (stopMediaMap.get(String(stop.id)) || []).slice(0, limit);
+}
+
+function thumbSrc(m: any) {
+  return m.kind === 'video' ? `/media/${m.id}/poster` : `/media/${m.id}/webp`;
+}
 
 function fmtDate(d) {
   if (!d) return '';
@@ -50,15 +87,31 @@ function fmtRange(start, end) {
   return `${fmtDate(start)} – ${fmtDate(end)}`;
 }
 
+function cityStateFromAddress(address) {
+  if (!address) return '';
+  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
+  if (parts.length < 3) return '';
+  const stateRe = /^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
+  for (let i = parts.length - 1; i >= 1; i--) {
+    const match = parts[i].match(stateRe);
+    if (match) {
+      const city = parts[i - 1];
+      if (city) return `${city}, ${match[1]}`;
+    }
+  }
+  return '';
+}
+
+
 ---
 
 <Layout title={`${trip.title} — Postmarked`}>
-  <main class="frame py-8 md:py-12">
+  <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
     {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
 
     {/* ── Hero ─────────────────────────────────────────────── */}
     <section class="mb-8">
-      <a href="/trips" class="label">← All trips</a>
+      <a href="/trips" class="label" style="font-size: 14px;">All Trips</a>
 
       <div class="flex items-baseline justify-between gap-4 mt-3 mb-3">
         <h1 class="display text-3xl md:text-4xl leading-tight">{trip.title}</h1>
@@ -142,9 +195,36 @@ function fmtRange(start, end) {
                       {stop.nights && <span class="label">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>}
                       {stop.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
                     </div>
-                    <h3 class="display text-xl group-hover:text-ember-2 transition-colors">{stop.title}</h3>
-                    {stop.summary && <p class="text-muted text-sm mt-2 line-clamp-2">{stop.summary}</p>}
+                    {(() => {
+                      const cityState = cityStateFromAddress(stop.summary || '');
+                      return cityState ? (
+                        <>
+                          <h3 class="display text-xl group-hover:text-ember-2 transition-colors">{cityState}</h3>
+                          <p class="text-muted text-sm mt-1">{stop.title}</p>
+                        </>
+                      ) : (
+                        <h3 class="display text-xl group-hover:text-ember-2 transition-colors">{stop.title}</h3>
+                      );
+                    })()}
                   </div>
+                  {(() => {
+                    const thumbs = stopThumbs(stop);
+                    return thumbs.length > 0 ? (
+                      <div class="hidden sm:flex gap-1.5 shrink-0 self-center">
+                        {thumbs.map((m: any) => (
+                          <img
+                            src={thumbSrc(m)}
+                            alt={m.alt_text || m.caption || ''}
+                            width="48"
+                            height="48"
+                            loading="lazy"
+                            decoding="async"
+                            style="width:48px;height:48px;object-fit:cover;border-radius:5px;flex-shrink:0;"
+                          />
+                        ))}
+                      </div>
+                    ) : null;
+                  })()}
                 </div>
               </a>
             </li>

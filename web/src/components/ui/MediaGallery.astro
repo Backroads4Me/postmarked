@@ -71,7 +71,7 @@ function tileClass(m: MediaSummary) {
         data-media-src={'/media/' + m.id + '/original'}
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || m.caption || ''}
-        style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
+        style={tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
         <video
@@ -94,7 +94,7 @@ function tileClass(m: MediaSummary) {
         data-media-kind="photo"
         data-media-src={posterSrc(m)}
         data-media-alt={m.alt_text || m.caption || ''}
-        style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
+        style={tileStyle(m)}
       >
         <img
           src={posterSrc(m)}
@@ -115,14 +115,14 @@ function tileClass(m: MediaSummary) {
         data-media-src={'/media/' + m.id + '/original'}
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || m.caption || ''}
-        style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
+        style={tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
         <div class="media-gallery-thumb">
           <img
             src={posterSrc(m)}
             alt={m.alt_text || m.caption || ''}
-            loading="lazy"
+            loading={index < 4 ? 'eager' : 'lazy'}
             decoding="async"
             width={m.width || undefined}
             height={m.height || undefined}
@@ -140,13 +140,13 @@ function tileClass(m: MediaSummary) {
         data-media-kind="photo"
         data-media-src={posterSrc(m)}
         data-media-alt={m.alt_text || m.caption || ''}
-        style={(m.dominant_color ? 'background-color: ' + m.dominant_color + ';' : '') + tileStyle(m)}
+        style={tileStyle(m)}
       >
         <div class="media-gallery-thumb">
           <img
             src={posterSrc(m)}
             alt={m.alt_text || m.caption || ''}
-            loading="lazy"
+            loading={index < 4 ? 'eager' : 'lazy'}
             decoding="async"
             width={m.width || undefined}
             height={m.height || undefined}
@@ -260,6 +260,26 @@ function tileClass(m: MediaSummary) {
   }
 
   initMediaGalleries();
+
+  // Fade in gallery images when they finish loading
+  document.querySelectorAll('.media-gallery-image').forEach((img) => {
+    if (img.complete) {
+      img.classList.add('loaded');
+    } else {
+      img.addEventListener('load', () => img.classList.add('loaded'));
+      img.addEventListener('error', () => img.classList.add('loaded'));
+    }
+  });
+  document.addEventListener('astro:page-load', () => {
+    document.querySelectorAll('.media-gallery-image:not(.loaded)').forEach((img) => {
+      if (img.complete) {
+        img.classList.add('loaded');
+      } else {
+        img.addEventListener('load', () => img.classList.add('loaded'));
+        img.addEventListener('error', () => img.classList.add('loaded'));
+      }
+    });
+  });
   document.addEventListener('astro:page-load', initMediaGalleries);
 </script>
 
@@ -308,6 +328,12 @@ function tileClass(m: MediaSummary) {
     height: 100%;
     object-fit: cover;
     width: 100%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .media-gallery-image.loaded {
+    opacity: 1;
   }
 
   .media-gallery-thumb::before {

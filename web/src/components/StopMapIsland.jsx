@@ -196,7 +196,7 @@ function addGoogleMarker({ google, map, position, title, color, scale, content, 
     map,
     position,
     title,
-    content: pin.element,
+    content: pin,
   });
 
   if (content || title) {
