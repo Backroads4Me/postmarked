@@ -84,7 +84,6 @@ const tripTitles = Array.from(new Set(updates.map((item) => item.trip_title).fil
 const tripContext = tripTitles.length === 1 ? tripTitles[0] : tripTitles.length > 1 ? 'Multiple trips' : null;
 const siteText = await loadSiteText();
 const headerText = sectionText(siteText, 'timeline.header', {
-  label: null,
   heading: 'Timeline',
   body: 'Every stop, story, and moment.',
 });
@@ -93,7 +92,6 @@ const headerText = sectionText(siteText, 'timeline.header', {
 <Layout title="Timeline — Postmarked">
   <main class="frame py-8 md:py-12">
     <section class="mb-8">
-      {headerText.label && <div class="label mb-2">{headerText.label}</div>}
       <div class="flex items-start justify-between gap-4">
         <div class="flex items-baseline gap-3 min-w-0">
           <h1 class="display text-3xl md:text-4xl">{headerText.heading}</h1>

@@ -30,7 +30,6 @@ const currentText = sectionText(siteText, 'home.current', {
   heading: 'Current Location',
 });
 const homeHeaderText = sectionText(siteText, 'home.header', {
-  label: 'Welcome to Postmarked',
   heading: 'On the Road',
   body: "Quick updates from the road — where we are, where we've been, and where we're headed.",
 });
@@ -121,7 +120,6 @@ function formatStopDate(dateStr) {
     )}
 
     <section class="mb-8" id="home-header">
-      {homeHeaderText.label && <div class="label mb-2">{homeHeaderText.label}</div>}
       <h1 class="display text-3xl md:text-4xl">{homeHeaderText.heading}</h1>
       {homeHeaderText.body && (
         <p class="lede mt-3 text-sm" style="font-family: var(--sans); max-width: none;">

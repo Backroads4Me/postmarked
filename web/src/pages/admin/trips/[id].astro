@@ -37,7 +37,7 @@ function formatDate(value) {
         <a href="/admin/trips" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">← Back</a>
       </div>
       
-      <form id="trip-update-form" class="flex flex-col gap-6">
+      <form id="trip-update-form" class="flex flex-col gap-6" data-has-cover={trip.cover_media?.derivative_paths?.webp ? 'true' : 'false'}>
         <input type="hidden" name="id" value={trip.id} />
         
         <div class="flex flex-col gap-2">
@@ -175,14 +175,21 @@ function formatDate(value) {
       const form = e.target;
       const errorDiv = document.getElementById('form-error');
       const successDiv = document.getElementById('form-success');
-      
+
       const formData = new FormData(form);
       const id = formData.get('id');
       formData.delete('id');
       const data = Object.fromEntries(formData.entries());
-      
+
       errorDiv.classList.add('hidden');
       successDiv.classList.add('hidden');
+
+      const hasCover = form.dataset.hasCover === 'true';
+      if (data.status === 'published' && !hasCover) {
+        errorDiv.textContent = 'A cover image is required before publishing. Upload one above, then try again.';
+        errorDiv.classList.remove('hidden');
+        return;
+      }
       
       try {
         const res = await fetch(`/api/admin/trips/${id}`, {
@@ -296,6 +303,7 @@ function formatDate(value) {
         if (fileInput) fileInput.value = '';
         if (statusEl) statusEl.textContent = 'Cover uploaded. Processing may take a moment.';
         document.getElementById('cover-clear-btn')?.classList.remove('hidden');
+        document.getElementById('trip-update-form')?.setAttribute('data-has-cover', 'true');
         btn.textContent = 'Done';
       } catch (e) {
         if (statusEl) statusEl.textContent = `Error: ${e instanceof Error ? e.message : String(e)}`;
@@ -330,6 +338,7 @@ function formatDate(value) {
         clearCoverPreview();
         button.classList.add('hidden');
         if (statusEl) statusEl.textContent = 'Cover cleared.';
+        document.getElementById('trip-update-form')?.setAttribute('data-has-cover', 'false');
       } catch (err) {
         if (statusEl) statusEl.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
       } finally {

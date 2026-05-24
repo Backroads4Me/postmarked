@@ -59,10 +59,25 @@ function fmtRange(start, end) {
     {/* ── Hero ─────────────────────────────────────────────── */}
     <section class="mb-8">
       <a href="/trips" class="label">← All trips</a>
-      <div class="flex items-center gap-2 mt-3 mb-2">
-        {trip.start_date && <span class="label">{fmtRange(trip.start_date, trip.end_date)}</span>}
+
+      <div class="flex items-baseline justify-between gap-4 mt-3 mb-3">
+        <h1 class="display text-3xl md:text-4xl leading-tight">{trip.title}</h1>
+        {trip.start_date && (
+          <span class="shrink-0 display text-3xl md:text-4xl text-muted">{fmtRange(trip.start_date, trip.end_date)}</span>
+        )}
       </div>
-      <h1 class="display text-3xl md:text-5xl">{trip.title}</h1>
+
+      {trip.cover_media?.derivative_paths?.webp && (
+        <div class="relative rounded-xl overflow-hidden border border-line-soft bg-surface-2" style="height: clamp(12rem, 45vh, 26rem);">
+          <img
+            src={`/media/${trip.cover_media.id}/webp`}
+            alt={trip.cover_media.alt_text || ''}
+            class="absolute inset-0 h-full w-full object-cover"
+            loading="eager"
+          />
+        </div>
+      )}
+
       {trip.summary && (
         <p class="lede mt-3 text-base" style="font-family: var(--sans);">{trip.summary}</p>
       )}
