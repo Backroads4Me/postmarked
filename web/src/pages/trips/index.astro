@@ -73,7 +73,7 @@ const headerText = sectionText(siteText, 'trips.header', {
     </section>
 
     {trips.length > 0 ? (
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 gap-6">
         {trips.map(trip => (
           <a href={`/trips/${trip.slug}`} class="card group" id={`trip-${trip.slug}`}>
             {coverSrc(trip) && (

@@ -1,0 +1,41 @@
+---
+import Layout from '../../layouts/Layout.astro';
+
+const { id } = Astro.params;
+const title = 'Media Player - Postmarked';
+---
+
+<Layout title={title} hideNav>
+  <main class="media-player-page">
+    <video
+      src={id ? '/media/' + id + '/original' : undefined}
+      poster={id ? '/media/' + id + '/poster' : undefined}
+      controls
+      autoplay
+      playsinline
+      class="media-player-video"
+    >
+      <a href={id ? '/media/' + id + '/original' : '#'}>Open video</a>
+    </video>
+  </main>
+</Layout>
+
+<style>
+  .media-player-page {
+    align-items: center;
+    background: #050608;
+    display: flex;
+    min-height: 100vh;
+    padding: 16px;
+  }
+
+  .media-player-video {
+    background: #000;
+    border-radius: 8px;
+    box-shadow: 0 24px 80px -28px rgb(0 0 0 / 0.85);
+    display: block;
+    margin: auto;
+    max-height: calc(100vh - 32px);
+    max-width: calc(100vw - 32px);
+  }
+</style>

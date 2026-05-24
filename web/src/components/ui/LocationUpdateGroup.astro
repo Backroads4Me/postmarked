@@ -114,7 +114,7 @@ function postHref(post: PostSummary) {
               <div class="location-post-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedBody} />
             )}
             {post.media && post.media.length > 0 && (
-              <MediaGallery media={post.media} maxWidth="max-w-sm" singleMaxHeight="18rem" />
+              <MediaGallery media={post.media} singleMaxHeight="18rem" />
             )}
           </article>
         );

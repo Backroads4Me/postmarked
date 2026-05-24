@@ -29,11 +29,6 @@ function statusBadge(status) {
 ---
 
 <AdminLayout title="Stops">
-  <div class="mb-8">
-    <div class="label mb-2">Manage</div>
-    <h1 class="display text-3xl">Stops</h1>
-    <p class="text-muted text-sm mt-2">Select a trip to view and manage its stops.</p>
-  </div>
 
   {trips.length > 0 ? (
     <div class="bg-surface-2 border border-line rounded divide-y divide-line">
@@ -51,7 +46,7 @@ function statusBadge(status) {
             </div>
             <div class="text-xs text-dim font-mono mt-0.5">{trip.slug}</div>
           </div>
-          <span class="text-dim text-sm group-hover:text-ember transition-colors">Manage stops →</span>
+          <span class="btn ghost btn-sm">Manage stops</span>
         </a>
       ))}
     </div>

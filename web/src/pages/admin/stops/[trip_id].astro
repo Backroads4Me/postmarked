@@ -39,12 +39,8 @@ const tripIsPrivate = trip.visibility === 'private';
 ---
 
 <AdminLayout title={`Stops — ${trip.title}`}>
-  <div class="mb-8 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-start">
-    <div>
-      <a href="/admin/stops" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-3 inline-block">← All Trips</a>
-      <div class="label mb-1">Stops</div>
-      <h1 class="display text-3xl">{trip.title}</h1>
-    </div>
+  <div class="mb-8 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center">
+    <a href="/admin/stops" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">← All Trips</a>
     <div class="flex flex-wrap gap-2">
       <button type="button" id="show-bulk-controls" class="btn btn-sm btn-ghost">Select Stops</button>
       <button type="button" id="show-add-form" class="btn btn-sm">+ Add Stop</button>

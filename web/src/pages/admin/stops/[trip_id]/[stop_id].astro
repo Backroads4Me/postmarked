@@ -51,10 +51,9 @@ const tripIsPrivate = trip.visibility === 'private';
 <AdminLayout title={`Edit Stop — ${stop.title}`}>
   <div class="max-w-2xl">
     <div class="mb-8">
-      <a href={`/admin/stops/${trip_id}`} class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-3 inline-block">
+      <a href={`/admin/stops/${trip_id}`} class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">
         ← {trip.title}
       </a>
-      <h1 class="display text-3xl">Edit Stop</h1>
     </div>
 
     <form id="stop-edit-form" class="grid grid-cols-1 md:grid-cols-2 gap-5">

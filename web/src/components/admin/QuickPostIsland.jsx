@@ -84,6 +84,22 @@ export default function QuickPostIsland() {
     setVisibility(visibilityForStop(nextStopId));
   }
 
+  function formatStopOptionDate(value) {
+    if (!value) return 'No date';
+    try {
+      return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+      return 'No date';
+    }
+  }
+
+  function stopOptionLabel(stop) {
+    const date = formatStopOptionDate(stop.start_date);
+    const current = stop.id === currentStopId ? ' (current)' : '';
+    return date + ' - ' + stop.title + current;
+  }
+
+
   useEffect(() => {
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, body }));
@@ -243,105 +259,86 @@ export default function QuickPostIsland() {
         </div>
       )}
 
-      <div>
-        <label className="label" htmlFor="qp-title">Title</label>
-        <input
-          id="qp-title"
-          type="text"
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-          maxLength={200}
-          placeholder="Postcard from the road"
-          autoComplete="off"
-          style={{ ...inputStyle, fontSize: 16, padding: "12px 14px" }}
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_18rem] gap-4">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold" htmlFor="qp-title">Title</label>
+          <input
+            id="qp-title"
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={200}
+            placeholder="Postcard from the road"
+            autoComplete="off"
+            className="bg-surface-2 border border-line p-3 focus:border-ember"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold" htmlFor="qp-posted-at">Post date</label>
+          <input
+            id="qp-posted-at"
+            type="datetime-local"
+            value={postedAt}
+            onChange={(e) => setPostedAt(e.target.value)}
+            className="bg-surface-2 border border-line p-3 focus:border-ember"
+          />
+        </div>
       </div>
 
-      <div>
-        <label className="label" htmlFor="qp-posted-at">Post date</label>
-        <input
-          id="qp-posted-at"
-          type="datetime-local"
-          value={postedAt}
-          onChange={(e) => setPostedAt(e.target.value)}
-          style={inputStyle}
-        />
-      </div>
-
-      <div>
-        <label className="label" htmlFor="qp-body">Body (markdown)</label>
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-bold" htmlFor="qp-body">Body (markdown)</label>
         <textarea
           id="qp-body"
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          rows={6}
+          rows={8}
           maxLength={10000}
           placeholder="What do you want to share?"
-          style={{
-            width: "100%",
-            padding: "12px 14px",
-            background: "var(--surface-2)",
-            border: "1px solid var(--line)",
-            borderRadius: 6,
-            color: "var(--paper)",
-            fontSize: 15,
-            fontFamily: "var(--sans)",
-            marginTop: 6,
-            resize: "vertical",
-          }}
+          className="bg-surface-2 border border-line p-3 font-sans focus:border-ember"
         />
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label className="label" htmlFor="qp-stop">Stop</label>
-          <select id="qp-stop" value={stopId} onChange={(e) => selectStop(e.target.value)} style={inputStyle}>
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_14rem_18rem] gap-4">
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold" htmlFor="qp-stop">Stop</label>
+          <select id="qp-stop" value={stopId} onChange={(e) => selectStop(e.target.value)} className="bg-surface-2 border border-line p-3">
             <option value="">No stop</option>
             {stops.map((s) => (
               <option key={s.id} value={s.id}>
-                {s.title}{s.id === currentStopId ? "  (current)" : ""}
+                {stopOptionLabel(s)}
               </option>
             ))}
           </select>
         </div>
-        <div>
-          <label className="label" htmlFor="qp-status">Status</label>
-          <select id="qp-status" value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold" htmlFor="qp-status">Status</label>
+          <select id="qp-status" value={status} onChange={(e) => setStatus(e.target.value)} className="bg-surface-2 border border-line p-3">
             <option value="draft">Draft</option>
             <option value="published">Published</option>
             <option value="unpublished">Unpublished</option>
             <option value="archived">Archived</option>
           </select>
         </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-        <div>
-          <label className="label" htmlFor="qp-vis">Visibility</label>
-          <select id="qp-vis" value={visibility} onChange={(e) => setVisibility(e.target.value)} style={inputStyle}>
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-bold" htmlFor="qp-vis">Visibility</label>
+          <select id="qp-vis" value={visibility} onChange={(e) => setVisibility(e.target.value)} className="bg-surface-2 border border-line p-3">
             <option value="private">Private — logged-in users</option>
             <option value="public">Public — anyone</option>
           </select>
         </div>
       </div>
 
-      <div>
-        <label className="label">Media</label>
-        <div style={{ marginTop: 6, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="flex flex-col gap-2">
+        <label className="text-sm font-bold">Media</label>
+        <div className="flex flex-col gap-2">
           <input
             ref={fileInputRef}
             type="file"
             accept="image/*,video/*"
             multiple
             onChange={onFilesSelected}
-            style={{
-              padding: 10,
-              background: "var(--surface-2)",
-              border: "1px dashed var(--line)",
-              borderRadius: 6,
-              color: "var(--muted)",
-              fontSize: 13,
-            }}
+            className="bg-surface-2 border border-dashed border-line p-3 text-sm text-muted"
           />
           {photos.length > 0 && (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>

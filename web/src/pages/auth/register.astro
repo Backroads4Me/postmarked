@@ -4,7 +4,7 @@ import { apiUrl } from '../../lib/api.js';
 
 const isSubscribeIntent = Astro.url.searchParams.get('subscribe') === '1';
 const configRes = await fetch(apiUrl('/api/config'));
-const { email_enabled } = await configRes.json();
+const { email_enabled, require_user_approval } = await configRes.json();
 ---
 
 <Layout title="Register">
@@ -14,9 +14,18 @@ const { email_enabled } = await configRes.json();
       <!-- Success state: shown after registration -->
       <div id="success-panel" class="hidden text-center">
         <div class="text-3xl mb-4">&#10003;</div>
-        <h2 class="display text-2xl mb-2">Request received!</h2>
-        <p class="text-sm text-muted mb-6">Your account is pending approval. The owner will review and activate your access shortly.</p>
-        <a href="/auth/login" class="btn justify-center">Back to Sign In</a>
+        {require_user_approval ? (
+          <>
+            <h2 class="display text-2xl mb-2">Request received!</h2>
+            <p class="text-sm text-muted mb-6">Your account is pending approval. The owner will review and activate your access shortly.</p>
+          </>
+        ) : (
+          <>
+            <h2 class="display text-2xl mb-2">You're in!</h2>
+            <p class="text-sm text-muted mb-6">Your account is ready. You can sign in now.</p>
+          </>
+        )}
+        <a href="/auth/login" class="btn justify-center">Sign In</a>
       </div>
 
       <!-- Registration form -->
@@ -91,7 +100,7 @@ const { email_enabled } = await configRes.json();
           email: form.email.value,
           password: form.password.value,
           display_name: form.display_name.value.trim() || null,
-          notification_frequency: form.notification_frequency.value,
+          notification_frequency: form.notification_frequency?.value ?? 'none',
         }),
       });
 

@@ -1,6 +1,7 @@
 import os
 import uuid
 import logging
+from html import escape
 from urllib.parse import quote
 from typing import Optional
 from fastapi import Depends, Request
@@ -12,8 +13,11 @@ from fastapi_users.authentication import (
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
+from sqlalchemy import select
+
 from app.db import get_async_session
-from app.models.enums import NotificationFrequency
+from app.models.enums import ApprovalState, NotificationFrequency, UserRole
+from app.models.system import PreApprovedEmail, SiteConfig
 from app.models.user import NotificationPreference, User
 from app.schemas.user import PUBLIC_NOTIFICATION_FREQUENCIES
 from app.services.mailer import send_email
@@ -54,12 +58,50 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
 
         user = await super().create(user_create, safe=safe, request=request)
         self.user_db.session.add(NotificationPreference(user_id=user.id, frequency=frequency))
+
+        session = self.user_db.session
+        email_lower = user_create.email.lower().strip()
+
+        pre_approved = (await session.execute(
+            select(PreApprovedEmail).where(PreApprovedEmail.email == email_lower)
+        )).scalar_one_or_none()
+
+        if pre_approved:
+            user.approval_state = ApprovalState.APPROVED
+        else:
+            config = (await session.execute(select(SiteConfig).limit(1))).scalar_one_or_none()
+            if config is not None and not config.require_user_approval:
+                user.approval_state = ApprovalState.APPROVED
+            else:
+                user.is_active = False
+
         await self.user_db.session.commit()
         await self.user_db.session.refresh(user)
         return user
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         logger.info("User %s has registered.", user.id)
+        base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
+        approval_url = f"{base_url}/admin/users"
+        pending = user.approval_state == ApprovalState.PENDING
+        name = user.display_name or "(no name)"
+        status_text = "is pending your approval" if pending else "was automatically approved"
+        subject = f"New registration: {name}"
+        text = (
+            f"{name} ({user.email}) has registered on Postmarked and {status_text}.\n\n"
+            f"Manage users: {approval_url}\n"
+        )
+        html = (
+            f"<p><strong>{escape(name)}</strong> ({escape(user.email)}) has registered on Postmarked "
+            f"and <strong>{escape(status_text)}</strong>.</p>"
+            f'<p><a href="{approval_url}">Manage users</a></p>'
+        )
+        session = self.user_db.session
+        admins = (await session.execute(
+            select(User).where(User.role == UserRole.ADMIN, User.is_active == True)
+        )).scalars().all()
+        for admin in admins:
+            send_email(admin.email, subject, text, html)
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None

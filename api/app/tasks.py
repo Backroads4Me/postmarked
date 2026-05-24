@@ -13,7 +13,7 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from app.models.content import MediaAsset, Post
+from app.models.content import MediaAsset, Post, SiteTextSection
 from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, Visibility
 from app.models.system import NotificationLog
 from app.models.user import NotificationPreference, User
@@ -95,16 +95,45 @@ def _record_notification(db, user_id, kind: str, payload: dict, sent: bool, erro
     )
 
 
-def _post_email_bodies(post: Post) -> tuple[str, str, str]:
+def _post_email_bodies(post: Post, db) -> tuple[str, str, str]:
     url = _post_url(post)
-    subject = f"New Postmarked update: {post.title}"
     body = post.body or ""
-    text = f"{post.title}\n\n{body}\n\nRead it here: {url}\n"
-    html = (
-        f"<h1>{escape(post.title)}</h1>"
-        f"<p>{escape(body)}</p>"
-        f'<p><a href="{url}">Read the update</a></p>'
-    )
+
+    config = db.execute(
+        select(SiteTextSection).where(
+            SiteTextSection.page_key == "email",
+            SiteTextSection.section_key == "post_notification",
+        )
+    ).scalar_one_or_none()
+
+    default_subject = "New update from the road"
+    default_cta = "See the photos"
+
+    if config:
+        subject = (config.heading or default_subject).format(post_title=post.title)
+        intro = (config.body or "").format(post_title=post.title) if config.body else None
+        cta = config.cta_label or default_cta
+    else:
+        subject = default_subject
+        intro = None
+        cta = default_cta
+
+    if intro:
+        text = f"{intro}\n\n{post.title}\n\n{body}\n\n{cta}: {url}\n"
+        html = (
+            f"<p>{escape(intro)}</p>"
+            f"<h1>{escape(post.title)}</h1>"
+            f"<p>{escape(body)}</p>"
+            f'<p><a href="{url}">{escape(cta)}</a></p>'
+        )
+    else:
+        text = f"{post.title}\n\n{body}\n\n{cta}: {url}\n"
+        html = (
+            f"<h1>{escape(post.title)}</h1>"
+            f"<p>{escape(body)}</p>"
+            f'<p><a href="{url}">{escape(cta)}</a></p>'
+        )
+
     return subject, text, html
 
 def _dms_to_decimal(dms, ref) -> float | None:
@@ -260,17 +289,22 @@ def process_media_asset(asset_id: str):
 def dispatch_post_notification(post_id: str):
     db = SessionLocal()
     try:
+        logger.info("[notify] dispatch_post_notification started for post %s", post_id)
         post = db.get(Post, uuid.UUID(post_id))
         if not post or not _post_is_published(post):
+            logger.warning("[notify] Post %s not found or not published — skipping", post_id)
             return "Post is not published"
 
         post.trip
         post.stop
-        subject, text, html = _post_email_bodies(post)
+        subject, text, html = _post_email_bodies(post, db)
+        recipients = _approved_notification_users(db, NotificationFrequency.ALL_UPDATES)
+        logger.info("[notify] Found %d approved ALL_UPDATES subscriber(s) for post %s", len(recipients), post_id)
         sent_count = 0
-        for user, _preference in _approved_notification_users(db, NotificationFrequency.ALL_UPDATES):
+        for user, _preference in recipients:
             kind = f"post_immediate:{post.id}"
             if _notification_already_logged(db, user.id, kind):
+                logger.info("[notify] Skipping user %s — already notified", user.id)
                 continue
             sent = send_email(user.email, subject, text, html)
             _record_notification(
@@ -284,6 +318,7 @@ def dispatch_post_notification(post_id: str):
             if sent:
                 sent_count += 1
         db.commit()
+        logger.info("[notify] dispatch_post_notification complete: sent %d email(s) for post %s", sent_count, post_id)
         return f"Sent {sent_count} immediate post notifications"
     finally:
         db.close()

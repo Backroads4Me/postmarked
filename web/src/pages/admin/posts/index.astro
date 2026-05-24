@@ -32,12 +32,7 @@ function statusBadge(status) {
 ---
 
 <AdminLayout title="Posts">
-  <div class="mb-8 flex justify-between items-start">
-    <div>
-      <div class="label mb-2">Content</div>
-      <h1 class="display text-3xl">Posts</h1>
-      <p class="text-muted text-sm mt-2">Quick updates and stories from the road.</p>
-    </div>
+  <div class="mb-8 flex justify-end">
     <a href="/admin/posts/new" class="btn btn-primary btn-sm">+ Quick Post</a>
   </div>
 
@@ -55,9 +50,9 @@ function statusBadge(status) {
                 {post.visibility}
               </span>
             </div>
-            <div class="flex items-center gap-3">
-              <span class="label">{timeAgo(post.posted_at)}</span>
-              <a href={`/admin/posts/${post.id}`} class="btn btn-sm btn-ghost text-[10px]">Edit</a>
+            <div class="flex items-center gap-3 self-center">
+              <span class="text-paper text-base font-medium leading-none">{timeAgo(post.posted_at)}</span>
+              <a href={`/admin/posts/${post.id}`} class="btn ghost btn-sm">Edit</a>
             </div>
           </div>
           <h3 class="text-base font-medium" style="color: var(--paper);">{post.title}</h3>

@@ -2,7 +2,7 @@
 /**
  * PostCard — Quick update card for timeline feeds.
  *
- * Photos attached to a post are surfaced inline (up to 3 in a small grid) and
+ * Photos attached to a post are surfaced inline (up to 4 in a small grid) and
  * link out to the full media via /media/{id}/webp from the authenticated
  * streaming endpoint. Visibility is enforced server-side; the absence of a
  * media entry here means the caller can't see it.
@@ -52,7 +52,7 @@ function formatDate(dateStr?: string) {
     />
   )}
 
-  <MediaGallery media={media} maxWidth="max-w-sm" />
+  <MediaGallery media={media} />
 
   <div class="flex items-center gap-3 mt-3 text-xs">
     {placeName && <span class="coord">{placeName}</span>}

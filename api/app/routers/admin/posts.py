@@ -70,9 +70,38 @@ def _should_notify(post: Post) -> bool:
 
 
 def _queue_post_notification(post_id: uuid.UUID) -> None:
+    import logging
     from app.tasks import dispatch_post_notification
 
-    dispatch_post_notification.delay(str(post_id))
+    logger = logging.getLogger(__name__)
+    try:
+        dispatch_post_notification.delay(str(post_id))
+        logger.info("[notify] Queued post notification for post %s", post_id)
+    except Exception:
+        logger.exception("[notify] Failed to enqueue post notification for post %s", post_id)
+
+
+class AttachPostMediaRequest(BaseModel):
+    media_ids: List[uuid.UUID]
+
+
+async def _attach_media_to_post(
+    session: AsyncSession,
+    post: Post,
+    media_ids: List[uuid.UUID],
+    visibility: Visibility,
+) -> int:
+    attached = 0
+    for media_id in media_ids:
+        asset = await session.get(MediaAsset, media_id)
+        if not asset:
+            continue
+        asset.post_id = post.id
+        asset.stop_id = post.stop_id
+        asset.trip_id = post.trip_id
+        asset.visibility = visibility
+        attached += 1
+    return attached
 
 
 @router.post("/posts", response_model=PostOut)
@@ -124,15 +153,7 @@ async def create_post(
     # Attach any uploaded media. Each asset inherits this post's visibility
     # (subject to min(self, parent) at read time). Caller may pass an empty list.
     if post_in.media_ids:
-        attached = 0
-        for media_id in post_in.media_ids:
-            asset = await session.get(MediaAsset, media_id)
-            if not asset:
-                continue
-            asset.post_id = post.id
-            asset.stop_id = post.stop_id  # so stop-scoped queries pick it up too
-            asset.visibility = visibility
-            attached += 1
+        await _attach_media_to_post(session, post, post_in.media_ids, visibility)
 
     await log_audit_event(session, user.id, "CREATE", "Post", post.id)
     await session.commit()
@@ -178,6 +199,35 @@ async def update_post(
     if not was_notifiable and _should_notify(post):
         _queue_post_notification(post.id)
     return post
+
+
+@router.post("/posts/{post_id}/media", response_model=PostOut)
+async def attach_post_media(
+    post_id: uuid.UUID,
+    req: AttachPostMediaRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    result = await session.execute(
+        select(Post)
+        .where(Post.id == post_id)
+        .options(selectinload(Post.media), selectinload(Post.poi))
+    )
+    post = result.scalars().first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    visibility = Visibility(post.visibility)
+    attached = await _attach_media_to_post(session, post, req.media_ids, visibility)
+    await log_audit_event(session, user.id, "ATTACH_MEDIA", "Post", post.id, {"attached_media_count": attached})
+    await session.commit()
+
+    result = await session.execute(
+        select(Post)
+        .where(Post.id == post.id)
+        .options(selectinload(Post.media), selectinload(Post.poi))
+    )
+    return result.scalars().one()
 
 
 @router.delete("/posts/{post_id}")

@@ -51,6 +51,11 @@ class AssignMediaRequest(BaseModel):
     visibility: Optional[Visibility] = None  # explicit override; default = inherit from trip
 
 
+class UpdateMediaRequest(BaseModel):
+    caption: Optional[str] = None
+    alt_text: Optional[str] = None
+
+
 @router.post("/assign", response_model=dict)
 async def assign_media_admin(
     req: AssignMediaRequest,
@@ -301,6 +306,28 @@ async def patch_upload(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
+
+
+@router.patch("/{asset_id}", response_model=MediaAssetOut)
+async def update_media_asset(
+    asset_id: uuid.UUID,
+    req: UpdateMediaRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_admin_user),
+):
+    asset = await session.get(MediaAsset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+
+    update_data = req.model_dump(exclude_unset=True)
+    if "caption" in update_data:
+        asset.caption = (update_data["caption"] or "").strip() or None
+    if "alt_text" in update_data:
+        asset.alt_text = (update_data["alt_text"] or "").strip() or None
+
+    await session.commit()
+    await session.refresh(asset)
+    return asset
 
 
 @router.post("/{asset_id}/requeue")

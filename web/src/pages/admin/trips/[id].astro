@@ -31,11 +31,10 @@ function formatDate(value) {
 ---
 
 <AdminLayout title={`Edit ${trip.title}`}>
-  <div class="max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-12">
+  <div class="w-full grid grid-cols-1 lg:grid-cols-2 gap-12">
     <div>
       <div class="mb-8">
-        <a href="/admin/trips" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember mb-4 inline-block">← Back</a>
-        <h1 class="display text-4xl">Edit Trip</h1>
+        <a href="/admin/trips" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">← Back</a>
       </div>
       
       <form id="trip-update-form" class="flex flex-col gap-6">

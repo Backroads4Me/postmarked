@@ -3,14 +3,19 @@ import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
 
 const cookie = Astro.request.headers.get('cookie');
+const authHeaders = cookie ? { cookie } : {};
 let users = [];
 let loadError = null;
 let email_enabled = false;
+let siteConfig = { require_user_approval: true };
+let preApprovedEmails = [];
 
 try {
-  const [res, configRes] = await Promise.all([
-    fetch(apiUrl('/api/admin/users'), { headers: cookie ? { cookie } : {} }),
+  const [res, configRes, siteConfigRes, preApprovedRes] = await Promise.all([
+    fetch(apiUrl('/api/admin/users'), { headers: authHeaders }),
     fetch(apiUrl('/api/config')),
+    fetch(apiUrl('/api/admin/site-config'), { headers: authHeaders }),
+    fetch(apiUrl('/api/admin/pre-approved-emails'), { headers: authHeaders }),
   ]);
   if (res.status === 401 || res.status === 403) {
     return Astro.redirect('/auth/login');
@@ -22,6 +27,12 @@ try {
   }
   if (configRes.ok) {
     ({ email_enabled } = await configRes.json());
+  }
+  if (siteConfigRes.ok) {
+    siteConfig = await siteConfigRes.json();
+  }
+  if (preApprovedRes.ok) {
+    preApprovedEmails = await preApprovedRes.json();
   }
 } catch (e) {
   loadError = e?.message || 'Failed to connect';
@@ -39,12 +50,61 @@ function frequencyLabel(value) {
 ---
 
 <AdminLayout title="Users">
-  <div class="mb-8">
-    <h1 class="display text-4xl">Users</h1>
-    <p class="text-muted mt-2">Approve or reject family member access requests.</p>
-  </div>
 
   {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
+
+  <div class="grid gap-5 mb-10">
+    <!-- Approval requirement toggle -->
+    <div class="bg-surface-2 border border-line rounded p-4 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-bold">Require admin approval for new users</div>
+        <div class="text-xs text-muted mt-1">When on, new registrations stay pending until you approve them. Pre-approved emails bypass this.</div>
+      </div>
+      <button
+        id="approval-toggle"
+        class="btn btn-sm"
+        data-value={siteConfig.require_user_approval ? 'true' : 'false'}
+        onclick="toggleApprovalRequirement(this)"
+      >
+        {siteConfig.require_user_approval ? 'On' : 'Off'}
+      </button>
+    </div>
+
+    <!-- Pre-approved emails -->
+    <div class="bg-surface-2 border border-line rounded p-4 grid gap-4">
+      <div>
+        <div class="text-sm font-bold">Pre-approved emails</div>
+        <div class="text-xs text-muted mt-1">Anyone who registers with one of these addresses is automatically approved, even if approval is required.</div>
+      </div>
+
+      {preApprovedEmails.length > 0 && (
+        <ul id="pre-approved-list" class="grid gap-1">
+          {preApprovedEmails.map((entry: { id: string; email: string }) => (
+            <li class="flex items-center justify-between gap-2 text-sm py-1 border-b border-line last:border-0" data-id={entry.id}>
+              <span class="font-mono">{entry.email}</span>
+              <button
+                class="text-xs text-muted hover:text-ember transition-colors"
+                onclick={`deletePreApproved('${entry.id}', this)`}
+              >
+                Remove
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <form onsubmit="event.preventDefault(); addPreApproved(this);" class="grid gap-2">
+        <textarea
+          name="emails"
+          rows="3"
+          placeholder="One email address per line"
+          class="bg-surface-1 border border-line p-3 text-sm font-mono font-normal w-full"
+        ></textarea>
+        <div>
+          <button type="submit" class="btn btn-sm">Add</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   {pending.length > 0 && (
     <section class="mb-10">
@@ -83,13 +143,14 @@ function frequencyLabel(value) {
                 Reject
               </button>
               {u.role !== 'admin' && (
-                <button
-                  class="btn"
-                  style="min-height:36px; font-size:13px;"
-                  onclick={`promoteUser('${u.id}', this)`}
+                <select
+                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.role}
+                  onchange={`updateUserRole('${u.id}', this)`}
                 >
-                  Promote
-                </button>
+                  <option value="user" selected={u.role !== 'admin'}>User</option>
+                  <option value="admin">Admin</option>
+                </select>
               )}
             </div>
           </div>
@@ -125,13 +186,14 @@ function frequencyLabel(value) {
                 </select>
               )}
               {u.role !== 'admin' && (
-                <button
-                  class="btn"
-                  style="min-height:36px; font-size:13px;"
-                  onclick={`promoteUser('${u.id}', this)`}
+                <select
+                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.role}
+                  onchange={`updateUserRole('${u.id}', this)`}
                 >
-                  Promote
-                </button>
+                  <option value="user" selected={u.role !== 'admin'}>User</option>
+                  <option value="admin">Admin</option>
+                </select>
               )}
               <span class="badge badge-active text-[10px]">approved</span>
             </div>
@@ -171,13 +233,14 @@ function frequencyLabel(value) {
                 Re-approve
               </button>
               {u.role !== 'admin' && (
-                <button
-                  class="btn"
-                  style="min-height:36px; font-size:13px;"
-                  onclick={`promoteUser('${u.id}', this)`}
+                <select
+                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.role}
+                  onchange={`updateUserRole('${u.id}', this)`}
                 >
-                  Promote
-                </button>
+                  <option value="user" selected={u.role !== 'admin'}>User</option>
+                  <option value="admin">Admin</option>
+                </select>
               )}
             </div>
           </div>
@@ -188,6 +251,91 @@ function frequencyLabel(value) {
 </AdminLayout>
 
 <script is:inline>
+  async function toggleApprovalRequirement(btn) {
+    const current = btn.dataset.value === 'true';
+    const next = !current;
+    btn.disabled = true;
+    try {
+      const res = await fetch('/api/admin/site-config', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ require_user_approval: next }),
+      });
+      if (res.ok) {
+        btn.dataset.value = next ? 'true' : 'false';
+        btn.textContent = next ? 'On' : 'Off';
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.detail || 'Failed to update setting');
+      }
+    } catch (e) {
+      alert('Could not reach server');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function addPreApproved(form) {
+    const raw = form.emails.value.trim();
+    if (!raw) return;
+    const emails = raw.split('\n').map(e => e.trim()).filter(Boolean);
+    try {
+      const res = await fetch('/api/admin/pre-approved-emails', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emails }),
+      });
+      if (res.ok) {
+        const added = await res.json();
+        const list = document.getElementById('pre-approved-list') || (() => {
+          const ul = document.createElement('ul');
+          ul.id = 'pre-approved-list';
+          ul.className = 'grid gap-1';
+          form.closest('.grid').insertBefore(ul, form);
+          return ul;
+        })();
+        for (const entry of added) {
+          if (!list.querySelector(`[data-id="${entry.id}"]`)) {
+            const li = document.createElement('li');
+            li.className = 'flex items-center justify-between gap-2 text-sm py-1 border-b border-line last:border-0';
+            li.dataset.id = entry.id;
+            li.innerHTML = `<span class="font-mono">${entry.email}</span><button class="text-xs text-muted hover:text-ember transition-colors" onclick="deletePreApproved('${entry.id}', this)">Remove</button>`;
+            list.appendChild(li);
+          }
+        }
+        form.reset();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.detail || 'Failed to add emails');
+      }
+    } catch (e) {
+      alert('Could not reach server');
+    }
+  }
+
+  async function deletePreApproved(entryId, btn) {
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/pre-approved-emails/${entryId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const li = btn.closest('li');
+        li?.remove();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        alert(d.detail || 'Failed to remove');
+        btn.disabled = false;
+      }
+    } catch (e) {
+      btn.disabled = false;
+      alert('Could not reach server');
+    }
+  }
+
   async function approveUser(userId, btn) {
     btn.disabled = true;
     btn.textContent = '…';
@@ -256,9 +404,14 @@ function frequencyLabel(value) {
     }
   }
 
-  async function promoteUser(userId, btn) {
-    btn.disabled = true;
-    btn.textContent = '…';
+  async function updateUserRole(userId, select) {
+    const original = select.dataset.original || select.value;
+    if (select.value === original) return;
+    if (select.value !== 'admin') {
+      select.value = original;
+      return;
+    }
+    select.disabled = true;
     try {
       const res = await fetch(`/api/admin/users/${userId}/promote`, {
         method: 'POST',
@@ -268,13 +421,13 @@ function frequencyLabel(value) {
         window.location.reload();
       } else {
         const d = await res.json().catch(() => ({}));
-        btn.disabled = false;
-        btn.textContent = 'Promote';
+        select.value = original;
         alert(d.detail || 'Failed');
       }
     } catch (e) {
-      btn.disabled = false;
-      btn.textContent = 'Promote';
+      select.value = original;
+    } finally {
+      select.disabled = false;
     }
   }
 </script>

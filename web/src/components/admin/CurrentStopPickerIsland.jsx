@@ -90,9 +90,6 @@ export default function CurrentStopPickerIsland() {
           <h2 className="display" style={{ fontSize: 28, margin: 0 }}>
             {current.title}
           </h2>
-          <div style={{ fontSize: 12, color: "var(--dim)", fontFamily: "var(--mono)" }}>
-            slug · {current.slug}
-          </div>
         </>
       ) : (
         <p className="text-muted" style={{ margin: 0 }}>

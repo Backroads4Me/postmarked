@@ -61,6 +61,15 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "body": "Every stop, story, and moment.",
         "sort_order": 10,
     },
+    {
+        "page_key": "email",
+        "section_key": "post_notification",
+        "label": None,
+        "heading": "New update from the road",
+        "body": "A new update has been posted: {post_title}",
+        "cta_label": "See the photos",
+        "sort_order": 10,
+    },
 ]
 
 

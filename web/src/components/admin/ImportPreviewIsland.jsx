@@ -102,15 +102,10 @@ export default function ImportPreviewIsland() {
 
       {/* File Upload */}
       <div className="card-flat" style={{ marginBottom: '24px' }}>
-        <div className="flex items-center gap-2 mb-3">
-          <span className="text-lg">📄</span>
-          <span className="eyebrow">Upload Excel File</span>
-        </div>
-
-        <div className="flex flex-col md:flex-row items-start md:items-center gap-3">
+        <div className="flex flex-col md:flex-row md:items-center gap-3">
           <label
             className="btn cursor-pointer"
-            style={{ position: 'relative', overflow: 'hidden' }}
+            style={{ position: 'relative', overflow: 'hidden', flexShrink: 0 }}
           >
             <input
               type="file"
@@ -121,11 +116,15 @@ export default function ImportPreviewIsland() {
             Choose .xlsx File
           </label>
 
-          {file && (
-            <span style={{ color: 'var(--paper-2)', fontSize: '14px' }}>
-              {file.name} ({(file.size / 1024).toFixed(1)} KB)
-            </span>
-          )}
+          <div className="flex min-w-0 flex-1 items-center gap-2">
+            <span className="text-lg" aria-hidden="true">📄</span>
+            <span className="eyebrow whitespace-nowrap">RV Trip Wizard export file</span>
+            {file && (
+              <span className="truncate" style={{ color: 'var(--paper-2)', fontSize: '14px' }}>
+                {file.name} ({(file.size / 1024).toFixed(1)} KB)
+              </span>
+            )}
+          </div>
 
           {file && !preview && (
             <button

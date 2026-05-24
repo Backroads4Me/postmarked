@@ -1,5 +1,11 @@
+import logging
 import os
 from urllib.parse import urlparse
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(levelname)s [%(name)s] %(message)s",
+)
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -177,6 +183,7 @@ from app.routers.admin import (
     media as admin_media,
     pois as admin_pois,
     posts as admin_posts,
+    site_config as admin_site_config,
     stops as admin_stops,
     site_text as admin_site_text,
     trips as admin_trips,
@@ -190,16 +197,25 @@ app.include_router(admin_media.router, prefix="/api/admin")
 app.include_router(admin_posts.router, prefix="/api/admin")
 app.include_router(admin_imports.router, prefix="/api/admin")
 app.include_router(admin_users.router, prefix="/api/admin")
+app.include_router(admin_site_config.router, prefix="/api/admin")
 app.include_router(admin_site_text.router, prefix="/api/admin")
 
 
 class AppConfig(BaseModel):
     email_enabled: bool
+    require_user_approval: bool
 
 
 @app.get("/api/config", response_model=AppConfig)
 async def app_config():
-    return {"email_enabled": is_email_configured()}
+    from sqlalchemy import select
+    from app.models.system import SiteConfig
+    require_approval = True
+    async with async_session_maker() as session:
+        config = (await session.execute(select(SiteConfig).limit(1))).scalar_one_or_none()
+        if config is not None:
+            require_approval = config.require_user_approval
+    return {"email_enabled": is_email_configured(), "require_user_approval": require_approval}
 
 
 class HealthCheck(BaseModel):
