@@ -293,7 +293,7 @@ function frequencyLabel(value) {
           const ul = document.createElement('ul');
           ul.id = 'pre-approved-list';
           ul.className = 'grid gap-1';
-          form.closest('.grid').insertBefore(ul, form);
+          form.parentElement.insertBefore(ul, form);
           return ul;
         })();
         for (const entry of added) {

@@ -80,7 +80,7 @@ function toDatetimeLocal(iso) {
           <label class="text-sm font-bold" for="status">Status</label>
           <select id="status" name="status" class="bg-surface-2 border border-line p-3">
             {['draft','published','unpublished','archived'].map(status => (
-              <option value={status} selected={post.status === status}>{status}</option>
+              <option value={status} selected={post.status === status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
             ))}
           </select>
         </div>

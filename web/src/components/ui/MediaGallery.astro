@@ -183,6 +183,12 @@ function tileClass(m: MediaSummary) {
     const state = { items: [], activeIndex: 0 };
     dialog.__mediaLightboxState = state;
 
+    function preloadItem(item) {
+      if (!item || item.kind === 'video') return;
+      const img = new Image();
+      img.src = item.src;
+    }
+
     function show(index) {
       if (!state.items.length) return;
       state.activeIndex = Math.max(0, Math.min(index, state.items.length - 1));
@@ -208,6 +214,9 @@ function tileClass(m: MediaSummary) {
       count.textContent = String(state.activeIndex + 1) + ' / ' + String(state.items.length);
       prev.hidden = state.activeIndex === 0;
       next.hidden = state.activeIndex === state.items.length - 1;
+      // Kick off background fetches for neighbours so they're cached before the user gets there
+      preloadItem(state.items[state.activeIndex + 1]);
+      preloadItem(state.items[state.activeIndex - 1]);
     }
 
     dialog.__mediaLightboxOpen = function open(items, index) {

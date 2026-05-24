@@ -224,7 +224,7 @@ def process_media_asset(asset_id: str):
                     
                     # Create WebP derivative
                     thumb_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp")
-                    img.thumbnail((1920, 1920), Image.Resampling.LANCZOS)
+                    img.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
                     img.save(thumb_path, format="WEBP", quality=80)
                     
                     # Attempt dominant color

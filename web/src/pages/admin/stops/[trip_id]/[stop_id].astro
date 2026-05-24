@@ -105,7 +105,7 @@ const tripIsPrivate = trip.visibility === 'private';
         <label class="text-sm font-bold">Status</label>
         <select name="status" class="bg-surface-2 border border-line p-3">
           {['draft','published','unpublished','archived'].map(s => (
-            <option value={s} selected={stop.status === s}>{s}</option>
+            <option value={s} selected={stop.status === s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
           ))}
         </select>
         <span class="text-xs text-dim">Only published stops appear outside admin pages. Visibility applies after publishing.</span>
