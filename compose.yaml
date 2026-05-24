@@ -33,6 +33,11 @@ services:
       - ${ORIGINALS_SOURCE:-originals}:/originals
       - ${DERIVATIVES_SOURCE:-derivatives}:/derivatives
       - ${INGEST_SOURCE:-ingest}:/ingest
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   worker:
     <<: *app-base
@@ -60,7 +65,8 @@ services:
       - PUBLIC_GOOGLE_MAPS_API_KEY=${PUBLIC_GOOGLE_MAPS_API_KEY:-}
       - PUBLIC_GOOGLE_MAPS_MAP_ID=${PUBLIC_GOOGLE_MAPS_MAP_ID:-}
     depends_on:
-      - api
+      api:
+        condition: service_healthy
     ports:
       - "4321:4321"
     restart: unless-stopped
