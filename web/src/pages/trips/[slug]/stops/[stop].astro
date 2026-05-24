@@ -84,7 +84,6 @@ function fmtRange(start, end) {
         {detail.nights && <span class="label">{detail.nights} night{detail.nights !== 1 ? 's' : ''}</span>}
       </div>
       <h1 class="display text-3xl md:text-5xl">{detail.title}</h1>
-      {detail.place_name && <p class="coord mt-2">{detail.place_name}</p>}
       {detail.summary && (
         <p class="lede mt-4 text-base" style="font-family: var(--sans);">{detail.summary}</p>
       )}

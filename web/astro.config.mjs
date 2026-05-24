@@ -16,7 +16,10 @@ export default defineConfig({
   }),
   vite: {
     server: {
-      allowedHosts: ['werehere.app']
+      allowedHosts: ['werehere.app'],
+      watch: {
+        usePolling: true,
+      },
     },
     plugins: [tailwindcss()]
   },

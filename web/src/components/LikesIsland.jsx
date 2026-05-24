@@ -90,10 +90,10 @@ export default function LikesIsland({ targetKind, targetId }) {
         borderRadius: 20,
         padding: "4px 12px",
         cursor: canLike ? "pointer" : "default",
-        color: liked ? "var(--ember)" : "var(--muted)",
+        color: (count > 0) ? "var(--ember)" : "var(--muted)",
         fontSize: 13,
         transition: "color 0.15s, border-color 0.15s",
-        borderColor: liked ? "var(--ember)" : "var(--line-soft)",
+        borderColor: (count > 0) ? "var(--ember)" : "var(--line-soft)",
       }}
     >
       <span style={{ fontSize: 15, lineHeight: 1 }}>{liked ? "♥" : "♡"}</span>

@@ -117,8 +117,7 @@ function fmtRange(start, end) {
     <section class="mb-10">
       <div class="flex items-center justify-between mb-4">
         <div>
-          <div class="label">Itinerary</div>
-          <h2 class="display text-2xl">Stops, in order</h2>
+          <h2 class="display text-2xl">The Route</h2>
         </div>
       </div>
 
@@ -145,7 +144,6 @@ function fmtRange(start, end) {
                       {stop.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
                     </div>
                     <h3 class="display text-xl group-hover:text-ember-2 transition-colors">{stop.title}</h3>
-                    {stop.place_name && <p class="coord mt-1">{stop.place_name}</p>}
                     {stop.summary && <p class="text-muted text-sm mt-2 line-clamp-2">{stop.summary}</p>}
                   </div>
                 </div>
