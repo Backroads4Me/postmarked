@@ -3,6 +3,7 @@ import Layout from '../../layouts/Layout.astro';
 import { apiUrl } from '../../lib/api.js';
 import MapIsland from '../../components/MapIsland.jsx';
 import StopIdentity from '../../components/ui/StopIdentity.astro';
+import Breadcrumb from '../../components/ui/Breadcrumb.astro';
 
 const { slug } = Astro.params;
 
@@ -112,7 +113,7 @@ function cityStateFromAddress(address) {
 
     {/* ── Hero ─────────────────────────────────────────────── */}
     <section class="mb-8">
-      <a href="/trips" class="label" style="font-size: 14px;">All Trips</a>
+      <Breadcrumb items={[{ label: 'All Trips', href: '/trips' }]} />
 
       <div class="flex items-baseline justify-between gap-4 mt-3 mb-3">
         <h1 class="display text-3xl md:text-4xl leading-tight">{trip.title}</h1>

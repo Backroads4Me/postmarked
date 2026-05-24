@@ -3,6 +3,7 @@ import Layout from '../../../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../../../lib/api.js';
 import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
 import MediaGallery from '../../../../../../components/ui/MediaGallery.astro';
+import Breadcrumb from '../../../../../../components/ui/Breadcrumb.astro';
 
 const { slug, stop: stopSlug, post_slug } = Astro.params;
 
@@ -46,15 +47,12 @@ function fmtTime(d, timezoneId) {
     {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
 
     {/* ── Breadcrumb ───────────────────────────────────────── */}
-    <nav class="label mb-3 flex items-center gap-1 flex-wrap">
-      <a href="/trips">Trips</a>
-      <span class="text-dim" style="margin: 0 4px;">/</span>
-      <a href={`/trips/${post.trip_slug}`}>{post.trip_title}</a>
-      <span class="text-dim" style="margin: 0 4px;">/</span>
-      <a href={`/trips/${post.trip_slug}/stops/${post.stop_slug}`}>{post.stop_title}</a>
-      <span class="text-dim" style="margin: 0 4px;">/</span>
-      <span style="color: var(--paper);">{post.title}</span>
-    </nav>
+    <Breadcrumb items={[
+      { label: 'All Trips', href: '/trips' },
+      { label: 'Trip', href: `/trips/${post.trip_slug}` },
+      { label: 'Stop', href: `/trips/${post.trip_slug}/stops/${post.stop_slug}` },
+      { label: 'Post' },
+    ]} />
 
     {/* ── Hero ─────────────────────────────────────────────── */}
     <section class="mb-8">
