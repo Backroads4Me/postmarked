@@ -317,6 +317,7 @@ async def get_post(
         stop_slug=stop.slug,
         stop_title=stop.title,
         stop_place_name=stop.place_name,
+        stop_address_label=stop.address_label,
         trip_slug=trip.slug,
         trip_title=trip.title,
         stop_timezone_id=stop.timezone_id,

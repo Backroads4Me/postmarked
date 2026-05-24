@@ -1,4 +1,6 @@
 ---
+import { cityStateFromAddress } from '../../lib/location.js';
+
 interface Props {
   /** Full stop object. Preferred so every view derives labels the same way. */
   stop?: {
@@ -79,19 +81,6 @@ const detailClass = variant === 'hero'
   ? 'stop-identity-detail lede mt-4 text-base'
   : 'stop-identity-detail text-muted text-sm mt-0.5';
 
-function cityStateFromAddress(address?: string | null) {
-  if (!address) return '';
-  const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  if (parts.length < 3) return '';
-
-  const stateRe = /^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/;
-  for (let i = parts.length - 1; i > 0; i -= 1) {
-    const match = parts[i].match(stateRe);
-    if (match && parts[i - 1]) return `${parts[i - 1]}, ${match[1]}`;
-  }
-
-  return '';
-}
 ---
 
 <div class:list={['stop-identity', `stop-identity-${variant}`, cls]}>

@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../../../lib/api.js';
+import { cityStateFromAddress } from '../../../../../../lib/location.js';
 import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
 import MediaGallery from '../../../../../../components/ui/MediaGallery.astro';
 import Breadcrumb from '../../../../../../components/ui/Breadcrumb.astro';
@@ -49,7 +50,7 @@ function fmtTime(d, timezoneId) {
     {/* ── Breadcrumb ───────────────────────────────────────── */}
     <Breadcrumb items={[
       { label: 'Home', href: '/' },
-      { label: post.stop_place_name || post.stop_title, href: `/trips/${post.trip_slug}/stops/${post.stop_slug}` },
+      { label: cityStateFromAddress(post.stop_address_label) || post.stop_place_name || post.stop_title, href: `/trips/${post.trip_slug}/stops/${post.stop_slug}` },
     ]} />
 
     {/* ── Hero ─────────────────────────────────────────────── */}

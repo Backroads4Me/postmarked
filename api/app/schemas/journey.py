@@ -158,6 +158,7 @@ class PublicPostDetail(PublicPostSummary):
     stop_slug: str
     stop_title: str
     stop_place_name: Optional[str] = None
+    stop_address_label: Optional[str] = None
     trip_slug: str
     trip_title: str
     stop_timezone_id: Optional[str] = None

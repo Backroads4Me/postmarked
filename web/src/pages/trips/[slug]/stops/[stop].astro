@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
+import { cityStateFromAddress } from '../../../../lib/location.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
 import LikesIsland from '../../../../components/LikesIsland.jsx';
 import StopMapIsland from '../../../../components/StopMapIsland.jsx';
@@ -75,6 +76,7 @@ function fmtRange(start, end) {
     <Breadcrumb items={[
       { label: 'Home', href: '/' },
       { label: detail.trip_title, href: `/trips/${detail.trip_slug}` },
+      { label: cityStateFromAddress(detail.address_label) || detail.place_name || detail.title },
     ]} />
 
     {/* ── Hero ─────────────────────────────────────────────── */}
