@@ -92,7 +92,7 @@ function fmtRange(start, end) {
     {/* ── Gallery ──────────────────────────────────────────── */}
     {gallery.length > 0 && (
       <section class="mb-10">
-        <MediaGallery media={gallery} limit={10} />
+        <MediaGallery media={gallery} limit={gallery.length} />
       </section>
     )}
 

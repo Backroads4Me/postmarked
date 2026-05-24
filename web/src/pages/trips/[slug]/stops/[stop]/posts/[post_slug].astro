@@ -78,7 +78,7 @@ function fmtTime(d, timezoneId) {
     {/* ── Gallery ──────────────────────────────────────────── */}
     {post.media && post.media.length > 0 && (
       <section class="mb-10">
-        <MediaGallery media={post.media} limit={10} />
+        <MediaGallery media={post.media} limit={post.media.length} />
       </section>
     )}
 

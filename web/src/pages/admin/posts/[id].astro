@@ -119,13 +119,19 @@ function toDatetimeLocal(iso) {
           </div>
         </div>
         {attachedMedia.length > 0 ? (
-          <div class="bg-surface-2 border border-line-soft rounded divide-y divide-line-soft">
+          <div id="media-list" class="bg-surface-2 border border-line-soft rounded divide-y divide-line-soft">
             {attachedMedia.map((m) => (
               <div
-                class="flex items-center gap-3 p-2"
+                class="flex items-center gap-3 p-2 media-card"
+                draggable="true"
                 data-media-card
                 data-media-id={m.id}
               >
+                <span
+                  class="media-drag-handle shrink-0 cursor-grab text-dim select-none px-1"
+                  aria-hidden="true"
+                  title="Drag to reorder"
+                >⠿</span>
                 <a
                   href={m.kind === 'video' ? `/media-player/${m.id}` : `/media/${m.id}/webp`}
                   target="_blank"
@@ -538,6 +544,68 @@ function toDatetimeLocal(iso) {
       });
     });
 
+    // ── Media drag-to-reorder ─────────────────────────────────────────────
+    (function initMediaReorder() {
+      const list = document.getElementById('media-list');
+      if (!list) return;
+
+      let dragging = null;
+
+      list.addEventListener('dragstart', (e) => {
+        const card = e.target.closest('[data-media-card]');
+        if (!card) return;
+        dragging = card;
+        card.style.opacity = '0.4';
+        e.dataTransfer.effectAllowed = 'move';
+      });
+
+      list.addEventListener('dragend', () => {
+        if (dragging) dragging.style.opacity = '';
+        dragging = null;
+        list.querySelectorAll('[data-media-card]').forEach(c => c.classList.remove('drag-over'));
+      });
+
+      list.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        const target = e.target.closest('[data-media-card]');
+        if (!target || target === dragging) return;
+        list.querySelectorAll('[data-media-card]').forEach(c => c.classList.remove('drag-over'));
+        target.classList.add('drag-over');
+        const cards = Array.from(list.querySelectorAll('[data-media-card]'));
+        const fromIndex = cards.indexOf(dragging);
+        const toIndex = cards.indexOf(target);
+        if (fromIndex < toIndex) {
+          target.after(dragging);
+        } else {
+          target.before(dragging);
+        }
+      });
+
+      list.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        list.querySelectorAll('[data-media-card]').forEach(c => c.classList.remove('drag-over'));
+        const mediaIds = Array.from(list.querySelectorAll('[data-media-card]')).map(c => c.dataset.mediaId);
+        mediaAttachStatus.textContent = 'Saving order…';
+        try {
+          const res = await fetch(`/api/admin/posts/${postId}/media/order`, {
+            method: 'PUT',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ media_ids: mediaIds }),
+          });
+          if (res.ok) {
+            mediaAttachStatus.textContent = 'Order saved';
+            setTimeout(() => { mediaAttachStatus.textContent = ''; }, 2000);
+          } else {
+            mediaAttachStatus.textContent = 'Save failed';
+          }
+        } catch {
+          mediaAttachStatus.textContent = 'Network error';
+        }
+      });
+    })();
+
     document.getElementById('delete-btn').addEventListener('click', async () => {
       const id = form.querySelector('[name="id"]').value;
       const title = form.querySelector('[name="title"]').value;
@@ -560,4 +628,9 @@ function toDatetimeLocal(iso) {
       }
     });
   </script>
+  <style>
+    .media-drag-handle { font-size: 1.2rem; line-height: 1; }
+    .media-card.drag-over { outline: 2px solid var(--ember); outline-offset: -2px; }
+    .media-card[draggable="true"] { cursor: default; }
+  </style>
 </AdminLayout>

@@ -211,7 +211,7 @@ class Post(Base):
 
     trip: Mapped[Optional["Trip"]] = relationship("Trip", back_populates="posts")
     stop: Mapped[Optional["Stop"]] = relationship("Stop", back_populates="posts")
-    media: Mapped[List["MediaAsset"]] = relationship("MediaAsset", back_populates="post")
+    media: Mapped[List["MediaAsset"]] = relationship("MediaAsset", back_populates="post", order_by="MediaAsset.sort_order")
     poi: Mapped[Optional["PointOfInterest"]] = relationship(
         "PointOfInterest",
         foreign_keys=[poi_id],

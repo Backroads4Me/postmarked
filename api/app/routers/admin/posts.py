@@ -230,6 +230,31 @@ async def attach_post_media(
     return result.scalars().one()
 
 
+class ReorderPostMediaRequest(BaseModel):
+    media_ids: List[uuid.UUID]
+
+
+@router.put("/posts/{post_id}/media/order")
+async def reorder_post_media(
+    post_id: uuid.UUID,
+    req: ReorderPostMediaRequest,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    post = await session.get(Post, post_id)
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+
+    for index, media_id in enumerate(req.media_ids):
+        asset = await session.get(MediaAsset, media_id)
+        if asset and asset.post_id == post_id:
+            asset.sort_order = index
+
+    await log_audit_event(session, user.id, "REORDER_MEDIA", "Post", post_id)
+    await session.commit()
+    return {"ok": True}
+
+
 @router.delete("/posts/{post_id}")
 async def delete_post(
     post_id: uuid.UUID,
