@@ -722,7 +722,7 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background: var(--forest);
+    background: #22c55e;
     position: relative;
     display: inline-block;
   }
@@ -731,7 +731,7 @@
     position: absolute;
     inset: -4px;
     border-radius: 50%;
-    border: 2px solid var(--forest);
+    border: 2px solid #22c55e;
     animation: pulse-ring 2s ease-out infinite;
   }
 

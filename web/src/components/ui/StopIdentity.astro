@@ -1,0 +1,42 @@
+---
+interface Props {
+  /** City, State — shown as primary heading */
+  primaryTitle: string;
+  /** Campground/stop name — shown as muted secondary, omitted if same as primaryTitle */
+  detailTitle?: string | null;
+  /** If true, renders primaryTitle as an h3 element; otherwise as a span */
+  heading?: boolean;
+  /** Extra CSS class on the wrapper */
+  class?: string;
+}
+
+const { primaryTitle, detailTitle, heading = false, class: cls = '' } = Astro.props;
+const showDetail = detailTitle && detailTitle !== primaryTitle;
+---
+
+<div class:list={['stop-identity', cls]}>
+  {heading ? (
+    <h3 class="stop-identity-primary display text-xl">{primaryTitle}</h3>
+  ) : (
+    <span class="stop-identity-primary display text-xl">{primaryTitle}</span>
+  )}
+  {showDetail && (
+    <p class="stop-identity-detail text-muted text-sm mt-0.5">{detailTitle}</p>
+  )}
+</div>
+
+<style>
+  .stop-identity {
+    min-width: 0;
+  }
+
+  .stop-identity-primary {
+    display: block;
+    transition: color 160ms ease;
+  }
+
+  .stop-identity-detail {
+    margin: 0;
+    transition: color 160ms ease;
+  }
+</style>

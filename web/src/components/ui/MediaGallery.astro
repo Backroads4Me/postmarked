@@ -70,7 +70,8 @@ function tileClass(m: MediaSummary) {
         data-media-kind="video"
         data-media-src={'/media/' + m.id + '/original'}
         data-media-poster={posterSrc(m)}
-        data-media-alt={m.alt_text || m.caption || ''}
+        data-media-alt={m.alt_text || ''}
+        data-media-caption={m.caption || ''}
         style={tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
@@ -93,7 +94,8 @@ function tileClass(m: MediaSummary) {
         data-media-index={index}
         data-media-kind="photo"
         data-media-src={posterSrc(m)}
-        data-media-alt={m.alt_text || m.caption || ''}
+        data-media-alt={m.alt_text || ''}
+        data-media-caption={m.caption || ''}
         style={tileStyle(m)}
       >
         <img
@@ -114,7 +116,8 @@ function tileClass(m: MediaSummary) {
         data-media-kind="video"
         data-media-src={'/media/' + m.id + '/original'}
         data-media-poster={posterSrc(m)}
-        data-media-alt={m.alt_text || m.caption || ''}
+        data-media-alt={m.alt_text || ''}
+        data-media-caption={m.caption || ''}
         style={tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
@@ -139,7 +142,8 @@ function tileClass(m: MediaSummary) {
         data-media-index={index}
         data-media-kind="photo"
         data-media-src={posterSrc(m)}
-        data-media-alt={m.alt_text || m.caption || ''}
+        data-media-alt={m.alt_text || ''}
+        data-media-caption={m.caption || ''}
         style={tileStyle(m)}
       >
         <div class="media-gallery-thumb">
@@ -166,12 +170,13 @@ function tileClass(m: MediaSummary) {
     dialog = document.createElement('dialog');
     dialog.className = 'media-lightbox';
     dialog.dataset.globalMediaLightbox = 'true';
-    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button><div class="media-lightbox-count" data-media-lightbox-count></div>';
+    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button><div class="media-lightbox-footer"><p class="media-lightbox-caption" data-media-lightbox-caption></p><div class="media-lightbox-count" data-media-lightbox-count></div></div>';
     document.body.append(dialog);
 
     const image = dialog.querySelector('[data-media-lightbox-image]');
     const video = dialog.querySelector('[data-media-lightbox-video]');
     const count = dialog.querySelector('[data-media-lightbox-count]');
+    const caption = dialog.querySelector('[data-media-lightbox-caption]');
     const prev = dialog.querySelector('[data-media-lightbox-prev]');
     const next = dialog.querySelector('[data-media-lightbox-next]');
     const close = dialog.querySelector('[data-media-lightbox-close]');
@@ -198,6 +203,8 @@ function tileClass(m: MediaSummary) {
         image.hidden = false;
         image.src = item.src || '';
       }
+      caption.textContent = item.caption || '';
+      caption.hidden = !item.caption;
       count.textContent = String(state.activeIndex + 1) + ' / ' + String(state.items.length);
       prev.hidden = state.activeIndex === 0;
       next.hidden = state.activeIndex === state.items.length - 1;
@@ -252,6 +259,7 @@ function tileClass(m: MediaSummary) {
             src: item.dataset.mediaSrc || '',
             poster: item.dataset.mediaPoster || '',
             alt: item.dataset.mediaAlt || '',
+            caption: item.dataset.mediaCaption || '',
           }));
           dialog.__mediaLightboxOpen(items, index);
         });
@@ -424,15 +432,33 @@ function tileClass(m: MediaSummary) {
     right: 12px;
   }
 
-  :global(.media-lightbox-count) {
+  :global(.media-lightbox-footer) {
     bottom: 14px;
-    color: rgb(255 255 255 / 0.72);
-    font-family: var(--mono);
-    font-size: 11px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
     left: 50%;
-    letter-spacing: 0.08em;
     position: absolute;
     transform: translateX(-50%);
+    width: calc(100% - 120px);
+    text-align: center;
+  }
+
+  :global(.media-lightbox-caption) {
+    color: rgb(255 255 255 / 0.85);
+    font-family: var(--sans);
+    font-size: 13px;
+    line-height: 1.4;
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  :global(.media-lightbox-count) {
+    color: rgb(255 255 255 / 0.5);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
   }
 
   @media (max-width: 640px) {

@@ -3,6 +3,7 @@
  * LocationUpdateGroup — a stop/location card with nested post updates.
  */
 import PostCard from './PostCard.astro';
+import StopIdentity from './StopIdentity.astro';
 
 interface MediaSummary {
   id: string;
@@ -70,25 +71,31 @@ function postHref(post: PostSummary) {
 
 <article class="location-update-group" id={stop.slug ? `stop-${stop.slug}` : undefined}>
   <div class="location-update-header">
-    <div class="min-w-0">
-      <div class="flex items-baseline gap-2 mb-2">
-        {date && (
-          <>
-            <span class="display text-xl text-muted">{formatDate(date)}</span>
-            <span class="display text-xl text-muted" aria-hidden="true">-</span>
-          </>
-        )}
-        {href ? (
-          <a href={href} class="display text-xl location-title truncate">
-            {primaryTitle}
-          </a>
-        ) : (
-          <h3 class="display text-xl location-title truncate">{primaryTitle}</h3>
-        )}
+    {href ? (
+      <a href={href} class="location-header-link">
+        <div class="flex items-baseline gap-2 mb-2">
+          {date && (
+            <>
+              <span class="display text-xl text-muted">{formatDate(date)}</span>
+              <span class="display text-xl text-muted" aria-hidden="true">-</span>
+            </>
+          )}
+          <StopIdentity primaryTitle={primaryTitle} detailTitle={secondaryTitle || stop.detailTitle} />
+        </div>
+      </a>
+    ) : (
+      <div>
+        <div class="flex items-baseline gap-2 mb-2">
+          {date && (
+            <>
+              <span class="display text-xl text-muted">{formatDate(date)}</span>
+              <span class="display text-xl text-muted" aria-hidden="true">-</span>
+            </>
+          )}
+          <StopIdentity primaryTitle={primaryTitle} detailTitle={secondaryTitle || stop.detailTitle} heading />
+        </div>
       </div>
-      {secondaryTitle && <p class="coord mt-1">{secondaryTitle}</p>}
-      {stop.summary && <p class="text-muted text-sm mt-2 line-clamp-2">{stop.summary}</p>}
-    </div>
+    )}
   </div>
 
   {posts.length > 0 && (
@@ -121,14 +128,16 @@ function postHref(post: PostSummary) {
     padding: 18px;
   }
 
-  .location-title {
-    color: var(--paper);
-    display: block;
+  .location-header-link {
+    color: inherit;
     text-decoration: none;
-    transition: color 160ms ease;
+    cursor: pointer;
+    display: block;
   }
 
-  .location-title:hover {
+  .location-header-link:hover :global(.stop-identity-primary),
+  .location-header-link:hover :global(.stop-identity-detail),
+  .location-header-link:hover .text-muted {
     color: var(--ember-2);
   }
 

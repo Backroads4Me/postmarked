@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { apiUrl } from '../../lib/api.js';
 import MapIsland from '../../components/MapIsland.jsx';
+import StopIdentity from '../../components/ui/StopIdentity.astro';
 
 const { slug } = Astro.params;
 
@@ -191,19 +192,18 @@ function cityStateFromAddress(address) {
                   </div>
                   <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
-                      {stop.start_date && <span class="label">{fmtRange(stop.start_date, stop.end_date)}</span>}
-                      {stop.nights && <span class="label">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>}
+                      {stop.start_date && <span class="label stop-meta">{fmtRange(stop.start_date, stop.end_date)}</span>}
+                      {stop.nights && <span class="label stop-meta">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>}
                       {stop.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
                     </div>
                     {(() => {
                       const cityState = cityStateFromAddress(stop.summary || '');
-                      return cityState ? (
-                        <>
-                          <h3 class="display text-xl group-hover:text-ember-2 transition-colors">{cityState}</h3>
-                          <p class="text-muted text-sm mt-1">{stop.title}</p>
-                        </>
-                      ) : (
-                        <h3 class="display text-xl group-hover:text-ember-2 transition-colors">{stop.title}</h3>
+                      return (
+                        <StopIdentity
+                          primaryTitle={cityState || stop.title}
+                          detailTitle={cityState && cityState !== stop.title ? stop.title : null}
+                          heading
+                        />
                       );
                     })()}
                   </div>
@@ -235,4 +235,19 @@ function cityStateFromAddress(address) {
       )}
     </section>
   </main>
+<style>
+  .stop-meta {
+    transition: color 160ms ease;
+  }
+
+  .group:hover .stop-meta {
+    color: var(--ember-2);
+  }
+
+  .group:hover :global(.stop-identity-primary),
+  .group:hover :global(.stop-identity-detail) {
+    color: var(--ember-2);
+  }
+</style>
+
 </Layout>

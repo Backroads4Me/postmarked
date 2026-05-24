@@ -64,10 +64,10 @@ function stopCityState(stop) {
 }
 
 function locationDisplayFields(stop) {
-  const displayTitle = stopCityState(stop) || stop?.title;
+  const cityState = stopCityState(stop);
   return {
-    displayTitle,
-    detailTitle: displayTitle && displayTitle !== stop?.title ? stop?.title : stop?.place_name,
+    displayTitle: cityState || stop?.title || '',
+    detailTitle: cityState && cityState !== stop?.title ? stop?.title : null,
   };
 }
 
@@ -81,6 +81,7 @@ function groupHomeUpdates(stops = [], posts = []) {
         stop: {
           ...stop,
           ...locationDisplayFields(stop),
+          summary: undefined,
         },
         posts: [],
         sortDate: new Date(stop.start_date || 0).getTime(),
@@ -135,7 +136,7 @@ function formatStopDate(dateStr) {
     </section>
 
     {/* ── Hero: Current Location ─────────────────────────────── */}
-    <section class="mb-10" id="current-location-section">
+    <section class="mb-6" id="current-location-section">
       {current ? (
         <CurrentLocationCard
           stopTitle={current.title}

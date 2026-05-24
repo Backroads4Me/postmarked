@@ -42,16 +42,26 @@ const renderedBody = renderMarkdown(body || summary || '');
 ---
 
 <article class={cardClass}>
-  <div class="flex items-start justify-between gap-3 mb-1">
-    {href ? (
-      <a href={href} class="location-post-title">{title}</a>
-    ) : (
-      <h4 class="location-post-title">{title}</h4>
-    )}
-    {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
-  </div>
-  {renderedBody && (
-    <div class="location-post-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedBody} />
+  {href ? (
+    <a href={href} class="location-post-link block">
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <span class="location-post-title">{title}</span>
+        {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
+      </div>
+      {renderedBody && (
+        <div class="location-post-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedBody} />
+      )}
+    </a>
+  ) : (
+    <div>
+      <div class="flex items-start justify-between gap-3 mb-1">
+        <h4 class="location-post-title">{title}</h4>
+        {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
+      </div>
+      {renderedBody && (
+        <div class="location-post-markdown text-muted text-sm leading-relaxed" set:html={renderedBody} />
+      )}
+    </div>
   )}
   {media && media.length > 0 && (
     <MediaGallery media={media} singleMaxHeight="18rem" />
@@ -59,6 +69,15 @@ const renderedBody = renderMarkdown(body || summary || '');
 </article>
 
 <style>
+  .location-post-link {
+    text-decoration: none;
+  }
+  .location-post-link:hover .location-post-title,
+  .location-post-link:hover .location-post-markdown,
+  .location-post-link:hover .label {
+    color: var(--ember);
+  }
+
   .location-post-title {
     color: var(--paper);
     font-size: 0.98rem;
@@ -66,10 +85,7 @@ const renderedBody = renderMarkdown(body || summary || '');
     line-height: 1.35;
     margin: 0;
     text-decoration: none;
-  }
-
-  .location-post-title:hover {
-    color: var(--ember);
+    transition: color 160ms ease;
   }
 
   .location-post-markdown :global(p) {
