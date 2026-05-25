@@ -202,9 +202,9 @@ const tripIsPrivate = trip.visibility === 'private';
               <td style="padding: 10px 16px;">
                 <div class="flex items-center gap-2">
                   {stop.is_current && <span class="pulse-dot" style="width: 8px; height: 8px;"></span>}
-                  <span style="color: var(--paper);">{stop.title}</span>
+                  <span style="color: var(--paper);">{stop.place_name || stop.title}</span>
                 </div>
-                {stop.place_name && <span class="coord block mt-0.5">{stop.place_name}</span>}
+                <span class="coord block mt-0.5">{stop.title}</span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
                 <span class={`badge text-[9px] ${stop.visibility === 'public' ? 'badge-public' : 'badge-draft'}`}>
