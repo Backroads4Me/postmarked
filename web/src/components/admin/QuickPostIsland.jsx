@@ -16,9 +16,8 @@ const inputStyle = {
   minHeight: 44,
 };
 
-function toDatetimeLocal(date = new Date()) {
-  const offsetMs = date.getTimezoneOffset() * 60000;
-  return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
+function toDateInput(date = new Date()) {
+  return date.toISOString().slice(0, 10);
 }
 
 export default function QuickPostIsland() {
@@ -29,7 +28,7 @@ export default function QuickPostIsland() {
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
-  const [postedAt, setPostedAt] = useState(() => toDatetimeLocal());
+  const [postedAt, setPostedAt] = useState(() => toDateInput());
   const [status, setStatus] = useState("draft");
   const [visibility, setVisibility] = useState("public");
 
@@ -222,7 +221,7 @@ export default function QuickPostIsland() {
         stop_id: stopId || null,
         status,
         visibility,
-        posted_at: new Date(postedAt).toISOString(),
+        posted_at: postedAt + 'T00:00:00.000Z',
         media_ids: mediaIds,
         post_type: "update",
       };
@@ -251,7 +250,7 @@ export default function QuickPostIsland() {
   const previewBody = renderMarkdown(body.trim());
   const previewPlace = selectedStop?.place_name || selectedStop?.title || "";
   const previewDate = postedAt
-    ? new Date(postedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })
+    ? new Date(postedAt + 'T00:00:00Z').toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
     : "Today";
 
   return (
@@ -281,7 +280,7 @@ export default function QuickPostIsland() {
           <label className="text-sm font-bold" htmlFor="qp-posted-at">Post date</label>
           <input
             id="qp-posted-at"
-            type="datetime-local"
+            type="date"
             value={postedAt}
             onChange={(e) => setPostedAt(e.target.value)}
             className="bg-surface-2 border border-line p-3 focus:border-ember"
@@ -476,7 +475,7 @@ export default function QuickPostIsland() {
           onClick={() => {
             if (confirm("Discard this draft?")) {
               clearDraft();
-              setTitle(""); setSummary(""); setBody(""); setPostedAt(toDatetimeLocal()); setStatus("draft"); setVisibility(visibilityForStop(stopId)); clearPhotos();
+              setTitle(""); setSummary(""); setBody(""); setPostedAt(toDateInput()); setStatus("draft"); setVisibility(visibilityForStop(stopId)); clearPhotos();
             }
           }}
           disabled={publishing}
