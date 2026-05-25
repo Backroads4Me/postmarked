@@ -39,7 +39,7 @@ function formatDate(dateStr?: string) {
 
 ---
 
-<article class={cardClass}>
+<article class:list={[cardClass, href ? 'post-card-linked' : false]}>
   {href ? (
     <a href={href} class="location-post-link block">
       <div class="location-post-header flex items-baseline justify-start gap-2 mb-1">
@@ -49,6 +49,10 @@ function formatDate(dateStr?: string) {
       {summary && (
         <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
       )}
+      <span class="post-card-readmore">
+        Read more
+        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </span>
     </a>
   ) : (
     <div>
@@ -89,6 +93,27 @@ function formatDate(dateStr?: string) {
 
   .location-post-summary {
     transition: color 160ms ease;
+  }
+
+  .post-card-linked {
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.18s ease;
+  }
+
+  .post-card-linked:hover {
+    background-color: rgba(255, 255, 255, 0.03);
+  }
+
+  .post-card-readmore {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    margin-top: 0.4rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    color: var(--ember);
+    letter-spacing: 0.01em;
   }
 
 </style>

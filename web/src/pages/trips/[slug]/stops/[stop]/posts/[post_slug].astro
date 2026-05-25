@@ -2,6 +2,7 @@
 import Layout from '../../../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../../../lib/api.js';
 import { cityStateFromAddress } from '../../../../../../lib/location.js';
+import { renderMarkdown } from '../../../../../../lib/markdown.js';
 import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
 import LikesIsland from '../../../../../../components/LikesIsland.jsx';
 import MediaGallery from '../../../../../../components/ui/MediaGallery.astro';
@@ -86,9 +87,7 @@ function fmtTime(d, timezoneId) {
 
     {/* ── Body ─────────────────────────────────────────────── */}
     {post.body && (
-      <section class="mt-8 mb-6" style="max-width: 720px; margin-left: auto; margin-right: auto;">
-        <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.8;">{post.body}</p>
-      </section>
+      <section class="post-body mt-8 mb-6" style="max-width: 720px; margin-left: auto; margin-right: auto;" set:html={renderMarkdown(post.body)} />
     )}
 
     {/* ── POI Card ─────────────────────────────────────────── */}
@@ -167,6 +166,59 @@ function fmtTime(d, timezoneId) {
 </Layout>
 
 <style>
+  .post-body {
+    font-family: var(--sans);
+    line-height: 1.8;
+    color: var(--paper-2);
+  }
+
+  :global(.post-body p) {
+    margin: 0 0 1.1em;
+  }
+
+  :global(.post-body p:last-child) {
+    margin-bottom: 0;
+  }
+
+  :global(.post-body strong) {
+    color: var(--paper);
+    font-weight: 600;
+  }
+
+  :global(.post-body em) {
+    font-style: italic;
+  }
+
+  :global(.post-body ul) {
+    margin: 0 0 1.1em 1.4em;
+    padding: 0;
+    list-style: disc;
+  }
+
+  :global(.post-body li) {
+    margin-bottom: 0.3em;
+  }
+
+  :global(.post-body a) {
+    color: var(--ember);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  :global(.post-body h3, .post-body h4, .post-body h5) {
+    color: var(--paper);
+    font-weight: 600;
+    margin: 1.4em 0 0.5em;
+  }
+
+  :global(.post-body code) {
+    font-family: var(--mono);
+    font-size: 0.87em;
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 3px;
+    padding: 1px 5px;
+  }
+
   .post-nav-label {
     align-items: center;
     display: inline-flex;

@@ -129,6 +129,7 @@ function tileClass(m: MediaSummary) {
           style={'max-height: ' + singleMaxHeight + ';'}
         />
         <span class="media-gallery-play" aria-hidden="true">▶</span>
+        <span class="media-gallery-expand" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span>
       </button>
     ) : isSingle ? (
       <button
@@ -150,6 +151,7 @@ function tileClass(m: MediaSummary) {
           class="block mx-auto h-auto max-w-full"
           style={'max-height: ' + singleMaxHeight + ';'}
         />
+        <span class="media-gallery-expand" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span>
       </button>
     ) : isVideo(m) ? (
       <button
@@ -180,6 +182,7 @@ function tileClass(m: MediaSummary) {
           {index === items.length - 1 && hiddenCount > 0 && (
             <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
           )}
+          <span class="media-gallery-expand" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span>
         </div>
       </button>
     ) : (
@@ -208,6 +211,7 @@ function tileClass(m: MediaSummary) {
           {index === items.length - 1 && hiddenCount > 0 && (
             <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
           )}
+          <span class="media-gallery-expand" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span>
         </div>
       </button>
     ))}
@@ -397,7 +401,67 @@ function tileClass(m: MediaSummary) {
 
   .media-gallery-button {
     background: transparent;
+    cursor: zoom-in;
     font: inherit;
+  }
+
+  /* Dark overlay on hover */
+  .media-gallery-button::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.38);
+    opacity: 0;
+    transition: opacity 0.18s ease;
+    pointer-events: none;
+    border-radius: inherit;
+    z-index: 1;
+  }
+
+  .media-gallery-button:hover::after {
+    opacity: 1;
+  }
+
+  /* Expand badge */
+  .media-gallery-expand {
+    position: absolute;
+    bottom: 7px;
+    right: 7px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.22);
+    border-radius: 5px;
+    padding: 4px;
+    color: white;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+
+  @media (hover: none) {
+    .media-gallery-expand {
+      opacity: 1;
+    }
+  }
+
+  .media-gallery-button:hover .media-gallery-expand {
+    opacity: 1;
+    inset: 0;
+    bottom: auto;
+    right: auto;
+    background: transparent;
+    border: none;
+    border-radius: 0;
+    padding: 0;
+  }
+
+  .media-gallery-button:hover .media-gallery-expand svg {
+    width: 28px;
+    height: 28px;
+    filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.6));
   }
 
   .media-gallery-link-single {
