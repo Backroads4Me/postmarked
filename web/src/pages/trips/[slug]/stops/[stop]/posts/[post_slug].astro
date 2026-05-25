@@ -3,6 +3,7 @@ import Layout from '../../../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../../../lib/api.js';
 import { cityStateFromAddress } from '../../../../../../lib/location.js';
 import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
+import LikesIsland from '../../../../../../components/LikesIsland.jsx';
 import MediaGallery from '../../../../../../components/ui/MediaGallery.astro';
 import Breadcrumb from '../../../../../../components/ui/Breadcrumb.astro';
 
@@ -78,14 +79,14 @@ function fmtTime(d, timezoneId) {
 
     {/* ── Gallery ──────────────────────────────────────────── */}
     {post.media && post.media.length > 0 && (
-      <section class="mb-16" style="max-width: 1100px; margin: 0 auto;">
+      <section class="mb-16" style="max-width: 720px; margin: 0 auto;">
         <MediaGallery media={post.media} limit={post.media.length} />
       </section>
     )}
 
     {/* ── Body ─────────────────────────────────────────────── */}
     {post.body && (
-      <section class="mb-10" style="max-width: 720px; margin: 0 auto;">
+      <section class="mt-8 mb-6" style="max-width: 720px; margin-left: auto; margin-right: auto;">
         <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.8;">{post.body}</p>
       </section>
     )}
@@ -117,8 +118,11 @@ function fmtTime(d, timezoneId) {
       </section>
     )}
 
-    {/* ── Comments ────────────────────────────────────────── */}
-    <section class="mb-10">
+    {/* ── Likes + Comments ────────────────────────────────── */}
+    <section class="mb-10" style="max-width: 720px; margin-left: auto; margin-right: auto;">
+      <div class="mb-4">
+        <LikesIsland client:load targetKind="post" targetId={post.id} />
+      </div>
       <CommentsIsland client:load targetKind="post" targetId={post.id} />
     </section>
 

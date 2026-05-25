@@ -179,6 +179,7 @@ app.include_router(media.router)
 
 # Admin (mounted under /api/admin)
 from app.routers.admin import (
+    backup as admin_backup,
     imports as admin_imports,
     media as admin_media,
     pois as admin_pois,
@@ -199,6 +200,7 @@ app.include_router(admin_imports.router, prefix="/api/admin")
 app.include_router(admin_users.router, prefix="/api/admin")
 app.include_router(admin_site_config.router, prefix="/api/admin")
 app.include_router(admin_site_text.router, prefix="/api/admin")
+app.include_router(admin_backup.router, prefix="/api/admin")
 
 
 class AppConfig(BaseModel):

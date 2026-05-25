@@ -44,7 +44,7 @@ const renderedBody = renderMarkdown(body || summary || '');
 <article class={cardClass}>
   {href ? (
     <a href={href} class="location-post-link block">
-      <div class="flex items-start justify-between gap-3 mb-1">
+      <div class="location-post-header flex items-start justify-between gap-3 mb-1">
         <span class="location-post-title">{title}</span>
         {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
       </div>
@@ -54,7 +54,7 @@ const renderedBody = renderMarkdown(body || summary || '');
     </a>
   ) : (
     <div>
-      <div class="flex items-start justify-between gap-3 mb-1">
+      <div class="location-post-header flex items-start justify-between gap-3 mb-1">
         <h4 class="location-post-title">{title}</h4>
         {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
       </div>
@@ -64,7 +64,7 @@ const renderedBody = renderMarkdown(body || summary || '');
     </div>
   )}
   {media && media.length > 0 && (
-    <MediaGallery media={media} singleMaxHeight="18rem" linkHref={href} />
+    <MediaGallery media={media} singleMaxHeight="16rem" linkHref={href} />
   )}
 </article>
 

@@ -166,7 +166,7 @@ async def get_stop(
 
     # Siblings (prev/next by sort_order within the same trip)
     siblings_query = (
-        select(Stop.slug, Stop.title, Stop.sort_order)
+        select(Stop.slug, Stop.title, Stop.address_label, Stop.sort_order)
         .where(Stop.trip_id == stop.trip_id)
         .order_by(Stop.sort_order.asc())
     )
@@ -179,9 +179,17 @@ async def get_stop(
     for i, row in enumerate(sibling_rows):
         if row.slug == stop.slug:
             if i > 0:
-                prev_sib = PublicStopSibling(slug=sibling_rows[i - 1].slug, title=sibling_rows[i - 1].title)
+                prev_sib = PublicStopSibling(
+                    slug=sibling_rows[i - 1].slug,
+                    title=sibling_rows[i - 1].title,
+                    address_label=sibling_rows[i - 1].address_label,
+                )
             if i + 1 < len(sibling_rows):
-                next_sib = PublicStopSibling(slug=sibling_rows[i + 1].slug, title=sibling_rows[i + 1].title)
+                next_sib = PublicStopSibling(
+                    slug=sibling_rows[i + 1].slug,
+                    title=sibling_rows[i + 1].title,
+                    address_label=sibling_rows[i + 1].address_label,
+                )
             break
 
     return PublicStopDetail(

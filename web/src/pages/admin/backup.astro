@@ -1,0 +1,201 @@
+---
+import AdminLayout from '../../layouts/AdminLayout.astro';
+---
+
+<AdminLayout title="Backup & Restore">
+  <div class="max-w-2xl space-y-10">
+
+    <section>
+      <h2 class="display text-xl mb-2">Export Backup</h2>
+      <p class="text-sm text-dim mb-4">
+        Download a ZIP archive containing all trips, stops, posts, media metadata,
+        users, and processed photo/video derivatives. Use this to back up your
+        instance or migrate to a new server.
+      </p>
+      <a
+        href="/api/admin/backup/export"
+        id="export-btn"
+        class="btn inline-block"
+        download
+      >
+        Download Backup
+      </a>
+    </section>
+
+    <hr class="border-surface-2" />
+
+    <section>
+      <h2 class="display text-xl mb-2">Import Backup</h2>
+      <p class="text-sm text-dim mb-4">
+        Upload a previously exported ZIP to fully restore this instance.
+        <strong class="text-warning">This will permanently erase all existing data</strong>
+        before applying the backup.
+      </p>
+
+      <form id="import-form" class="space-y-4">
+        <div class="backup-upload">
+          <input
+            id="backup-file"
+            name="file"
+            type="file"
+            accept=".zip"
+            required
+            class="sr-only"
+          />
+          <label for="backup-file" class="backup-upload-target">
+            <span class="backup-upload-icon" aria-hidden="true">ZIP</span>
+            <span>
+              <span class="backup-upload-title">Choose a backup ZIP</span>
+              <span id="backup-file-status" class="backup-upload-status">No file selected</span>
+            </span>
+          </label>
+          <p class="text-xs text-dim mt-2">
+            Select a Postmarked backup export. The restore button will unlock after a ZIP is selected.
+          </p>
+        </div>
+        <button type="submit" id="import-btn" class="btn" style="border-color: rgba(212,107,92,.45); color: var(--sunset);" disabled>
+          Restore from Backup
+        </button>
+      </form>
+
+      <div id="import-result" class="mt-4 hidden"></div>
+    </section>
+
+  </div>
+</AdminLayout>
+
+<style>
+  .backup-upload-target {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    min-height: 88px;
+    padding: 18px;
+    border: 1px dashed var(--line);
+    border-radius: 8px;
+    background: var(--surface-2);
+    color: var(--paper);
+    cursor: pointer;
+    transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
+  }
+
+  .backup-upload-target:hover,
+  .backup-upload-target:focus-within {
+    border-color: var(--ember);
+    background: var(--ink-3);
+  }
+
+  .backup-upload-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+    border-radius: 8px;
+    border: 1px solid rgba(232, 137, 63, 0.35);
+    background: rgba(232, 137, 63, 0.12);
+    color: var(--ember-2);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+  }
+
+  .backup-upload-title,
+  .backup-upload-status {
+    display: block;
+  }
+
+  .backup-upload-title {
+    font-weight: 600;
+  }
+
+  .backup-upload-status {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .backup-upload-target.has-file {
+    border-style: solid;
+    border-color: rgba(232, 137, 63, 0.45);
+  }
+
+  .backup-upload-target.has-file .backup-upload-status {
+    color: var(--paper);
+  }
+</style>
+
+<script>
+  const form = document.getElementById('import-form') as HTMLFormElement;
+  const btn = document.getElementById('import-btn') as HTMLButtonElement;
+  const resultEl = document.getElementById('import-result') as HTMLDivElement;
+  const fileInput = document.getElementById('backup-file') as HTMLInputElement;
+  const fileStatus = document.getElementById('backup-file-status') as HTMLSpanElement;
+  const uploadTarget = document.querySelector('.backup-upload-target') as HTMLLabelElement;
+
+  fileInput.addEventListener('change', () => {
+    const file = fileInput.files?.[0];
+    if (!file) {
+      fileStatus.textContent = 'No file selected';
+      uploadTarget.classList.remove('has-file');
+      btn.disabled = true;
+      return;
+    }
+
+    fileStatus.textContent = `${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`;
+    uploadTarget.classList.add('has-file');
+    btn.disabled = false;
+  });
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const confirmed = window.confirm(
+      'This will permanently erase ALL existing data and replace it with the backup contents.\n\nAre you sure you want to continue?'
+    );
+    if (!confirmed) return;
+
+    const file = fileInput.files?.[0];
+    if (!file) return;
+
+    btn.disabled = true;
+    btn.textContent = 'Restoring…';
+    btn.style.opacity = '0.6';
+    resultEl.classList.add('hidden');
+    resultEl.textContent = '';
+
+    const body = new FormData();
+    body.append('file', file);
+
+    try {
+      const res = await fetch('/api/admin/backup/import', {
+        method: 'POST',
+        body,
+        credentials: 'include',
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        resultEl.className = 'mt-4 p-3 bg-red-900/30 border border-red-700 rounded text-sm text-red-300';
+        resultEl.textContent = `Error: ${data.detail ?? 'Import failed.'}`;
+      } else {
+        const counts = Object.entries(data.entity_counts as Record<string, number>)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join(', ');
+        resultEl.className = 'mt-4 p-3 bg-green-900/30 border border-green-700 rounded text-sm text-green-300';
+        resultEl.textContent = `Restore complete. Media files: ${data.media_files_copied}. Entities: ${counts}`;
+      }
+    } catch (err) {
+      resultEl.className = 'mt-4 p-3 bg-red-900/30 border border-red-700 rounded text-sm text-red-300';
+      resultEl.textContent = 'Network error — could not reach the API.';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Restore from Backup';
+      btn.style.opacity = '';
+      resultEl.classList.remove('hidden');
+    }
+  });
+</script>

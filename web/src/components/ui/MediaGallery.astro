@@ -30,7 +30,7 @@ interface Props {
   linkHref?: string;
 }
 
-const { media, maxWidth = 'none', singleMaxHeight = '20rem', bentoGrid = true, limit = 4, linkHref } = Astro.props;
+const { media, maxWidth = 'none', singleMaxHeight = '16rem', bentoGrid = true, limit = 4, linkHref } = Astro.props;
 const allMedia = media || [];
 const items = allMedia.slice(0, limit);
 const hiddenCount = allMedia.length - items.length;
@@ -366,7 +366,7 @@ function tileClass(m: MediaSummary) {
 <style>
   .media-gallery {
     display: grid;
-    gap: 4px;
+    gap: 10px;
   }
 
   .media-gallery-single {
@@ -385,7 +385,7 @@ function tileClass(m: MediaSummary) {
     color: inherit;
     cursor: pointer;
     padding: 0;
-    height: min(18rem, 42vw);
+    height: min(15rem, 36vw);
     justify-self: start;
     max-width: 100%;
     position: relative;

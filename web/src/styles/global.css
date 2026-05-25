@@ -468,12 +468,18 @@
     background: var(--nav-bg);
     backdrop-filter: blur(16px) saturate(180%);
     border-bottom: 1px solid var(--line-soft);
+  }
+  .top-nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
     padding: 0 24px;
+    height: 100%;
+    display: flex;
     align-items: center;
     justify-content: space-between;
   }
   @media (min-width: 768px) {
-    .top-nav { display: flex; }
+    .top-nav { display: block; }
     body { padding-top: 56px; }
   }
 

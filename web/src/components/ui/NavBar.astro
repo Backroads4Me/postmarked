@@ -51,23 +51,25 @@ function isActive(href: string) {
 
 <!-- Desktop Top Nav -->
 <nav class="top-nav" id="desktop-nav">
-  <a href="/" class="flex items-center gap-3">
-    <span class="brand-mark" aria-hidden="true"></span>
-    <span class="text-ember font-semibold text-lg font-display">Postmarked</span>
-  </a>
-  <div class="flex items-center gap-1">
-    {navItems.map(item => (
-      <a
-        href={item.href}
-        class:list={['nav-link', { active: isActive(item.href) }]}
-        style="flex-direction: row; gap: 6px; padding: 8px 16px; font-size: 12px;"
-      >
-        <span class="nav-symbol" set:html={item.icon}></span>
-        <span>{item.label}</span>
-      </a>
-    ))}
-    <SearchIsland client:load />
-    <ThemeToggle class="theme-toggle--desktop" />
+  <div class="top-nav-inner">
+    <a href="/" class="flex items-center gap-3">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <span class="text-ember font-semibold text-lg font-display">Postmarked</span>
+    </a>
+    <div class="flex items-center gap-1">
+      {navItems.map(item => (
+        <a
+          href={item.href}
+          class:list={['nav-link', { active: isActive(item.href) }]}
+          style="flex-direction: row; gap: 6px; padding: 8px 16px; font-size: 12px;"
+        >
+          <span class="nav-symbol" set:html={item.icon}></span>
+          <span>{item.label}</span>
+        </a>
+      ))}
+      <SearchIsland client:load />
+      <ThemeToggle class="theme-toggle--desktop" />
+    </div>
   </div>
 </nav>
 

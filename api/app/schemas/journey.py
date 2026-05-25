@@ -93,6 +93,7 @@ class PublicStopSibling(BaseModel):
     """Slim previous/next nav handle for the stop detail page."""
     slug: str
     title: str
+    address_label: Optional[str] = None
 
 
 class PublicPostSibling(BaseModel):
