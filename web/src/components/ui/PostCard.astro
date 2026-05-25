@@ -3,7 +3,6 @@
  * PostCard — a single post/update card with title, date, body, and media.
  * Shared between the home screen (LocationUpdateGroup) and stop detail pages.
  */
-import { renderMarkdown } from '../../lib/markdown.js';
 import MediaGallery from './MediaGallery.astro';
 
 interface MediaSummary {
@@ -38,28 +37,27 @@ function formatDate(dateStr?: string) {
   } catch { return ''; }
 }
 
-const renderedBody = renderMarkdown(body || summary || '');
 ---
 
 <article class={cardClass}>
   {href ? (
     <a href={href} class="location-post-link block">
-      <div class="location-post-header flex items-start justify-between gap-3 mb-1">
+      <div class="location-post-header flex items-baseline justify-start gap-2 mb-1">
         <span class="location-post-title">{title}</span>
         {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
       </div>
-      {renderedBody && (
-        <div class="location-post-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedBody} />
+      {summary && (
+        <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
       )}
     </a>
   ) : (
     <div>
-      <div class="location-post-header flex items-start justify-between gap-3 mb-1">
+      <div class="location-post-header flex items-baseline justify-start gap-2 mb-1">
         <h4 class="location-post-title">{title}</h4>
         {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
       </div>
-      {renderedBody && (
-        <div class="location-post-markdown text-muted text-sm leading-relaxed" set:html={renderedBody} />
+      {summary && (
+        <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
       )}
     </div>
   )}
@@ -73,6 +71,7 @@ const renderedBody = renderMarkdown(body || summary || '');
     text-decoration: none;
   }
   .location-post-link:hover .location-post-title,
+  .location-post-link:hover .location-post-summary,
   .location-post-link:hover .location-post-markdown,
   .location-post-link:hover .label {
     color: var(--ember);
@@ -88,21 +87,8 @@ const renderedBody = renderMarkdown(body || summary || '');
     transition: color 160ms ease;
   }
 
-  .location-post-markdown :global(p) {
-    margin: 0 0 0.45rem;
+  .location-post-summary {
+    transition: color 160ms ease;
   }
 
-  .location-post-markdown :global(p:last-child),
-  .location-post-markdown :global(ul:last-child),
-  .location-post-markdown :global(h3:last-child),
-  .location-post-markdown :global(h4:last-child),
-  .location-post-markdown :global(h5:last-child) {
-    margin-bottom: 0;
-  }
-
-  .location-post-markdown :global(ul) {
-    list-style: disc;
-    margin: 0.35rem 0 0.45rem 1.1rem;
-    padding: 0;
-  }
 </style>

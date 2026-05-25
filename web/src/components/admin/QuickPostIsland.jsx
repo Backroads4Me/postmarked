@@ -27,6 +27,7 @@ export default function QuickPostIsland() {
   const [currentStopId, setCurrentStopId] = useState("");
   const [stopId, setStopId] = useState("");
   const [title, setTitle] = useState("");
+  const [summary, setSummary] = useState("");
   const [body, setBody] = useState("");
   const [postedAt, setPostedAt] = useState(() => toDatetimeLocal());
   const [status, setStatus] = useState("draft");
@@ -66,6 +67,7 @@ export default function QuickPostIsland() {
       if (raw) {
         const draft = JSON.parse(raw);
         if (draft.title) setTitle(draft.title);
+        if (draft.summary) setSummary(draft.summary);
         if (draft.body) setBody(draft.body);
       }
     } catch {}
@@ -102,9 +104,9 @@ export default function QuickPostIsland() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, body }));
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ title, summary, body }));
     } catch {}
-  }, [title, body]);
+  }, [title, summary, body]);
 
   function clearDraft() {
     try { localStorage.removeItem(DRAFT_KEY); } catch {}
@@ -215,6 +217,7 @@ export default function QuickPostIsland() {
       const mediaIds = photos.filter((p) => p.status === "done" && p.mediaId).map((p) => p.mediaId);
       const payload = {
         title: title.trim(),
+        summary: summary.trim() || null,
         body: body.trim() || null,
         stop_id: stopId || null,
         status,
@@ -287,6 +290,19 @@ export default function QuickPostIsland() {
       </div>
 
       <div className="flex flex-col gap-2">
+        <label className="text-sm font-bold" htmlFor="qp-summary">Summary</label>
+        <textarea
+          id="qp-summary"
+          value={summary}
+          onChange={(e) => setSummary(e.target.value)}
+          rows={2}
+          maxLength={500}
+          placeholder="A sentence or two that appears before the photos."
+          className="bg-surface-2 border border-line p-3 font-sans focus:border-ember"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
         <label className="text-sm font-bold" htmlFor="qp-body">Body (markdown)</label>
         <textarea
           id="qp-body"
@@ -294,7 +310,7 @@ export default function QuickPostIsland() {
           onChange={(e) => setBody(e.target.value)}
           rows={8}
           maxLength={10000}
-          placeholder="What do you want to share?"
+          placeholder="The full post text — appears after the photos."
           className="bg-surface-2 border border-line p-3 font-sans focus:border-ember"
         />
       </div>
@@ -460,7 +476,7 @@ export default function QuickPostIsland() {
           onClick={() => {
             if (confirm("Discard this draft?")) {
               clearDraft();
-              setTitle(""); setBody(""); setPostedAt(toDatetimeLocal()); setStatus("draft"); setVisibility(visibilityForStop(stopId)); clearPhotos();
+              setTitle(""); setSummary(""); setBody(""); setPostedAt(toDatetimeLocal()); setStatus("draft"); setVisibility(visibilityForStop(stopId)); clearPhotos();
             }
           }}
           disabled={publishing}

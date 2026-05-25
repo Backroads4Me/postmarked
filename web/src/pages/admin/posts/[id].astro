@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
+import { cityStateFromAddress } from '../../../lib/location.js';
 import { renderMarkdown } from '../../../lib/markdown.js';
 import MediaGallery from '../../../components/ui/MediaGallery.astro';
 
@@ -34,6 +35,14 @@ function toDatetimeLocal(iso) {
   if (!iso) return '';
   return new Date(iso).toISOString().slice(0, 16);
 }
+
+function stopOptionLabel(stop) {
+  const cityState = cityStateFromAddress(stop.address_label || stop.summary) || stop.title;
+  const monthYear = stop.start_date
+    ? new Date(stop.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    : '';
+  return monthYear ? `${cityState} - ${monthYear}` : cityState;
+}
 ---
 
 <AdminLayout title={`Edit: ${post.title}`}>
@@ -60,8 +69,16 @@ function toDatetimeLocal(iso) {
       </div>
 
       <div class="flex flex-col gap-2">
+        <label class="text-sm font-bold" for="summary">Summary</label>
+        <textarea id="summary" name="summary" rows="2" maxlength="500"
+          placeholder="A sentence or two that appears before the photos."
+          class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.summary ?? ''}</textarea>
+      </div>
+
+      <div class="flex flex-col gap-2">
         <label class="text-sm font-bold" for="body">Body (markdown)</label>
         <textarea id="body" name="body" rows="8"
+          placeholder="The full post text — appears after the photos."
           class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.body ?? ''}</textarea>
       </div>
 
@@ -71,7 +88,7 @@ function toDatetimeLocal(iso) {
           <select id="stop_id" name="stop_id" class="bg-surface-2 border border-line p-3">
             <option value="">No stop</option>
             {stops.map(s => (
-              <option value={s.id} selected={s.id === post.stop_id}>{s.title}</option>
+              <option value={s.id} selected={s.id === post.stop_id}>{stopOptionLabel(s)}</option>
             ))}
           </select>
         </div>
@@ -197,8 +214,10 @@ function toDatetimeLocal(iso) {
             <h3 id="preview-title" class="text-lg font-medium text-paper m-0 min-w-0">{post.title}</h3>
             <span id="preview-date" class="label shrink-0 mt-1">{new Date(post.posted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
           </div>
-          <div id="preview-body" class="post-preview-markdown text-muted text-sm leading-relaxed line-clamp-3" set:html={renderedPreviewBody || '<p>Markdown preview appears here as you write.</p>'} />
+          {post.summary && <p id="preview-summary" class="text-muted text-sm mt-1 mb-0">{post.summary}</p>}
+          {!post.summary && <p id="preview-summary" class="text-muted text-sm mt-1 mb-0 hidden"></p>}
           <MediaGallery media={attachedMedia} maxWidth="max-w-sm" />
+          <div id="preview-body" class="post-preview-markdown text-muted text-sm leading-relaxed mt-3" set:html={renderedPreviewBody} />
           <div class="flex items-center gap-3 mt-3 text-xs">
             <span id="preview-place" class="coord">{post.place_name || post.stop_title || ''}</span>
           </div>
@@ -223,6 +242,7 @@ function toDatetimeLocal(iso) {
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
     const previewTitle = document.getElementById('preview-title');
+    const previewSummary = document.getElementById('preview-summary');
     const previewBody = document.getElementById('preview-body');
     const previewDate = document.getElementById('preview-date');
     const previewMeta = document.getElementById('preview-meta');
@@ -292,6 +312,7 @@ function toDatetimeLocal(iso) {
 
     function updatePreview() {
       const title = form.querySelector('[name="title"]').value.trim() || 'Untitled post';
+      const summary = form.querySelector('[name="summary"]').value.trim();
       const body = form.querySelector('[name="body"]').value;
       const postedAt = form.querySelector('[name="posted_at"]').value;
       const status = form.querySelector('[name="status"]').value;
@@ -300,6 +321,8 @@ function toDatetimeLocal(iso) {
       const stop = stops.find((s) => s.id === stopId);
 
       previewTitle.textContent = title;
+      previewSummary.textContent = summary;
+      previewSummary.classList.toggle('hidden', !summary);
       previewBody.innerHTML = renderMarkdown(body);
       previewDate.textContent = postedAt ? new Date(postedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
       previewMeta.textContent = `${status} · ${visibility}`;
@@ -319,6 +342,7 @@ function toDatetimeLocal(iso) {
 
       const body = {
         title: formData.get('title'),
+        summary: formData.get('summary') || null,
         body: formData.get('body') || null,
         stop_id: formData.get('stop_id') || null,
         status: formData.get('status'),

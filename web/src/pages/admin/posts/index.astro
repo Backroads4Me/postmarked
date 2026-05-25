@@ -12,14 +12,9 @@ try {
   console.error(e);
 }
 
-function timeAgo(dateStr) {
+function formatPostDate(dateStr) {
   if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Yesterday';
-  if (diff < 7) return `${diff} days ago`;
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function statusBadge(status) {
@@ -51,7 +46,7 @@ function statusBadge(status) {
               </span>
             </div>
             <div class="flex items-center gap-3 self-center">
-              <span class="text-paper text-base font-medium leading-none">{timeAgo(post.posted_at)}</span>
+              <span class="text-paper text-base font-medium leading-none">{formatPostDate(post.posted_at)}</span>
               <a href={`/admin/posts/${post.id}`} class="btn ghost btn-sm">Edit</a>
             </div>
           </div>

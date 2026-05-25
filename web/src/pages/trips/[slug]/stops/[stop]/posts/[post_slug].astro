@@ -119,35 +119,45 @@ function fmtTime(d, timezoneId) {
     )}
 
     {/* ── Likes + Comments ────────────────────────────────── */}
-    <section class="mb-10" style="max-width: 720px; margin-left: auto; margin-right: auto;">
+    <section class="mb-6" style="max-width: 720px; margin-left: auto; margin-right: auto;">
       <div class="mb-4">
         <LikesIsland client:load targetKind="post" targetId={post.id} />
       </div>
       <CommentsIsland client:load targetKind="post" targetId={post.id} />
     </section>
 
-    {/* ── Prev / Next Activities ───────────────────────────── */}
-    {(post.prev_activity || post.next_activity) && (
-      <nav class="grid grid-cols-2 gap-3 mt-12 pt-6" style="border-top: 1px solid var(--line-soft); max-width: 720px; margin: 0 auto;">
+    {/* ── Prev / Next Posts ───────────────────────────────── */}
+    {(post.prev_post || post.next_post) && (
+      <nav class="grid grid-cols-2 gap-3 mt-6 pt-6" style="border-top: 1px solid var(--line-soft); max-width: 720px; margin-left: auto; margin-right: auto;">
         <div>
-          {post.prev_activity && (
+          {post.prev_post && (
             <a
-              href={`/trips/${post.trip_slug}/stops/${post.stop_slug}/posts/${post.prev_activity.slug}`}
+              href={`/trips/${post.prev_post.trip_slug}/stops/${post.prev_post.stop_slug}/posts/${post.prev_post.slug}`}
               class="card-flat block"
             >
-              <div class="label mb-1">← Previous</div>
-              <div style="color: var(--paper);">{post.prev_activity.title}</div>
+              <div class="post-nav-label label mb-1">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M15 18 9 12l6-6" />
+                </svg>
+                <span>Previous post</span>
+              </div>
+              <div style="color: var(--paper);">{post.prev_post.title}</div>
             </a>
           )}
         </div>
         <div style="text-align: right;">
-          {post.next_activity && (
+          {post.next_post && (
             <a
-              href={`/trips/${post.trip_slug}/stops/${post.stop_slug}/posts/${post.next_activity.slug}`}
+              href={`/trips/${post.next_post.trip_slug}/stops/${post.next_post.stop_slug}/posts/${post.next_post.slug}`}
               class="card-flat block"
             >
-              <div class="label mb-1">Next →</div>
-              <div style="color: var(--paper);">{post.next_activity.title}</div>
+              <div class="post-nav-label post-nav-label-next label mb-1">
+                <span>Next post</span>
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="m9 6 6 6-6 6" />
+                </svg>
+              </div>
+              <div style="color: var(--paper);">{post.next_post.title}</div>
             </a>
           )}
         </div>
@@ -155,3 +165,25 @@ function fmtTime(d, timezoneId) {
     )}
   </main>
 </Layout>
+
+<style>
+  .post-nav-label {
+    align-items: center;
+    display: inline-flex;
+    gap: 0.35rem;
+  }
+
+  .post-nav-label-next {
+    justify-content: flex-end;
+  }
+
+  .post-nav-label svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.4;
+    width: 1rem;
+  }
+</style>

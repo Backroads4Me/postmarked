@@ -168,6 +168,7 @@ async def _post_out(post: Post, coords: dict[uuid.UUID, tuple[float, float]], us
         slug=post.slug,
         title=post.title,
         body=post.body,
+        summary=post.summary,
         posted_at=post.posted_at,
         is_featured=post.is_featured,
         stop=stop,

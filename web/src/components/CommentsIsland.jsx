@@ -195,7 +195,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
             id={`comment-${targetId}`}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
-            rows={3}
+            rows={2}
             maxLength={2000}
             placeholder="Share a note…"
             style={{

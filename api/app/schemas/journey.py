@@ -165,6 +165,8 @@ class PublicPostDetail(PublicPostSummary):
     stop_timezone_id: Optional[str] = None
     prev_activity: Optional[PublicPostSibling] = None
     next_activity: Optional[PublicPostSibling] = None
+    prev_post: Optional[PublicPostSibling] = None
+    next_post: Optional[PublicPostSibling] = None
 
 
 PublicStopDetail.model_rebuild()

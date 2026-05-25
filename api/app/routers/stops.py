@@ -276,6 +276,52 @@ async def get_post(
 
     visible_media = visible_ready_media(post.media or [], user)
 
+    # Global post siblings ordered by post date, regardless of stop or trip.
+    post_siblings_query = (
+        select(
+            Post.id,
+            Post.slug,
+            Post.title,
+            Post.posted_at,
+            Stop.slug.label("stop_slug"),
+            Trip.slug.label("trip_slug"),
+        )
+        .join(Stop, Post.stop_id == Stop.id)
+        .join(Trip, Stop.trip_id == Trip.id)
+        .where(
+            Trip.status == TripStatus.PUBLISHED,
+            Stop.status == StopStatus.PUBLISHED,
+            Post.status == PostStatus.PUBLISHED,
+        )
+        .order_by(Post.posted_at.asc(), Post.id.asc())
+    )
+    if not user:
+        post_siblings_query = post_siblings_query.where(
+            Trip.visibility == Visibility.PUBLIC,
+            Stop.visibility == Visibility.PUBLIC,
+            Post.visibility == Visibility.PUBLIC,
+        )
+    post_sibling_rows = (await session.execute(post_siblings_query)).all()
+    prev_post = None
+    next_post = None
+    for i, row in enumerate(post_sibling_rows):
+        if row.id == post.id:
+            if i > 0:
+                prev_post = PublicPostSibling(
+                    slug=post_sibling_rows[i - 1].slug,
+                    title=post_sibling_rows[i - 1].title,
+                    stop_slug=post_sibling_rows[i - 1].stop_slug,
+                    trip_slug=post_sibling_rows[i - 1].trip_slug,
+                )
+            if i + 1 < len(post_sibling_rows):
+                next_post = PublicPostSibling(
+                    slug=post_sibling_rows[i + 1].slug,
+                    title=post_sibling_rows[i + 1].title,
+                    stop_slug=post_sibling_rows[i + 1].stop_slug,
+                    trip_slug=post_sibling_rows[i + 1].trip_slug,
+                )
+            break
+
     # Prev/next activity siblings on the same stop, ordered by activity_started_at
     prev_activity = None
     next_activity = None
@@ -331,4 +377,6 @@ async def get_post(
         stop_timezone_id=stop.timezone_id,
         prev_activity=prev_activity,
         next_activity=next_activity,
+        prev_post=prev_post,
+        next_post=next_post,
     )
