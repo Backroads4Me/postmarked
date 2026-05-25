@@ -83,7 +83,20 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         logger.info("User %s has registered.", user.id)
         base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
         approval_url = f"{base_url}/admin/users"
-        pending = user.approval_state == ApprovalState.PENDING
+
+        # approval_state may not be persisted yet (set after super().create() returns),
+        # so determine pending status by querying config directly
+        session = self.user_db.session
+        email_lower = user.email.lower().strip()
+        pre_approved = (await session.execute(
+            select(PreApprovedEmail).where(PreApprovedEmail.email == email_lower)
+        )).scalar_one_or_none()
+        if pre_approved:
+            pending = False
+        else:
+            config = (await session.execute(select(SiteConfig).limit(1))).scalar_one_or_none()
+            pending = config is None or config.require_user_approval
+
         name = user.display_name or "(no name)"
         status_text = "is pending your approval" if pending else "was automatically approved"
         subject = f"New registration: {name}"
@@ -96,7 +109,6 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             f"and <strong>{escape(status_text)}</strong>.</p>"
             f'<p><a href="{approval_url}">Manage users</a></p>'
         )
-        session = self.user_db.session
         admins = (await session.execute(
             select(User).where(User.role == UserRole.ADMIN, User.is_active == True)
         )).scalars().all()
