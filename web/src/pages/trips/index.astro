@@ -83,7 +83,7 @@ const headerText = sectionText(siteText, 'trips.header', {
             <div class="relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft" style="height: clamp(12rem, 40vh, 22rem);">
               <img
                 src={coverSrc(trip)}
-                alt={trip.cover_media.alt_text || ''}
+                alt={trip.cover_media?.alt_text || ''}
                 class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
                 loading="lazy"
               />

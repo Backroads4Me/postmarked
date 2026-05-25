@@ -295,6 +295,14 @@
     padding: 16px;
   }
 
+  .post-entry {
+    padding: 1.5rem 0;
+    border-top: 1px solid var(--line-soft);
+  }
+  .post-entry:last-child {
+    border-bottom: 1px solid var(--line-soft);
+  }
+
   .card-hero {
     background:
       var(--hero-wash),

@@ -70,17 +70,19 @@ function fmtRange(start, end) {
 
 <Layout title={`${detail.title} — ${detail.trip_title}`}>
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
-    {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
+    {loadError && <div class="card-flat mb-4 text-sm text-ember" style="max-width: 720px; margin: 0 auto;">{loadError}</div>}
 
     {/* ── Breadcrumb ───────────────────────────────────────── */}
-    <Breadcrumb items={[
-      { label: 'Home', href: '/' },
-      { label: detail.trip_title, href: `/trips/${detail.trip_slug}` },
-      { label: cityStateFromAddress(detail.address_label) || detail.place_name || detail.title },
-    ]} />
+    <div style="max-width: 720px; margin: 0 auto;">
+      <Breadcrumb items={[
+        { label: 'Home', href: '/' },
+        { label: detail.trip_title, href: `/trips/${detail.trip_slug}` },
+        { label: cityStateFromAddress(detail.address_label) || detail.place_name || detail.title },
+      ]} />
+    </div>
 
     {/* ── Hero ─────────────────────────────────────────────── */}
-    <section class="mb-8">
+    <section class="mb-12" style="max-width: 720px; margin: 0 auto;">
       <div class="flex items-center gap-2 mb-3 flex-wrap">
         {detail.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
         {detail.start_date && <span class="label">{fmtRange(detail.start_date, detail.end_date)}</span>}
@@ -91,74 +93,28 @@ function fmtRange(start, end) {
 
     {/* ── Gallery ──────────────────────────────────────────── */}
     {gallery.length > 0 && (
-      <section class="mb-10">
+      <section class="mb-16" style="max-width: 1100px; margin: 0 auto;">
         <MediaGallery media={gallery} limit={gallery.length} />
       </section>
     )}
 
     {/* ── Body ─────────────────────────────────────────────── */}
     {detail.body && (
-      <section class="mb-10">
-        <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.7;">{detail.body}</p>
+      <section class="mb-10" style="max-width: 720px; margin: 0 auto;">
+        <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.8;">{detail.body}</p>
       </section>
     )}
 
     {detail.public_note && (
-      <section class="mb-10">
-        <div class="card-flat">
-          <div class="label mb-2">Note from the road</div>
-          <p style="font-family: var(--sans); white-space: pre-wrap;">"{detail.public_note}"</p>
-        </div>
-      </section>
-    )}
-
-    {/* ── Activities ───────────────────────────────────────── */}
-    {activities.length > 0 && (
-      <section class="mb-10">
-        <h2 class="display text-2xl mb-3">Activities</h2>
-        <div class="grid gap-3">
-          {activities.map(p => (
-            <article class="card-flat">
-              <div class="flex items-start justify-between mb-2 gap-3">
-                <div>
-                  <a href={`/trips/${detail.trip_slug}/stops/${detail.slug}/posts/${p.slug}`}
-                     class="text-base font-medium hover:text-ember transition-colors"
-                     style="color: var(--paper); text-decoration: none;">
-                    {p.title}
-                  </a>
-                  {p.activity_started_at && (
-                    <span class="label block mt-0.5">{fmtActivityTime(p.activity_started_at, detail.timezone_id)}</span>
-                  )}
-                </div>
-                {p.activity_type && (
-                  <span class="badge" style="white-space: nowrap; text-transform: capitalize;">{p.activity_type.replace(/_/g, ' ')}</span>
-                )}
-              </div>
-              {p.summary && <p class="text-sm mb-2" style="color: var(--paper-muted);">{p.summary}</p>}
-              {p.body && <p class="text-muted text-sm" style="white-space: pre-wrap;">{p.body}</p>}
-              {p.poi && (
-                <div class="mt-3 pt-3" style="border-top: 1px solid var(--line-soft);">
-                  <div class="label mb-1">{p.poi.label}</div>
-                  {p.poi.google_maps_url && (
-                    <a href={p.poi.google_maps_url} target="_blank" rel="noopener noreferrer"
-                       class="text-xs" style="color: var(--ember); text-decoration: none;">
-                      Open in Maps ↗
-                    </a>
-                  )}
-                </div>
-              )}
-              {p.media && p.media.length > 0 && (
-                <MediaGallery media={p.media} singleMaxHeight="18rem" linkHref={`/trips/${detail.trip_slug}/stops/${detail.slug}/posts/${p.slug}`} />
-              )}
-            </article>
-          ))}
-        </div>
+      <section class="mb-10" style="max-width: 720px; margin: 0 auto;">
+        <div class="label mb-3">Note from the road</div>
+        <blockquote style="border-left: 2px solid var(--ember); padding-left: 1.25rem; margin: 0; font-family: var(--sans); font-style: italic; color: var(--paper-2); line-height: 1.7;">{detail.public_note}</blockquote>
       </section>
     )}
 
     {/* ── Map (stop + POIs + photo GPS dots) ──────────────── */}
     {detail.latitude != null && detail.longitude != null && (
-      <section class="mb-10">
+      <section class="mb-16" style="max-width: 1100px; margin: 0 auto;">
         <StopMapIsland
           client:load
           latitude={detail.latitude}
@@ -171,9 +127,9 @@ function fmtRange(start, end) {
 
     {/* ── Updates ──────────────────────────────────────────── */}
     {updates.length > 0 && (
-      <section class="mb-10">
-        <h2 class="display text-2xl mb-3">Updates from here</h2>
-        <div class="grid gap-3">
+      <section class="mb-12" style="max-width: 720px; margin: 0 auto;">
+        <h2 class="display text-2xl mb-2">Updates from here</h2>
+        <div>
           {updates.map(p => (
             <PostCard
               title={p.title}
@@ -182,7 +138,7 @@ function fmtRange(start, end) {
               summary={p.summary}
               media={p.media}
               href={`/trips/${detail.trip_slug}/stops/${detail.slug}/posts/${p.slug}`}
-              cardClass="card-flat"
+              cardClass="post-entry"
             />
           ))}
         </div>
@@ -198,7 +154,7 @@ function fmtRange(start, end) {
     </section>
 
     {/* ── Prev / Next ─────────────────────────────────────── */}
-    <nav class="grid grid-cols-2 gap-3 mt-12 pt-6 border-t border-line-soft">
+    <nav class="grid grid-cols-2 gap-3 mt-12 pt-6 border-t border-line-soft" style="max-width: 720px; margin: 0 auto;">
       <div>
         {detail.prev && (
           <a href={`/trips/${detail.trip_slug}/stops/${detail.prev.slug}`} class="card-flat block">
