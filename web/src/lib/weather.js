@@ -29,7 +29,7 @@ export const WMO_CODES = {
   99: { label: 'T-storm w/ Hail',        icon: 'thunderstorm-with-hail' },
 };
 
-export async function fetchWeather(lat, lon) {
+async function fetchWeatherOpenMeteo(lat, lon) {
   try {
     const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=3&temperature_unit=fahrenheit`;
     const res = await fetch(url);
@@ -68,4 +68,61 @@ export async function fetchWeather(lat, lon) {
   } catch {
     return null;
   }
+}
+
+async function fetchWeatherNWS(lat, lon) {
+  try {
+    const pointsRes = await fetch(
+      `https://api.weather.gov/points/${lat},${lon}`,
+      { headers: { 'User-Agent': 'postmarked-app/1.0 (contact@werehere.app)' } },
+    );
+    if (!pointsRes.ok) return null;
+    const pointsData = await pointsRes.json();
+
+    const forecastUrl = pointsData.properties?.forecast;
+    const forecastHourlyUrl = pointsData.properties?.forecastHourly;
+    if (!forecastUrl || !forecastHourlyUrl) return null;
+
+    const ua = { headers: { 'User-Agent': 'postmarked-app/1.0 (contact@werehere.app)' } };
+    const [dailyRes, hourlyRes] = await Promise.all([
+      fetch(forecastUrl, ua),
+      fetch(forecastHourlyUrl, ua),
+    ]);
+    if (!dailyRes.ok || !hourlyRes.ok) return null;
+
+    const [dailyData, hourlyData] = await Promise.all([dailyRes.json(), hourlyRes.json()]);
+
+    const hourlyPeriods = hourlyData.properties?.periods ?? [];
+    const dailyPeriods = dailyData.properties?.periods ?? [];
+
+    const currentPeriod = hourlyPeriods[0];
+    if (!currentPeriod) return null;
+
+    const daytimePeriods = dailyPeriods.filter((p) => p.isDaytime).slice(1, 3);
+    const forecast = daytimePeriods.map((p) => {
+      const night = dailyPeriods.find((n) => !n.isDaytime && n.number === p.number + 1);
+      return {
+        day: new Date(p.startTime).toLocaleDateString('en-US', { weekday: 'short' }),
+        high: p.temperature,
+        low: night?.temperature ?? p.temperature - 15,
+        label: p.shortForecast,
+        icon: 'clear',
+      };
+    });
+
+    return {
+      current: {
+        temp: currentPeriod.temperature,
+        label: currentPeriod.shortForecast,
+        icon: 'clear',
+      },
+      forecast,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchWeather(lat, lon) {
+  return (await fetchWeatherOpenMeteo(lat, lon)) ?? (await fetchWeatherNWS(lat, lon));
 }

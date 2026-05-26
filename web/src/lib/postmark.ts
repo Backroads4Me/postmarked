@@ -51,7 +51,7 @@ export function postmarkSvg(options: PostmarkOptions = {}) {
     ? +(naturalCitySize * (maxCityWidth / naturalCityWidth)).toFixed(2)
     : +naturalCitySize.toFixed(2);
 
-  const topSize = +(size * 0.095).toFixed(2);
+  const topSize = +(size * 0.125).toFixed(2);
   const dateSize = +(size * 0.078).toFixed(2);
   const topLetterSpacing = +(size * 0.014).toFixed(2);
   const dateLetterSpacing = +(size * 0.005).toFixed(2);

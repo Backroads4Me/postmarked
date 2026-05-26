@@ -79,7 +79,7 @@ const primaryClass = variant === 'hero'
   : 'stop-identity-primary display text-xl';
 const detailClass = variant === 'hero'
   ? 'stop-identity-detail lede mt-4 text-base'
-  : 'stop-identity-detail text-muted text-sm mt-0.5';
+  : 'stop-identity-detail text-muted text-sm';
 
 ---
 
@@ -111,6 +111,10 @@ const detailClass = variant === 'hero'
   .stop-identity-detail {
     margin: 0;
     transition: color 160ms ease;
+  }
+
+  .stop-identity-default .stop-identity-detail {
+    margin-top: 0.4rem;
   }
 
   .stop-identity-hero .stop-identity-detail {

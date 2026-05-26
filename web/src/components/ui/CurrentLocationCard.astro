@@ -208,15 +208,15 @@ const postmarkState = cityState?.state || '';
     position: relative;
     z-index: 1;
     display: block;
-    min-height: 240px;
-    padding: clamp(22px, 3.4vw, 34px) clamp(22px, 3.4vw, 34px) 72px;
+    min-height: 210px;
+    padding: clamp(18px, 2.8vw, 28px) clamp(22px, 3.4vw, 34px) 54px;
   }
 
   .current-status {
     display: flex;
     align-items: center;
     gap: 12px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
   }
 
   .current-title {
@@ -255,7 +255,7 @@ const postmarkState = cityState?.state || '';
     display: flex;
     flex-wrap: wrap;
     gap: 22px 34px;
-    margin-top: 34px;
+    margin-top: 26px;
   }
 
   .current-meta div {
@@ -317,7 +317,6 @@ const postmarkState = cityState?.state || '';
   .route-footer .route-trip {
     color: color-mix(in srgb, var(--dim) 58%, var(--paper) 42%);
     font-family: var(--mono);
-    font-size: 0.72rem;
     letter-spacing: 0.14em;
     text-align: center;
     text-transform: uppercase;
@@ -330,7 +329,7 @@ const postmarkState = cityState?.state || '';
   @media (max-width: 920px) {
     .current-grid {
       min-height: 0;
-      padding-bottom: 24px;
+      padding-bottom: 20px;
     }
 
     .current-postmark {
@@ -346,7 +345,7 @@ const postmarkState = cityState?.state || '';
     }
 
     .current-grid {
-      padding: 20px;
+      padding: 18px;
     }
 
     .current-meta {
