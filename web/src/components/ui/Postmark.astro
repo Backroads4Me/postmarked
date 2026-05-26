@@ -1,0 +1,36 @@
+---
+import { postmarkSvg, type PostmarkOptions } from '../../lib/postmark';
+
+interface Props extends PostmarkOptions {
+  class?: string;
+}
+
+const props = Astro.props;
+const className = props.class;
+---
+
+<span class:list={['postmark', className]} set:html={postmarkSvg(props)} />
+
+<style>
+  .postmark {
+    display: inline-block;
+    line-height: 0;
+  }
+
+  .postmark :global(.postmark-svg) {
+    display: block;
+    height: auto;
+    max-width: 100%;
+  }
+
+  .postmark :global(.postmark-svg__top),
+  .postmark :global(.postmark-svg__date) {
+    font-family: var(--mono);
+    font-weight: 700;
+  }
+
+  .postmark :global(.postmark-svg__city) {
+    font-family: "DM Serif Display", var(--display);
+    font-weight: 400;
+  }
+</style>

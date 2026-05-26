@@ -44,17 +44,23 @@
 }
 
 :root {
-  --ink-0: #111820;
+  --dark-page: #0D141C;
+  --dark-card: #202A35;
+  --dark-card-grid: rgba(255, 255, 255, 0.035);
+  --dark-paper-text: #F1E6C8;
+  --dark-muted: #A7A091;
+  --dark-border: #3A4654;
+  --ink-0: var(--dark-page);
   --ink-1: #151D27;
-  --ink-2: #1D2733;
+  --ink-2: var(--dark-card);
   --ink-3: #263241;
-  --ink-4: #344254;
-  --line: #344254;
-  --line-soft: #263241;
-  --paper: #F2E6C9;
+  --ink-4: var(--dark-border);
+  --line: var(--dark-border);
+  --line-soft: #2B3542;
+  --paper: var(--dark-paper-text);
   --paper-2: #D5C8AD;
   --paper-muted: var(--paper-2);
-  --muted: #9FA8AF;
+  --muted: var(--dark-muted);
   --dim: #7B858E;
   --faint: #56616C;
   --ember: #E55343;
