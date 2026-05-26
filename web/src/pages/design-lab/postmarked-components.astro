@@ -1,0 +1,810 @@
+---
+import Layout from '../../layouts/Layout.astro';
+import Postmark from '../../components/ui/Postmark.astro';
+
+const weather = {
+  current: { temp: 60, label: 'Mostly clear', icon: 'clear-night' },
+  forecast: [
+    { day: 'Wed', high: 60, low: 48, label: 'Moderate rain', icon: 'moderate-rain' },
+    { day: 'Thu', high: 56, low: 44, label: 'Partly cloudy', icon: 'partly-cloudy' },
+  ],
+};
+
+const posts = [
+  {
+    title: 'Second post of the stop',
+    date: 'May 25, 2026',
+    summary: 'This is a brief summary of the post.',
+    media: ['Campfire', 'Trail break'],
+  },
+  {
+    title: 'Morning walk by the marina',
+    date: 'May 24, 2026',
+    summary: 'Cool air, quiet docks, and a few route notes before the next drive.',
+    media: [],
+  },
+];
+
+const requestedTheme = Astro.url.searchParams.get('theme');
+const labTheme = requestedTheme === 'dark' ? 'dark' : requestedTheme === 'light' ? 'light' : null;
+---
+
+<Layout title="Postmarked Component Lab" hideNav>
+  {labTheme && (
+    <script is:inline define:vars={{ labTheme }}>
+      document.documentElement.dataset.theme = labTheme;
+    </script>
+  )}
+  <main class="lab-shell">
+    <section class="lab-nav-preview" aria-label="Navigation treatment preview">
+      <a href="/" class="lab-brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>Postmarked</span>
+      </a>
+      <div class="lab-nav-links" aria-label="Preview links">
+        <span class="active">Home</span>
+        <span>All Trips</span>
+        <span>Account</span>
+        <span>Search</span>
+        <a class="lab-theme-pill" href="?theme=light">Light</a>
+        <a class="lab-theme-pill" href="?theme=dark">Dark</a>
+      </div>
+    </section>
+
+    <section class="lab-header" id="section-heading-treatment">
+      <h1>On the Road</h1>
+      <div class="lab-lede-row">
+        <span class="wave-rule" aria-hidden="true"></span>
+        <p>Quick updates from the road - where we are, where we've been, and where we're headed.</p>
+      </div>
+    </section>
+
+    <section class="lab-panel" aria-labelledby="postmark-test-heading">
+      <div class="lab-section-heading">
+        <div>
+          <p class="lab-kicker">Component 1</p>
+          <h2 id="postmark-test-heading">Postmark SVG</h2>
+        </div>
+        <span>Long names, light/dark ink, two- and four-digit years</span>
+      </div>
+      <div class="postmark-grid">
+        <Postmark city="Bayfield" state="WI" date="May 23" year="2026" landmark="Wisconsin" size={220} rotate={-7} />
+        <Postmark city="Capitol Reef" state="UT" date="Oct 19" year="2025" landmark="Utah" size={190} rotate={4} />
+        <div class="postmark-dark">
+          <Postmark city="Moab" state="UT" date="Oct 26" year="25" landmark="On the Road" color="#E85844" size={190} rotate={-5} />
+        </div>
+      </div>
+    </section>
+
+    <section class="airmail-frame" id="current-location-card-test" aria-labelledby="current-location-heading">
+      <div class="airmail-card">
+        <div class="current-grid">
+          <div class="current-copy">
+            <div class="current-status">
+              <span class="pulse-dot"></span>
+              <span class="eyebrow">Currently At</span>
+            </div>
+            <h2 id="current-location-heading">Bayfield, WI</h2>
+            <p class="place-name">Apostle Islands Area Campground</p>
+            <div class="current-meta">
+              <div>
+                <span>Arrived</span>
+                <strong>Sat, May 23</strong>
+              </div>
+              <div>
+                <span>Staying</span>
+                <strong>4 nights</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="greeting-stamp" aria-hidden="true">
+            <span>Greetings From</span>
+            <strong>Bayfield, WI</strong>
+          </div>
+
+          <div class="current-postmark" aria-label="Bayfield postmark preview">
+            <Postmark city="Bayfield" state="WI" date="May 23" year="2026" landmark="Wisconsin" size={210} rotate={-8} />
+          </div>
+
+          <aside class="weather-card" aria-label="Weather preview">
+            <div class="weather-now">
+              <strong>{weather.current.temp}&deg;</strong>
+              <img src={`/weather-icons/${weather.current.icon}.png`} alt={weather.current.label} width="58" height="58" />
+            </div>
+            <div class="weather-days">
+              {weather.forecast.map((day) => (
+                <div>
+                  <span>{day.day}</span>
+                  <img src={`/weather-icons/${day.icon}.png`} alt={day.label} width="25" height="25" />
+                  <strong>{day.high}&deg; <em>/ {day.low}&deg;</em></strong>
+                </div>
+              ))}
+            </div>
+          </aside>
+        </div>
+
+        <footer class="route-footer">
+          <a href="/">Saginaw, MN</a>
+          <span>Michigan, NY 2026</span>
+          <a href="/">Christmas, MI</a>
+        </footer>
+      </div>
+    </section>
+
+    <section class="updates-heading" id="heading-cta-test">
+      <h2>Latest Updates</h2>
+      <a href="/timeline"><span class="wave-rule" aria-hidden="true"></span>See full timeline</a>
+    </section>
+
+    <section class="ticket-card" id="update-card-test" aria-labelledby="update-card-heading">
+      <div class="ticket-main">
+        <header>
+          <h2 id="update-card-heading">May 23 - Bayfield, WI</h2>
+          <p>Apostle Islands Area Campground</p>
+        </header>
+        <div class="ticket-post-list">
+          {posts.map((post) => (
+            <article>
+              <h3>{post.title} <span>{post.date}</span></h3>
+              <p>{post.summary}</p>
+              <a href="/">Read more -></a>
+              {post.media.length > 0 && (
+                <div class="media-strip" aria-label="Media preview">
+                  {post.media.map((label, index) => <span class={`media-tile media-tile-${index + 1}`}>{label}</span>)}
+                </div>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <aside class="ticket-stamp-area">
+        <div>
+          <span class="label">Posted</span>
+          <p>May 25, 2026</p>
+        </div>
+        <Postmark city="On the Road" state="UT" date="May 25" year="2026" landmark="Moab" size={145} rotate={-8} />
+        <div class="postage-mark" aria-hidden="true">P</div>
+      </aside>
+    </section>
+  </main>
+</Layout>
+
+<style>
+  :global(body) {
+    background:
+      radial-gradient(circle at 50% 0, color-mix(in srgb, var(--surface) 72%, transparent), transparent 34rem),
+      var(--bg);
+  }
+
+  .lab-shell {
+    --lab-paper: color-mix(in srgb, var(--surface) 84%, white 16%);
+    --lab-paper-soft: color-mix(in srgb, var(--surface) 76%, white 24%);
+    --lab-border: var(--line);
+    max-width: 1320px;
+    margin: 0 auto;
+    padding: 18px 20px 72px;
+  }
+
+  .lab-nav-preview {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    min-height: 54px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+
+  .lab-brand,
+  .lab-nav-links {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .lab-brand {
+    color: var(--ember);
+    font-family: var(--display);
+    font-size: 1.25rem;
+    font-weight: 700;
+  }
+
+  .lab-nav-links {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .lab-nav-links .active {
+    color: var(--ember);
+  }
+
+  .lab-theme-pill {
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    background: var(--surface-2);
+    padding: 10px 18px;
+  }
+
+  .lab-header {
+    padding: 30px 0 24px;
+  }
+
+  .lab-header h1,
+  .current-copy h2,
+  .updates-heading h2,
+  .ticket-main h2 {
+    color: var(--paper);
+    font-family: var(--display);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  .lab-header h1 {
+    margin: 0;
+    font-size: clamp(2.6rem, 6vw, 4.25rem);
+    line-height: 0.98;
+  }
+
+  .lab-lede-row {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+    margin-top: 16px;
+  }
+
+  .lab-lede-row p {
+    margin: 0;
+    color: var(--paper-2);
+    font-family: var(--display);
+    font-size: clamp(1.15rem, 2.4vw, 1.65rem);
+    line-height: 1.35;
+  }
+
+  .wave-rule {
+    display: inline-block;
+    width: 112px;
+    height: 24px;
+    flex: 0 0 auto;
+    background:
+      repeating-radial-gradient(ellipse at 50% 50%, transparent 0 8px, var(--ember) 8.5px 10px, transparent 10.5px 18px);
+    clip-path: polygon(0 15%, 100% 0, 100% 100%, 0 85%);
+    opacity: 0.94;
+  }
+
+  .lab-panel {
+    margin-bottom: 22px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--surface);
+    padding: 20px;
+    box-shadow: var(--shadow-card);
+  }
+
+  .lab-section-heading,
+  .updates-heading {
+    display: flex;
+    align-items: end;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .lab-section-heading h2 {
+    margin: 0;
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: 1.65rem;
+  }
+
+  .lab-section-heading span {
+    color: var(--muted);
+    font-size: 0.92rem;
+  }
+
+  .lab-kicker {
+    margin: 0 0 2px;
+    color: var(--ember);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+  }
+
+  .postmark-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    align-items: center;
+    margin-top: 20px;
+  }
+
+  .postmark-grid > * {
+    display: grid;
+    min-height: 240px;
+    place-items: center;
+    border: 1px dashed var(--line-soft);
+    border-radius: 8px;
+    background: var(--surface-2);
+  }
+
+  .postmark-dark {
+    background: #152038;
+  }
+
+  .airmail-frame {
+    margin-top: 24px;
+    padding: 11px;
+    border-radius: 8px;
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--ember) 78%, white 22%) 0 12px,
+      color-mix(in srgb, var(--surface) 88%, white 12%) 12px 24px,
+      color-mix(in srgb, var(--sky) 70%, white 30%) 24px 36px,
+      color-mix(in srgb, var(--surface) 88%, white 12%) 36px 48px
+    );
+    box-shadow: var(--shadow-float);
+  }
+
+  .airmail-card,
+  .ticket-card {
+    position: relative;
+    border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface) 84%, white 16%), var(--surface)),
+      var(--surface);
+    overflow: hidden;
+  }
+
+  .airmail-card::before,
+  .ticket-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    background-size: 34px 34px;
+    opacity: 0.45;
+  }
+
+  .current-grid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(8rem, 0.65fr) minmax(15rem, 1fr) minmax(9rem, 0.55fr);
+    gap: 26px;
+    align-items: center;
+    min-height: 240px;
+    padding: clamp(22px, 3.4vw, 34px);
+  }
+
+  .current-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 18px;
+  }
+
+  .current-copy h2 {
+    margin: 0 0 10px;
+    font-size: clamp(2.1rem, 5vw, 3.55rem);
+    line-height: 0.96;
+  }
+
+  .place-name {
+    margin: 0;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.86rem;
+  }
+
+  .current-meta {
+    display: flex;
+    gap: 34px;
+    margin-top: 22px;
+  }
+
+  .current-meta div {
+    display: grid;
+    gap: 5px;
+  }
+
+  .current-meta span {
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .current-meta strong {
+    color: var(--paper-2);
+    font-family: var(--display);
+    font-size: 1.2rem;
+  }
+
+  .greeting-stamp {
+    justify-self: center;
+    width: 154px;
+    border: 2px solid var(--ember);
+    border-radius: 6px;
+    color: var(--ember);
+    padding: 10px 12px;
+    text-align: center;
+    text-transform: uppercase;
+    transform: rotate(-3deg);
+  }
+
+  .greeting-stamp span,
+  .ticket-stamp-area .label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+  }
+
+  .greeting-stamp strong {
+    display: block;
+    margin-top: 3px;
+    font-family: var(--display);
+    font-size: 1.22rem;
+  }
+
+  .current-postmark {
+    justify-self: center;
+  }
+
+  .weather-card {
+    display: grid;
+    gap: 14px;
+    justify-self: end;
+    min-width: 10rem;
+  }
+
+  .weather-now,
+  .weather-days div {
+    display: flex;
+    align-items: center;
+  }
+
+  .weather-now {
+    gap: 12px;
+  }
+
+  .weather-now strong {
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: 3.3rem;
+    line-height: 1;
+  }
+
+  .weather-days {
+    display: grid;
+    gap: 8px;
+  }
+
+  .weather-days div {
+    justify-content: space-between;
+    gap: 10px;
+    color: var(--paper-2);
+  }
+
+  .weather-days span {
+    width: 2.2rem;
+    color: var(--muted);
+  }
+
+  .weather-days strong {
+    font-family: var(--display);
+    font-size: 1.08rem;
+  }
+
+  .weather-days em {
+    color: var(--muted);
+    font-style: normal;
+  }
+
+  .route-footer {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 18px;
+    align-items: center;
+    border-top: 1px dashed var(--line-soft);
+    padding: 14px clamp(18px, 3vw, 28px);
+    color: var(--muted);
+    font-family: var(--display);
+    font-size: 1.05rem;
+  }
+
+  .route-footer span {
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .route-footer a:last-child {
+    text-align: right;
+  }
+
+  .updates-heading {
+    margin: 28px 2px 16px;
+  }
+
+  .updates-heading h2 {
+    margin: 0;
+    font-size: clamp(1.9rem, 3vw, 2.45rem);
+  }
+
+  .updates-heading a {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+    font-weight: 700;
+  }
+
+  .updates-heading .wave-rule {
+    width: 74px;
+    height: 20px;
+  }
+
+  .ticket-card {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(18rem, 0.85fr);
+    border-left: 0;
+    border-right: 0;
+    overflow: visible;
+    box-shadow: var(--shadow-card);
+  }
+
+  .ticket-card::after {
+    content: "";
+    position: absolute;
+    top: 18px;
+    bottom: 18px;
+    left: 0;
+    width: 100%;
+    pointer-events: none;
+    background:
+      radial-gradient(
+        circle at -6px 12px,
+        transparent 0 11.2px,
+        color-mix(in srgb, var(--line) 82%, transparent) 11.4px 12.4px,
+        transparent 12.8px
+      ) left top / 8px 24px repeat-y,
+      radial-gradient(
+        circle at calc(100% + 6px) 12px,
+        transparent 0 11.2px,
+        color-mix(in srgb, var(--line) 82%, transparent) 11.4px 12.4px,
+        transparent 12.8px
+      ) right top / 8px 24px repeat-y,
+      radial-gradient(
+        circle at -6px 12px,
+        var(--bg) 0 11.3px,
+        transparent 11.6px
+      ) left top / 8px 24px repeat-y,
+      radial-gradient(
+        circle at calc(100% + 6px) 12px,
+        var(--bg) 0 11.3px,
+        transparent 11.6px
+      ) right top / 8px 24px repeat-y,
+      repeating-linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--line) 82%, transparent) 0 5px,
+        transparent 5px 19px,
+        color-mix(in srgb, var(--line) 82%, transparent) 19px 24px
+      ) left top / 1px 100% no-repeat,
+      repeating-linear-gradient(
+        to bottom,
+        color-mix(in srgb, var(--line) 82%, transparent) 0 5px,
+        transparent 5px 19px,
+        color-mix(in srgb, var(--line) 82%, transparent) 19px 24px
+      ) right top / 1px 100% no-repeat;
+  }
+
+  .ticket-main,
+  .ticket-stamp-area {
+    position: relative;
+    z-index: 1;
+    padding: clamp(22px, 3vw, 34px);
+  }
+
+  .ticket-main {
+    border-right: 1px dashed var(--line-soft);
+  }
+
+  .ticket-main h2 {
+    margin: 0;
+    font-size: clamp(1.55rem, 2.8vw, 2rem);
+  }
+
+  .ticket-main header p {
+    margin: 4px 0 0;
+    color: var(--muted);
+    font-family: var(--display);
+    font-size: 1.05rem;
+  }
+
+  .ticket-post-list {
+    display: grid;
+    gap: 18px;
+    margin-top: 24px;
+    border-top: 1px dashed var(--line-soft);
+    padding-top: 18px;
+  }
+
+  .ticket-post-list article h3 {
+    margin: 0;
+    color: var(--paper);
+    font-size: 1rem;
+  }
+
+  .ticket-post-list article h3 span {
+    margin-left: 6px;
+    color: var(--dim);
+    font-family: var(--mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .ticket-post-list article p {
+    margin: 4px 0 0;
+    color: var(--muted);
+  }
+
+  .ticket-post-list article a {
+    display: inline-block;
+    margin-top: 4px;
+    color: var(--ember);
+  }
+
+  .media-strip {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 13rem));
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .media-tile {
+    display: grid;
+    min-height: 8.4rem;
+    place-items: end start;
+    border-radius: 6px;
+    color: white;
+    padding: 10px;
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .media-tile-1 {
+    background:
+      linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.42)),
+      linear-gradient(135deg, #426e4b, #9ab06e 48%, #21331f);
+  }
+
+  .media-tile-2 {
+    background:
+      linear-gradient(180deg, transparent, rgba(0, 0, 0, 0.42)),
+      radial-gradient(circle at 56% 34%, #ffb64a 0 12%, #d84f2b 13% 24%, transparent 25%),
+      linear-gradient(135deg, #2d4b2e, #6a863e);
+  }
+
+  .ticket-stamp-area {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 22px 12px;
+    align-content: start;
+    align-items: start;
+  }
+
+  .ticket-stamp-area .label {
+    color: var(--ember);
+  }
+
+  .ticket-stamp-area p {
+    margin: 6px 0 0;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .postage-mark {
+    display: grid;
+    width: 76px;
+    aspect-ratio: 1;
+    place-items: center;
+    border: 1px solid var(--line);
+    color: var(--ember);
+    background:
+      repeating-linear-gradient(-45deg, color-mix(in srgb, var(--surface-2) 80%, white 20%) 0 10px, color-mix(in srgb, var(--surface) 74%, white 26%) 10px 20px);
+    font-family: var(--display);
+    font-size: 2.35rem;
+    font-weight: 700;
+    outline: 5px dotted color-mix(in srgb, var(--line) 70%, transparent);
+    outline-offset: -3px;
+  }
+
+  @media (max-width: 920px) {
+    .lab-nav-preview,
+    .lab-section-heading,
+    .updates-heading {
+      align-items: start;
+      flex-direction: column;
+    }
+
+    .lab-nav-links {
+      flex-wrap: wrap;
+    }
+
+    .lab-lede-row {
+      align-items: start;
+      flex-direction: column;
+    }
+
+    .postmark-grid,
+    .current-grid,
+    .ticket-card {
+      grid-template-columns: 1fr;
+    }
+
+    .current-grid {
+      gap: 20px;
+    }
+
+    .greeting-stamp,
+    .current-postmark,
+    .weather-card {
+      justify-self: start;
+    }
+
+    .ticket-main {
+      border-right: 0;
+      border-bottom: 1px dashed var(--line-soft);
+    }
+  }
+
+  @media (max-width: 520px) {
+    .lab-shell {
+      padding: 14px 12px 48px;
+    }
+
+    .current-meta,
+    .media-strip,
+    .route-footer {
+      grid-template-columns: 1fr;
+    }
+
+    .current-meta {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .route-footer {
+      justify-items: start;
+    }
+
+    .route-footer a:last-child {
+      text-align: left;
+    }
+  }
+</style>

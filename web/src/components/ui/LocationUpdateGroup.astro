@@ -130,6 +130,10 @@ function postHref(post: PostSummary) {
     display: block;
   }
 
+  .location-header-link .text-muted {
+    transition: color 160ms ease;
+  }
+
   .location-header-link:hover :global(.stop-identity-primary),
   .location-header-link:hover :global(.stop-identity-detail),
   .location-header-link:hover .text-muted {
@@ -139,7 +143,7 @@ function postHref(post: PostSummary) {
   .location-posts {
     border-top: 1px solid var(--line-soft);
     display: grid;
-    gap: 8px;
+    gap: 22px;
     padding: 12px;
   }
 

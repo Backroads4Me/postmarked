@@ -124,7 +124,7 @@ function formatStopDate(dateStr) {
     </section>
 
     {/* ── Hero: Current Location ─────────────────────────────── */}
-    <section class="mb-6" id="current-location-section">
+    <section class="mb-6 mt-10 md:mt-12" id="current-location-section">
       {current && activeTrip ? (
         <CurrentLocationCard
           stopTitle={current.title}
@@ -164,7 +164,7 @@ function formatStopDate(dateStr) {
           {updatesText.body && <p class="text-sm text-muted mt-1">{updatesText.body}</p>}
         </div>
         {updatesText.cta_label && updatesText.cta_href && (
-          <a href={updatesText.cta_href} class="btn btn-ghost btn-display text-2xl" aria-label="View all timeline updates">
+          <a href={updatesText.cta_href} class="btn btn-ghost btn-display timeline-link" aria-label="View all timeline updates">
             {updatesText.cta_label}
           </a>
         )}
@@ -200,3 +200,10 @@ function formatStopDate(dateStr) {
 
   </main>
 </Layout>
+
+<style>
+  .timeline-link {
+    font-size: 1.35rem;
+    font-weight: 600;
+  }
+</style>

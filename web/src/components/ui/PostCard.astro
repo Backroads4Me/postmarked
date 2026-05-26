@@ -33,44 +33,64 @@ const { title, posted_at, body, summary, media, href, cardClass = '' } = Astro.p
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
   try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return new Date(dateStr)
+      .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+      .toUpperCase();
   } catch { return ''; }
 }
 
+const dateLabel = formatDate(posted_at);
 ---
 
 <article class:list={[cardClass, href ? 'post-card-linked' : false]}>
-  {href ? (
-    <a href={href} class="location-post-link block">
-      <div class="location-post-header flex items-baseline justify-start gap-2 mb-1">
-        <span class="location-post-title">{title}</span>
-        {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
-      </div>
-      {summary && (
-        <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
+  <div class="location-post-layout">
+    <div class="location-post-main">
+      {href ? (
+        <a href={href} class="location-post-link block">
+          <div class="location-post-header">
+            <span class="location-post-title">{title}</span>
+          </div>
+          {summary && (
+            <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
+          )}
+          <span class="post-card-readmore">
+            Read more
+            <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </span>
+        </a>
+      ) : (
+        <div>
+          <div class="location-post-header">
+            <h4 class="location-post-title">{title}</h4>
+          </div>
+          {summary && (
+            <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
+          )}
+        </div>
       )}
-      <span class="post-card-readmore">
-        Read more
-        <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
-      </span>
-    </a>
-  ) : (
-    <div>
-      <div class="location-post-header flex items-baseline justify-start gap-2 mb-1">
-        <h4 class="location-post-title">{title}</h4>
-        {posted_at && <span class="label shrink-0">{formatDate(posted_at)}</span>}
-      </div>
-      {summary && (
-        <p class="location-post-summary text-muted text-sm leading-relaxed mt-1 mb-0">{summary}</p>
+
+      {media && media.length > 0 && (
+        <MediaGallery media={media} singleMaxHeight="16rem" linkHref={href} />
       )}
     </div>
-  )}
-  {media && media.length > 0 && (
-    <MediaGallery media={media} singleMaxHeight="16rem" linkHref={href} />
-  )}
+
+    {dateLabel && (
+      <aside class="location-post-meta" aria-label={`Posted ${dateLabel}`}>
+        <span>Posted</span>
+        <time datetime={posted_at}>{dateLabel}</time>
+      </aside>
+    )}
+  </div>
 </article>
 
 <style>
+  .location-post-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(8rem, 0.28fr);
+    gap: 18px;
+    align-items: start;
+  }
+
   .location-post-link {
     text-decoration: none;
   }
@@ -91,8 +111,34 @@ function formatDate(dateStr?: string) {
     transition: color 160ms ease;
   }
 
-  .location-post-summary {
+  .location-post-summary,
+  .location-post-markdown,
+  .location-post-link .label {
     transition: color 160ms ease;
+  }
+
+  .location-post-meta {
+    display: grid;
+    gap: 0.32rem;
+    justify-items: start;
+    padding-top: 0.1rem;
+  }
+
+  .location-post-meta span {
+    color: var(--ember);
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  .location-post-meta time {
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
   }
 
   .post-card-linked {
@@ -116,4 +162,14 @@ function formatDate(dateStr?: string) {
     letter-spacing: 0.01em;
   }
 
+  @media (max-width: 700px) {
+    .location-post-layout {
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .location-post-meta {
+      order: -1;
+    }
+  }
 </style>

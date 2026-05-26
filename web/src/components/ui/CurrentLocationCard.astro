@@ -2,6 +2,8 @@
 /**
  * CurrentLocationCard — Hero card showing where the RV is right now.
  */
+import Postmark from './Postmark.astro';
+
 interface StopMention {
   cityState: string;
   slug: string;
@@ -46,125 +48,319 @@ function formatDate(dateStr?: string) {
   } catch { return dateStr; }
 }
 
-function daysAgo(dateStr?: string) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const diff = Math.floor((Date.now() - d.getTime()) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return '1 day ago';
-  return `${diff} days ago`;
+function stampDate(dateStr?: string) {
+  if (!dateStr) return 'ON ROAD';
+  try {
+    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return dateStr;
+  }
 }
 
-function cityStateFromAddress(address?: string) {
-  if (!address) return '';
+function stampYear(dateStr?: string) {
+  if (!dateStr) return '';
+  try {
+    return String(new Date(dateStr).getFullYear());
+  } catch {
+    return '';
+  }
+}
+
+function cityStateFromAddress(address?: string): { city: string; state: string; label: string } | null {
+  if (!address) return null;
   const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
-  if (parts.length < 3) return '';
+  if (parts.length < 3) return null;
 
   const city = parts.at(-2);
   const stateZip = parts.at(-1) || '';
   const state = stateZip.match(/^([A-Z]{2})(?:\s+\d{5}(?:-\d{4})?)?$/)?.[1];
-  if (!city || !state) return '';
+  if (!city || !state) return null;
 
-  return `${city}, ${state}`;
+  return { city, state, label: `${city}, ${state}` };
 }
 
-const cityStateLabel = cityStateFromAddress(summary);
-const primaryTitle = cityStateLabel || stopTitle;
-const secondaryTitle = cityStateLabel ? stopTitle : placeName && placeName !== stopTitle ? placeName : '';
+function cityStateFromTitle(title?: string): { city: string; state: string; label: string } | null {
+  const match = title?.match(/^\s*(.+?),\s*([A-Z]{2})\s*$/);
+  if (!match) return null;
+  return { city: match[1], state: match[2], label: `${match[1]}, ${match[2]}` };
+}
+
+const cityState = cityStateFromAddress(summary) || cityStateFromTitle(stopTitle);
+const primaryTitle = cityState?.label || stopTitle;
+const secondaryTitle = cityState ? stopTitle : placeName && placeName !== stopTitle ? placeName : '';
+const postmarkCity = cityState?.city || stopTitle;
+const postmarkState = cityState?.state || '';
 ---
 
-<div class="card-hero" id="current-location">
-  <div class="flex items-start gap-6">
-    {/* ── Left: location content ── */}
-    <div class="flex-1 min-w-0">
-      <div class="flex items-center gap-3 mb-4">
-        <span class="pulse-dot"></span>
-        {label && <span class="eyebrow">{label}</span>}
-      </div>
-      <h2 class="display text-3xl md:text-4xl mb-2">
-        <a href={`/trips/${tripSlug}/stops/${stopSlug}`} class="hover:text-ember-2 transition-colors">
-          {primaryTitle}
-        </a>
-      </h2>
+<div class="current-airmail-frame" id="current-location">
+  <article class="current-airmail-card">
+    <div class="current-grid">
+      <div class="current-copy">
+        <div class="current-status">
+          <span class="pulse-dot"></span>
+          {label && <span class="eyebrow">{label}</span>}
+        </div>
 
-      {secondaryTitle && (
-        <p class="coord text-lg mb-2">{secondaryTitle}</p>
-      )}
+        <h2 class="current-title">
+          <a href={`/trips/${tripSlug}/stops/${stopSlug}`}>
+            {primaryTitle}
+          </a>
+        </h2>
 
-      <div class="flex flex-wrap gap-4 text-sm">
-        {arrivalDate && (
-          <div class="flex flex-col">
-            <span class="current-meta-label mb-1">Arrived</span>
-            <span class="current-meta-value">{formatDate(arrivalDate)}</span>
-          </div>
+        {secondaryTitle && (
+          <p class="current-place">{secondaryTitle}</p>
         )}
-        {nights && nights > 0 && (
-          <div class="flex flex-col">
-            <span class="current-meta-label mb-1">Staying</span>
-            <span class="current-meta-value">{nights} night{nights !== 1 ? 's' : ''}</span>
-          </div>
-        )}
-      </div>
 
-      {note && (
-        <p class="lede mt-4 text-sm" style="font-family: var(--sans); font-size: 14px;">
-          {note}
+        <p class="current-weather-line">
+          {weather ? `${weather.current.label} · ${weather.current.temp}° in ${postmarkCity}` : `Weather updating in ${postmarkCity}`}
         </p>
-      )}
+
+        <div class="current-meta">
+          {arrivalDate && (
+            <div>
+              <span>Arrived</span>
+              <strong>{formatDate(arrivalDate)}</strong>
+            </div>
+          )}
+          {nights && nights > 0 && (
+            <div>
+              <span>Staying</span>
+              <strong>{nights} night{nights !== 1 ? 's' : ''}</strong>
+            </div>
+          )}
+        </div>
+
+        {note && (
+          <p class="current-note">{note}</p>
+        )}
+      </div>
+
+      <div class="current-postmark" aria-label={`${primaryTitle} postmark`}>
+        <Postmark
+          city={postmarkCity}
+          state={postmarkState}
+          date={stampDate(arrivalDate)}
+          year={stampYear(arrivalDate)}
+          landmark={postmarkState || 'On the Road'}
+          size={126}
+          rotate={-8}
+        />
+      </div>
     </div>
 
-    {/* ── Right: weather panel ── */}
-    {weather && (
-      <div class="shrink-0 flex flex-col items-start gap-4" style="min-width: 9rem;">
-        <div class="flex items-center gap-2">
-          <span class="display text-4xl">{weather.current.temp}°</span>
-          <img
-            src={`/weather-icons/${weather.current.icon}.png`}
-            alt={weather.current.label}
-            width="56"
-            height="56"
-          />
-        </div>
-        <div class="flex flex-col gap-2 w-full">
-          {weather.forecast.map(day => (
-            <div class="flex items-center justify-between gap-2">
-              <span class="text-sm text-muted font-mono w-8">{day.day}</span>
-              <img
-                src={`/weather-icons/${day.icon}.png`}
-                alt={day.label}
-                width="24"
-                height="24"
-              />
-              <span class="text-sm text-right">
-                <span>{day.high}°</span>
-                <span class="text-muted"> / {day.low}°</span>
-              </span>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
-  </div>
+    <footer class={`route-footer${prevStop || nextStop ? ' has-stops' : ''}`}>
+      {prevStop ? (
+        <a href={`/trips/${prevStop.tripSlug}/stops/${prevStop.slug}`} aria-label={`Previous stop: ${prevStop.cityState}`}>
+          {prevStop.cityState}
+        </a>
+      ) : <span />}
 
-  <div class={`flex items-center justify-between mt-4 pt-3 text-sm${prevStop || nextStop ? ' border-t border-line-soft' : ''}`}>
-    {prevStop ? (
-      <a href={`/trips/${prevStop.tripSlug}/stops/${prevStop.slug}`} class="flex items-center gap-1.5 text-muted hover:text-paper transition-colors font-medium group">
-        <svg class="w-4 h-4 text-muted group-hover:text-paper" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7" /></svg>
-        {prevStop.cityState}
-      </a>
-    ) : <span />}
-    <div class="flex items-center gap-2 text-muted">
-      {prevStop && <span class="text-dim" aria-hidden="true">|</span>}
-      <a href={`/trips/${tripSlug}`} class="label hover:text-paper transition-colors" style="font-size: 12px;">
+      <a href={`/trips/${tripSlug}`} class="route-trip">
         {tripTitle}
       </a>
-      {nextStop && <span class="text-dim" aria-hidden="true">|</span>}
-    </div>
-    {nextStop ? (
-      <a href={`/trips/${nextStop.tripSlug}/stops/${nextStop.slug}`} class="flex items-center gap-1.5 text-muted hover:text-paper transition-colors font-medium group">
-        {nextStop.cityState}
-        <svg class="w-4 h-4 text-muted group-hover:text-paper" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
-      </a>
-    ) : <span />}
-  </div>
+
+      {nextStop ? (
+        <a href={`/trips/${nextStop.tripSlug}/stops/${nextStop.slug}`} aria-label={`Next stop: ${nextStop.cityState}`}>
+          {nextStop.cityState}
+        </a>
+      ) : <span />}
+    </footer>
+  </article>
 </div>
+
+<style>
+  .current-airmail-frame {
+    padding: 6px;
+    border-radius: 8px;
+    background: repeating-linear-gradient(
+      -45deg,
+      color-mix(in srgb, var(--ember) 78%, white 22%) 0 12px,
+      color-mix(in srgb, var(--surface) 88%, white 12%) 12px 24px,
+      color-mix(in srgb, var(--sky) 70%, white 30%) 24px 36px,
+      color-mix(in srgb, var(--surface) 88%, white 12%) 36px 48px
+    );
+    box-shadow: var(--shadow-float);
+  }
+
+  .current-airmail-card {
+    position: relative;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
+    border-radius: 8px;
+    background:
+      linear-gradient(180deg, color-mix(in srgb, var(--surface) 84%, white 16%), var(--surface)),
+      var(--surface);
+  }
+
+  .current-airmail-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image:
+      linear-gradient(var(--dark-card-grid, rgba(255, 255, 255, 0.035)) 1px, transparent 1px),
+      linear-gradient(90deg, var(--dark-card-grid, rgba(255, 255, 255, 0.035)) 1px, transparent 1px);
+    background-size: 34px 34px;
+    opacity: 0.35;
+  }
+
+  .current-grid {
+    position: relative;
+    z-index: 1;
+    display: block;
+    min-height: 210px;
+    padding: clamp(18px, 2.8vw, 28px) clamp(22px, 3.4vw, 34px) 54px;
+  }
+
+  .current-status {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+
+  .current-title {
+    margin: 0 0 10px;
+    color: var(--paper);
+    font-family: var(--display);
+    font-size: clamp(2.1rem, 5vw, 3.55rem);
+    font-weight: 700;
+    letter-spacing: 0;
+    line-height: 0.96;
+  }
+
+  .current-title a {
+    transition: color 160ms ease;
+  }
+
+  .current-title a:hover {
+    color: var(--ember-2);
+  }
+
+  .current-place {
+    margin: 0;
+    color: color-mix(in srgb, var(--muted) 72%, var(--paper) 28%);
+    font-family: var(--mono);
+    font-size: 0.86rem;
+    letter-spacing: 0.04em;
+  }
+
+  .current-weather-line {
+    margin: 10px 0 0;
+    color: var(--paper-2);
+    font-size: 0.95rem;
+  }
+
+  .current-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 22px 34px;
+    margin-top: 26px;
+  }
+
+  .current-meta div {
+    display: grid;
+    gap: 5px;
+  }
+
+  .current-meta span {
+    color: var(--paper);
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .current-meta strong {
+    color: var(--paper-2);
+    font-family: var(--display);
+    font-size: 1.2rem;
+  }
+
+  .current-note {
+    max-width: 42rem;
+    margin: 18px 0 0;
+    color: var(--paper-2);
+    font-size: 0.9rem;
+  }
+
+  .current-postmark {
+    position: absolute;
+    top: clamp(16px, 2vw, 22px);
+    right: clamp(32px, 4vw, 44px);
+    opacity: 0.88;
+  }
+
+  .route-footer {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    gap: 18px;
+    align-items: center;
+    border-top: 1px dashed var(--line-soft);
+    padding: 14px clamp(18px, 3vw, 28px);
+    color: color-mix(in srgb, var(--muted) 72%, var(--paper) 28%);
+    font-family: var(--display);
+    font-size: 1.05rem;
+  }
+
+  .route-footer a {
+    transition: color 160ms ease;
+  }
+
+  .route-footer a:hover {
+    color: var(--ember);
+  }
+
+  .route-footer .route-trip {
+    color: color-mix(in srgb, var(--dim) 58%, var(--paper) 42%);
+    font-family: var(--mono);
+    letter-spacing: 0.14em;
+    text-align: center;
+    text-transform: uppercase;
+  }
+
+  .route-footer > :last-child {
+    text-align: right;
+  }
+
+  @media (max-width: 920px) {
+    .current-grid {
+      min-height: 0;
+      padding-bottom: 20px;
+    }
+
+    .current-postmark {
+      position: static;
+      margin-top: 24px;
+      max-width: 18rem;
+    }
+  }
+
+  @media (max-width: 520px) {
+    .current-airmail-frame {
+      padding: 6px;
+    }
+
+    .current-grid {
+      padding: 18px;
+    }
+
+    .current-meta {
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .route-footer {
+      grid-template-columns: 1fr;
+      justify-items: start;
+    }
+
+    .route-footer .route-trip,
+    .route-footer > :last-child {
+      text-align: left;
+    }
+  }
+</style>
