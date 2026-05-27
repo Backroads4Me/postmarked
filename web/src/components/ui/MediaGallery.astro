@@ -51,6 +51,18 @@ function posterSrc(m: MediaSummary) {
   return isVideo(m) ? '/media/' + m.id + '/poster' : '/media/' + m.id + '/webp';
 }
 
+function avifSrc(m: MediaSummary) {
+  return '/media/' + m.id + '/avif';
+}
+
+function webpSmSrc(m: MediaSummary) {
+  return '/media/' + m.id + '/webp_sm';
+}
+
+function hasSmVariant(m: MediaSummary) {
+  return (m.width || 0) > 768 || (m.height || 0) > 768;
+}
+
 function tileStyle(m: MediaSummary) {
   const aspect = m.width && m.height ? m.width + ' / ' + m.height : '4 / 3';
   return 'aspect-ratio: ' + aspect + ';';
@@ -79,25 +91,32 @@ function tileClass(m: MediaSummary) {
         style={isSingle ? tileStyle(m) : tileStyle(m)}
       >
         {isSingle ? (
-          <img
-            src={posterSrc(m)}
-            alt={m.alt_text || m.caption || ''}
-            loading="lazy"
-            decoding="async"
-            class="block mx-auto h-auto max-w-full"
-            style={'max-height: ' + singleMaxHeight + ';'}
-          />
-        ) : (
-          <div class="media-gallery-thumb">
+          <picture>
+            {!isVideo(m) && <source type="image/avif" srcset={avifSrc(m)} />}
             <img
               src={posterSrc(m)}
               alt={m.alt_text || m.caption || ''}
-              loading={index < 4 ? 'eager' : 'lazy'}
+              loading="lazy"
               decoding="async"
-              width={m.width || undefined}
-              height={m.height || undefined}
-              class="media-gallery-image"
+              class="block mx-auto h-auto max-w-full"
+              style={'max-height: ' + singleMaxHeight + ';'}
             />
+          </picture>
+        ) : (
+          <div class="media-gallery-thumb">
+            <picture>
+              {!isVideo(m) && <source type="image/avif" srcset={avifSrc(m)} />}
+              {!isVideo(m) && hasSmVariant(m) && <source type="image/webp" srcset={`${posterSrc(m)} 1400w, ${webpSmSrc(m)} 768w`} sizes="(max-width: 640px) 100vw, 50vw" />}
+              <img
+                src={posterSrc(m)}
+                alt={m.alt_text || m.caption || ''}
+                loading={index < 4 ? 'eager' : 'lazy'}
+                decoding="async"
+                width={m.width || undefined}
+                height={m.height || undefined}
+                class="media-gallery-image"
+              />
+            </picture>
             {isVideo(m) && <span class="media-gallery-play" aria-hidden="true">▶</span>}
             {index === items.length - 1 && hiddenCount > 0 && (
               <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
@@ -143,14 +162,17 @@ function tileClass(m: MediaSummary) {
         data-media-caption={m.caption || ''}
         style={tileStyle(m)}
       >
-        <img
-          src={posterSrc(m)}
-          alt={m.alt_text || m.caption || ''}
-          loading="lazy"
-          decoding="async"
-          class="block mx-auto h-auto max-w-full"
-          style={'max-height: ' + singleMaxHeight + ';'}
-        />
+        <picture>
+          <source type="image/avif" srcset={avifSrc(m)} />
+          <img
+            src={posterSrc(m)}
+            alt={m.alt_text || m.caption || ''}
+            loading="lazy"
+            decoding="async"
+            class="block mx-auto h-auto max-w-full"
+            style={'max-height: ' + singleMaxHeight + ';'}
+          />
+        </picture>
         <span class="media-gallery-expand" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg></span>
       </button>
     ) : isVideo(m) ? (
@@ -199,15 +221,19 @@ function tileClass(m: MediaSummary) {
         style={tileStyle(m)}
       >
         <div class="media-gallery-thumb">
-          <img
-            src={posterSrc(m)}
-            alt={m.alt_text || m.caption || ''}
-            loading={index < 4 ? 'eager' : 'lazy'}
-            decoding="async"
-            width={m.width || undefined}
-            height={m.height || undefined}
-            class="media-gallery-image"
-          />
+          <picture>
+            <source type="image/avif" srcset={avifSrc(m)} />
+            {hasSmVariant(m) && <source type="image/webp" srcset={`${posterSrc(m)} 1400w, ${webpSmSrc(m)} 768w`} sizes="(max-width: 640px) 100vw, 50vw" />}
+            <img
+              src={posterSrc(m)}
+              alt={m.alt_text || m.caption || ''}
+              loading={index < 4 ? 'eager' : 'lazy'}
+              decoding="async"
+              width={m.width || undefined}
+              height={m.height || undefined}
+              class="media-gallery-image"
+            />
+          </picture>
           {index === items.length - 1 && hiddenCount > 0 && (
             <span class="media-gallery-more" aria-hidden="true">+{hiddenCount}</span>
           )}

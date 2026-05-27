@@ -9,6 +9,9 @@ import subprocess
 from datetime import datetime, timedelta, timezone
 from PIL import Image, ExifTags
 import blurhash
+from pillow_heif import register_heif_opener
+
+register_heif_opener()
 from sqlalchemy import create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
@@ -221,25 +224,38 @@ def process_media_asset(asset_id: str):
                     asset.width = img.width
                     asset.height = img.height
                     asset.aspect_ratio = round(img.width / img.height, 4) if img.height > 0 else 1.0
-                    
-                    # Create WebP derivative
-                    thumb_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp")
-                    img.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
-                    img.save(thumb_path, format="WEBP", quality=80)
-                    
-                    # Attempt dominant color
-                    img.thumbnail((1, 1))
-                    color = img.getpixel((0,0))
+
+                    # Full-size derivatives at max 1400px
+                    full = img.copy()
+                    full.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
+                    full.save(os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp"), format="WEBP", quality=80)
+                    full.save(os.path.join(DERIVATIVES_PATH, f"{asset.id}.avif"), quality=70)
+
+                    derivative_paths: dict[str, str] = {
+                        "webp": f"/media/{asset.id}/webp",
+                        "avif": f"/media/{asset.id}/avif",
+                    }
+
+                    # Small variant at max 768px — only when the original exceeds that size
+                    if img.width > 768 or img.height > 768:
+                        sm = img.copy()
+                        sm.thumbnail((768, 768), Image.Resampling.LANCZOS)
+                        sm.save(os.path.join(DERIVATIVES_PATH, f"{asset.id}_sm.webp"), format="WEBP", quality=80)
+                        derivative_paths["webp_sm"] = f"/media/{asset.id}/webp_sm"
+
+                    # Dominant color from the already-thumbnailed full copy
+                    full.thumbnail((1, 1))
+                    color = full.getpixel((0, 0))
                     if isinstance(color, int):
                         asset.dominant_color = f"#{color:06x}"
                     else:
                         asset.dominant_color = f"#{color[0]:02x}{color[1]:02x}{color[2]:02x}"
 
-                    # Generate Blurhash last: blurhash-python closes the image object.
+                    # Blurhash from original — blurhash.encode closes the image object
                     img.thumbnail((32, 32))
                     asset.blurhash = blurhash.encode(img, x_components=4, y_components=3)
-                        
-                    asset.derivative_paths = {"webp": f"/media/{asset.id}/webp"}
+
+                    asset.derivative_paths = derivative_paths
                     asset.processing_state = MediaProcessingState.READY
                     asset.error_message = None
             except Exception as e:

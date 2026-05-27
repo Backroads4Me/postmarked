@@ -30,7 +30,7 @@ DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
 
 # Variants the worker actually produces today (api/app/tasks.py).
 # Add more here as tasks.py grows.
-PHOTO_VARIANTS = {"original", "webp"}
+PHOTO_VARIANTS = {"original", "webp", "avif", "webp_sm"}
 VIDEO_VARIANTS = {"original", "poster"}
 
 router = APIRouter(prefix="/media", tags=["media"])
@@ -46,6 +46,14 @@ def _resolve_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
 
     if variant == "webp":
         path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp")
+        return path, "image/webp"
+
+    if variant == "avif":
+        path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.avif")
+        return path, "image/avif"
+
+    if variant == "webp_sm":
+        path = os.path.join(DERIVATIVES_PATH, f"{asset.id}_sm.webp")
         return path, "image/webp"
 
     if variant == "poster":
@@ -92,7 +100,7 @@ async def _parent_visibility(session: AsyncSession, asset: MediaAsset):
     return None, True
 
 
-def _range_response(path: str, mime_type: str, range_header: str, etag: str) -> Response:
+def _range_response(path: str, mime_type: str, range_header: str, etag: str, cache_control: str) -> Response:
     """Serve a byte range from disk. Standard `bytes=START-END` parsing."""
     file_size = os.path.getsize(path)
 
@@ -130,7 +138,7 @@ def _range_response(path: str, mime_type: str, range_header: str, etag: str) -> 
             "Content-Range": f"bytes {start}-{end}/{file_size}",
             "Accept-Ranges": "bytes",
             "Content-Length": str(chunk_size),
-            "Cache-Control": "private, max-age=86400",
+            "Cache-Control": cache_control,
             "ETag": etag,
         },
     )
@@ -176,18 +184,20 @@ async def get_media(
         stat = os.stat(path)
         etag = f'"{int(stat.st_mtime)}-{stat.st_size}-{variant}"'
 
+    cache_control = "public, max-age=31536000" if eff_vis == "public" and parent_published else "private, max-age=86400"
+
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304)
 
     range_header = request.headers.get("range")
     if range_header:
-        return _range_response(path, mime_type, range_header, etag)
+        return _range_response(path, mime_type, range_header, etag, cache_control)
 
     return FileResponse(
         path,
         media_type=mime_type,
         headers={
-            "Cache-Control": "private, max-age=86400",
+            "Cache-Control": cache_control,
             "ETag": etag,
             "Accept-Ranges": "bytes",
         },

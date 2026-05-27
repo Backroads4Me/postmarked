@@ -25,13 +25,17 @@ router = APIRouter(prefix="/trips", tags=["stops"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
 
 
-async def _poi_coords(session: AsyncSession, poi_id: uuid.UUID) -> tuple[float, float]:
+async def _batch_poi_coords(
+    session: AsyncSession, poi_ids: list[uuid.UUID]
+) -> dict[uuid.UUID, tuple[float, float]]:
+    if not poi_ids:
+        return {}
     point = cast(PointOfInterest.location, Geometry(geometry_type="POINT", srid=4326))
-    row = (await session.execute(
-        select(func.ST_Y(point).label("lat"), func.ST_X(point).label("lon"))
-        .where(PointOfInterest.id == poi_id)
-    )).first()
-    return (row.lat, row.lon) if row else (0.0, 0.0)
+    rows = (await session.execute(
+        select(PointOfInterest.id, func.ST_Y(point).label("lat"), func.ST_X(point).label("lon"))
+        .where(PointOfInterest.id.in_(poi_ids))
+    )).all()
+    return {row.id: (row.lat, row.lon) for row in rows}
 
 
 def _is_admin(user) -> bool:
@@ -91,10 +95,24 @@ async def get_stop(
     # stop_id for scoping, but it should render only through its published post.
     own_media = visible_ready_media([m for m in (stop.media or []) if m.post_id is None], user)
 
-    # POIs for this stop with resolved coordinates
+    # Posts pinned to this stop — fetched here so we can batch all POI coord lookups below
+    posts_query = (
+        select(Post)
+        .where(Post.stop_id == stop.id)
+        .options(selectinload(Post.media), selectinload(Post.stop), selectinload(Post.poi))
+        .order_by(Post.posted_at.desc())
+    )
+    posts_query = _reader_visible(posts_query, Post, user).where(Post.status == PostStatus.PUBLISHED)
+    posts_rows = (await session.execute(posts_query)).scalars().all()
+
+    # Single batch query for all POI coordinates needed on this page
+    stop_poi_ids = [poi.id for poi in (stop.pois or [])]
+    post_poi_ids = [p.poi.id for p in posts_rows if p.poi]
+    poi_coords_map = await _batch_poi_coords(session, list(set(stop_poi_ids + post_poi_ids)))
+
     pois_out: list[PublicPOISummary] = []
     for poi in (stop.pois or []):
-        coords = await _poi_coords(session, poi.id)
+        coords = poi_coords_map.get(poi.id, (0.0, 0.0))
         pois_out.append(PublicPOISummary(
             id=poi.id,
             label=poi.label,
@@ -122,28 +140,19 @@ async def get_stop(
                 for row in gps_rows
             ]
 
-    # Posts pinned to this stop
-    posts_query = (
-        select(Post)
-        .where(Post.stop_id == stop.id)
-        .options(selectinload(Post.media), selectinload(Post.stop), selectinload(Post.poi))
-        .order_by(Post.posted_at.desc())
-    )
-    posts_query = _reader_visible(posts_query, Post, user).where(Post.status == PostStatus.PUBLISHED)
-    posts_rows = (await session.execute(posts_query)).scalars().all()
     posts_out: list[PublicPostSummary] = []
     for p in posts_rows:
         visible_media = visible_ready_media(p.media or [], user)
         poi_out = None
         if p.poi:
-            poi_coords = await _poi_coords(session, p.poi.id)
+            coords = poi_coords_map.get(p.poi.id, (0.0, 0.0))
             poi_out = PublicPOISummary(
                 id=p.poi.id,
                 label=p.poi.label,
                 poi_type=p.poi.poi_type.value,
                 google_maps_url=p.poi.google_maps_url,
-                latitude=poi_coords[0],
-                longitude=poi_coords[1],
+                latitude=coords[0],
+                longitude=coords[1],
             )
         posts_out.append(
             PublicPostSummary(
@@ -264,14 +273,15 @@ async def get_post(
 
     poi_out = None
     if post.poi:
-        poi_coords = await _poi_coords(session, post.poi.id)
+        coords_map = await _batch_poi_coords(session, [post.poi.id])
+        coords = coords_map.get(post.poi.id, (0.0, 0.0))
         poi_out = PublicPOISummary(
             id=post.poi.id,
             label=post.poi.label,
             poi_type=post.poi.poi_type.value,
             google_maps_url=post.poi.google_maps_url,
-            latitude=poi_coords[0],
-            longitude=poi_coords[1],
+            latitude=coords[0],
+            longitude=coords[1],
         )
 
     visible_media = visible_ready_media(post.media or [], user)
