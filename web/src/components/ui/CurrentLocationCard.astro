@@ -15,11 +15,10 @@ interface WeatherDay {
   high: number;
   low: number;
   label: string;
-  icon: string;
 }
 
 interface Weather {
-  current: { temp: number; label: string; icon: string };
+  current: { temp: number; label: string };
   forecast: WeatherDay[];
 }
 

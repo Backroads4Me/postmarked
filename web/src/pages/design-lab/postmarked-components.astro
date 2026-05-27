@@ -3,10 +3,10 @@ import Layout from '../../layouts/Layout.astro';
 import Postmark from '../../components/ui/Postmark.astro';
 
 const weather = {
-  current: { temp: 60, label: 'Mostly clear', icon: 'clear-night' },
+  current: { temp: 60, label: 'Mostly clear' },
   forecast: [
-    { day: 'Wed', high: 60, low: 48, label: 'Moderate rain', icon: 'moderate-rain' },
-    { day: 'Thu', high: 56, low: 44, label: 'Partly cloudy', icon: 'partly-cloudy' },
+    { day: 'Wed', high: 60, low: 48, label: 'Moderate rain' },
+    { day: 'Thu', high: 56, low: 44, label: 'Partly cloudy' },
   ],
 };
 
@@ -110,13 +110,12 @@ const labTheme = requestedTheme === 'dark' ? 'dark' : requestedTheme === 'light'
           <aside class="weather-card" aria-label="Weather preview">
             <div class="weather-now">
               <strong>{weather.current.temp}&deg;</strong>
-              <img src={`/weather-icons/${weather.current.icon}.png`} alt={weather.current.label} width="58" height="58" />
+              <span>{weather.current.label}</span>
             </div>
             <div class="weather-days">
               {weather.forecast.map((day) => (
                 <div>
                   <span>{day.day}</span>
-                  <img src={`/weather-icons/${day.icon}.png`} alt={day.label} width="25" height="25" />
                   <strong>{day.high}&deg; <em>/ {day.low}&deg;</em></strong>
                 </div>
               ))}
