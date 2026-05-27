@@ -105,7 +105,6 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
 
         if origin is not None:
             if origin not in ALLOWED_ORIGINS:
-                import logging
                 logging.error(f"CSRF blocked: origin={origin!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
                 return JSONResponse(
                     status_code=403,
@@ -115,7 +114,6 @@ class CsrfOriginMiddleware(BaseHTTPMiddleware):
             parsed = urlparse(referer)
             referer_origin = f"{parsed.scheme}://{parsed.netloc}"
             if referer_origin not in ALLOWED_ORIGINS:
-                import logging
                 logging.error(f"CSRF blocked: referer={referer!r}, allowed={ALLOWED_ORIGINS}, path={request.url.path}")
                 return JSONResponse(
                     status_code=403,
