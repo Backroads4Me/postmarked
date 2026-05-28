@@ -66,6 +66,7 @@ def _approved_notification_users(db, frequency: NotificationFrequency):
             .where(
                 User.is_active == True,
                 User.approval_state == ApprovalState.APPROVED,
+                NotificationPreference.email_opted_in == True,
                 NotificationPreference.frequency == frequency,
             )
         )

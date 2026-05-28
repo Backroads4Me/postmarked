@@ -7,7 +7,7 @@ const authHeaders = cookie ? { cookie } : {};
 let users = [];
 let loadError = null;
 let email_enabled = false;
-let siteConfig = { require_user_approval: true };
+let siteConfig = { require_user_approval: true, sms_enabled: false };
 let preApprovedEmails = [];
 
 try {
@@ -38,15 +38,11 @@ try {
   loadError = e?.message || 'Failed to connect';
 }
 
+const sms_enabled = siteConfig.sms_enabled ?? false;
 const pending = users.filter(u => u.approval_state === 'pending');
 const approved = users.filter(u => u.approval_state === 'approved');
 const rejected = users.filter(u => u.approval_state === 'rejected');
 
-function frequencyLabel(value) {
-  if (value === 'all_updates') return 'Immediate';
-  if (value === 'weekly_digest') return 'Weekly';
-  return 'No emails';
-}
 ---
 
 <AdminLayout title="Users">
@@ -67,6 +63,22 @@ function frequencyLabel(value) {
         onclick="toggleApprovalRequirement(this)"
       >
         {siteConfig.require_user_approval ? 'On' : 'Off'}
+      </button>
+    </div>
+
+    <!-- SMS toggle -->
+    <div class="bg-surface-2 border border-line rounded p-4 flex items-center justify-between gap-4">
+      <div>
+        <div class="text-sm font-bold">Enable SMS notifications</div>
+        <div class="text-xs text-muted mt-1">Show the phone number and SMS consent fields on registration and account pages. Requires Twilio credentials to be configured.</div>
+      </div>
+      <button
+        id="sms-toggle"
+        class="btn btn-sm"
+        data-value={siteConfig.sms_enabled ? 'true' : 'false'}
+        onclick="toggleSmsEnabled(this)"
+      >
+        {siteConfig.sms_enabled ? 'On' : 'Off'}
       </button>
     </div>
 
@@ -111,47 +123,65 @@ function frequencyLabel(value) {
       <h2 class="display text-2xl mb-4">Pending Approval ({pending.length})</h2>
       <div class="grid gap-3">
         {pending.map(u => (
-          <div class="card-flat flex items-center justify-between gap-4">
-            <div>
-              <div style="color: var(--paper); font-weight: 500;">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role}{email_enabled ? ` · ${frequencyLabel(u.notification_frequency)}` : ''}</div>
+          <div class="card-flat grid gap-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div class="grid gap-1">
+                <label class="label text-[10px]">Display name</label>
+                <input type="text" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  value={u.display_name || ''}
+                  placeholder="(no name)"
+                  data-user-id={u.id}
+                  onblur={`updateUserProfile('${u.id}', this, 'name')`} />
+              </div>
+              <div class="grid gap-1">
+                <label class="label text-[10px]">Email</label>
+                <input type="email" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  value={u.email}
+                  data-user-id={u.id}
+                  onblur={`updateUserProfile('${u.id}', this, 'email')`} />
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              {email_enabled && (
-                <select
-                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                  data-original={u.notification_frequency}
-                  onchange={`updateUserNotifications('${u.id}', this)`}
-                >
-                  <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
-                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
-                  <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
-                </select>
-              )}
-              <button
-                class="btn"
-                style="min-height:36px; font-size:13px;"
-                onclick={`approveUser('${u.id}', this)`}
-              >
-                Approve
-              </button>
-              <button
-                class="btn"
-                style="min-height:36px; font-size:13px; color:var(--sunset);"
-                onclick={`rejectUser('${u.id}', this)`}
-              >
-                Reject
-              </button>
+            <div class="flex items-center gap-2 flex-wrap">
               {u.role !== 'admin' && (
-                <select
-                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                  data-original={u.role}
-                  onchange={`updateUserRole('${u.id}', this)`}
-                >
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
                   <option value="user" selected={u.role !== 'admin'}>User</option>
                   <option value="admin">Admin</option>
                 </select>
               )}
+              {email_enabled && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-email-select={u.id}
+                  onchange={`updateUserEmailOptIn('${u.id}', this)`}>
+                  <option value="false" selected={!u.email_opted_in}>Email off</option>
+                  <option value="true" selected={u.email_opted_in}>Email on</option>
+                </select>
+              )}
+              {sms_enabled && (
+                <input type="tel" class="bg-surface-2 border border-line-soft rounded p-2 text-xs w-28"
+                  placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
+                  onblur={`updateUserSms('${u.id}', this)`} />
+              )}
+              {sms_enabled && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
+                  <option value="false" selected={!u.sms_opted_in}>SMS off</option>
+                  <option value="true" selected={u.sms_opted_in}>SMS on</option>
+                </select>
+              )}
+              {(email_enabled || sms_enabled) && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-freq-select={u.id}
+                  onchange={`updateUserFrequency('${u.id}', this)`}>
+                  <option value="all_updates" selected={u.notification_frequency !== 'weekly_digest'}>Immediate</option>
+                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                </select>
+              )}
+              <div class="flex-1"></div>
+              <button class="btn" style="min-height:32px; font-size:13px;"
+                onclick={`approveUser('${u.id}', this)`}>Approve</button>
+              <button class="btn" style="min-height:32px; font-size:13px; color:var(--sunset);"
+                onclick={`rejectUser('${u.id}', this)`}>Reject</button>
             </div>
           </div>
         ))}
@@ -168,33 +198,61 @@ function frequencyLabel(value) {
       <h2 class="display text-xl mb-3">Approved ({approved.length})</h2>
       <div class="grid gap-2">
         {approved.map(u => (
-          <div class="card-flat flex items-center justify-between gap-4">
-            <div>
-              <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role}{email_enabled ? ` · ${frequencyLabel(u.notification_frequency)}` : ''}</div>
+          <div class="card-flat grid gap-3">
+            <div class="grid grid-cols-2 gap-2">
+              <div class="grid gap-1">
+                <label class="label text-[10px]">Display name</label>
+                <input type="text" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  value={u.display_name || ''}
+                  placeholder="(no name)"
+                  data-user-id={u.id}
+                  onblur={`updateUserProfile('${u.id}', this, 'name')`} />
+              </div>
+              <div class="grid gap-1">
+                <label class="label text-[10px]">Email</label>
+                <input type="email" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  value={u.email}
+                  data-user-id={u.id}
+                  onblur={`updateUserProfile('${u.id}', this, 'email')`} />
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              {email_enabled && (
-                <select
-                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                  data-original={u.notification_frequency}
-                  onchange={`updateUserNotifications('${u.id}', this)`}
-                >
-                  <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
-                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
-                  <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
-                </select>
-              )}
+            <div class="flex items-center gap-2 flex-wrap">
               {u.role !== 'admin' && (
-                <select
-                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                  data-original={u.role}
-                  onchange={`updateUserRole('${u.id}', this)`}
-                >
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
                   <option value="user" selected={u.role !== 'admin'}>User</option>
                   <option value="admin">Admin</option>
                 </select>
               )}
+              {email_enabled && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-email-select={u.id}
+                  onchange={`updateUserEmailOptIn('${u.id}', this)`}>
+                  <option value="false" selected={!u.email_opted_in}>Email off</option>
+                  <option value="true" selected={u.email_opted_in}>Email on</option>
+                </select>
+              )}
+              {sms_enabled && (
+                <input type="tel" class="bg-surface-2 border border-line-soft rounded p-2 text-xs w-28"
+                  placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
+                  onblur={`updateUserSms('${u.id}', this)`} />
+              )}
+              {sms_enabled && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
+                  <option value="false" selected={!u.sms_opted_in}>SMS off</option>
+                  <option value="true" selected={u.sms_opted_in}>SMS on</option>
+                </select>
+              )}
+              {(email_enabled || sms_enabled) && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-freq-select={u.id}
+                  onchange={`updateUserFrequency('${u.id}', this)`}>
+                  <option value="all_updates" selected={u.notification_frequency !== 'weekly_digest'}>Immediate</option>
+                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                </select>
+              )}
+              <div class="flex-1"></div>
               <span class="badge badge-active text-[10px]">approved</span>
             </div>
           </div>
@@ -208,30 +266,63 @@ function frequencyLabel(value) {
       <h2 class="display text-xl mb-3">Rejected ({rejected.length})</h2>
       <div class="grid gap-2">
         {rejected.map(u => (
-          <div class="card-flat flex items-center justify-between gap-4" style="opacity:0.6;">
-            <div>
-              <div style="color: var(--paper);">{u.display_name || '(no name)'}</div>
-              <div class="label">{u.email} · {u.role}{email_enabled ? ` · ${frequencyLabel(u.notification_frequency)}` : ''}</div>
+          <div class="card-flat grid gap-3" style="opacity:0.7;">
+            <div class="grid grid-cols-2 gap-2">
+              <div class="grid gap-1">
+                <label class="label text-[10px]">Display name</label>
+                <input type="text" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  value={u.display_name || ''}
+                  placeholder="(no name)"
+                  data-user-id={u.id}
+                  onblur={`updateUserProfile('${u.id}', this, 'name')`} />
+              </div>
+              <div class="grid gap-1">
+                <label class="label text-[10px]">Email</label>
+                <input type="email" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  value={u.email}
+                  data-user-id={u.id}
+                  onblur={`updateUserProfile('${u.id}', this, 'email')`} />
+              </div>
             </div>
-            <div class="flex items-center gap-2">
-              {email_enabled && (
-                <select
-                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
-                  data-original={u.notification_frequency}
-                  onchange={`updateUserNotifications('${u.id}', this)`}
-                >
-                  <option value="none" selected={u.notification_frequency === 'none'}>No emails</option>
-                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
-                  <option value="all_updates" selected={u.notification_frequency === 'all_updates'}>Immediate</option>
+            <div class="flex items-center gap-2 flex-wrap">
+              {u.role !== 'admin' && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
+                  <option value="user" selected={u.role !== 'admin'}>User</option>
+                  <option value="admin">Admin</option>
                 </select>
               )}
-              <button
-                class="btn"
-                style="min-height:36px; font-size:13px;"
-                onclick={`approveUser('${u.id}', this)`}
-              >
-                Re-approve
-              </button>
+              {email_enabled && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-email-select={u.id}
+                  onchange={`updateUserEmailOptIn('${u.id}', this)`}>
+                  <option value="false" selected={!u.email_opted_in}>Email off</option>
+                  <option value="true" selected={u.email_opted_in}>Email on</option>
+                </select>
+              )}
+              {sms_enabled && (
+                <input type="tel" class="bg-surface-2 border border-line-soft rounded p-2 text-xs w-28"
+                  placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
+                  onblur={`updateUserSms('${u.id}', this)`} />
+              )}
+              {sms_enabled && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
+                  <option value="false" selected={!u.sms_opted_in}>SMS off</option>
+                  <option value="true" selected={u.sms_opted_in}>SMS on</option>
+                </select>
+              )}
+              {(email_enabled || sms_enabled) && (
+                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  data-freq-select={u.id}
+                  onchange={`updateUserFrequency('${u.id}', this)`}>
+                  <option value="all_updates" selected={u.notification_frequency !== 'weekly_digest'}>Immediate</option>
+                  <option value="weekly_digest" selected={u.notification_frequency === 'weekly_digest'}>Weekly</option>
+                </select>
+              )}
+              <div class="flex-1"></div>
+              <button class="btn" style="min-height:32px; font-size:13px;"
+                onclick={`approveUser('${u.id}', this)`}>Re-approve</button>
               {u.role !== 'admin' && (
                 <select
                   class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
@@ -251,26 +342,49 @@ function frequencyLabel(value) {
 </AdminLayout>
 
 <script is:inline>
+  async function _patchSiteConfig(patch) {
+    const res = await fetch('/api/admin/site-config', {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(patch),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Failed to update setting');
+    }
+    return res.json();
+  }
+
   async function toggleApprovalRequirement(btn) {
     const current = btn.dataset.value === 'true';
     const next = !current;
     btn.disabled = true;
     try {
-      const res = await fetch('/api/admin/site-config', {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ require_user_approval: next }),
-      });
-      if (res.ok) {
-        btn.dataset.value = next ? 'true' : 'false';
-        btn.textContent = next ? 'On' : 'Off';
-      } else {
-        const d = await res.json().catch(() => ({}));
-        alert(d.detail || 'Failed to update setting');
-      }
+      const smsBtn = document.getElementById('sms-toggle');
+      const currentSms = smsBtn ? smsBtn.dataset.value === 'true' : false;
+      await _patchSiteConfig({ require_user_approval: next, sms_enabled: currentSms });
+      btn.dataset.value = next ? 'true' : 'false';
+      btn.textContent = next ? 'On' : 'Off';
     } catch (e) {
-      alert('Could not reach server');
+      alert(e.message || 'Could not reach server');
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  async function toggleSmsEnabled(btn) {
+    const current = btn.dataset.value === 'true';
+    const next = !current;
+    btn.disabled = true;
+    try {
+      const approvalBtn = document.getElementById('approval-toggle');
+      const currentApproval = approvalBtn ? approvalBtn.dataset.value === 'true' : true;
+      await _patchSiteConfig({ require_user_approval: currentApproval, sms_enabled: next });
+      btn.dataset.value = next ? 'true' : 'false';
+      btn.textContent = next ? 'On' : 'Off';
+    } catch (e) {
+      alert(e.message || 'Could not reach server');
     } finally {
       btn.disabled = false;
     }
@@ -380,27 +494,129 @@ function frequencyLabel(value) {
     }
   }
 
-  async function updateUserNotifications(userId, select) {
-    const original = select.dataset.original || select.value;
+  async function _patchNotifications(userId, email_opted_in, notification_frequency) {
+    const res = await fetch(`/api/admin/users/${userId}/notifications`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email_opted_in, notification_frequency }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Failed to update notifications');
+    }
+    return res.json();
+  }
+
+  async function updateUserEmailOptIn(userId, select) {
+    const card = select.closest('.card-flat');
+    const freqSelect = card.querySelector(`[data-freq-select="${userId}"]`);
+    const notification_frequency = freqSelect ? freqSelect.value : 'all_updates';
+    const email_opted_in = select.value === 'true';
+    const prev = email_opted_in ? 'false' : 'true';
     select.disabled = true;
     try {
-      const res = await fetch(`/api/admin/users/${userId}/notifications`, {
+      await _patchNotifications(userId, email_opted_in, notification_frequency);
+    } catch (e) {
+      select.value = prev;
+      alert(e.message);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  async function updateUserFrequency(userId, select) {
+    const card = select.closest('.card-flat');
+    const emailSelect = card.querySelector(`[data-email-select="${userId}"]`);
+    const email_opted_in = emailSelect ? emailSelect.value === 'true' : false;
+    const notification_frequency = select.value;
+    const prev = notification_frequency === 'all_updates' ? 'weekly_digest' : 'all_updates';
+    select.disabled = true;
+    try {
+      await _patchNotifications(userId, email_opted_in, notification_frequency);
+    } catch (e) {
+      select.value = prev;
+      alert(e.message);
+    } finally {
+      select.disabled = false;
+    }
+  }
+
+  const _profileCache = {};
+
+  async function updateUserProfile(userId, inputEl, field) {
+    const card = inputEl.closest('.card-flat');
+    const nameEl = card.querySelector('input[type="text"]');
+    const emailEl = card.querySelector('input[type="email"]');
+    const name = nameEl?.value.trim() || null;
+    const email = emailEl?.value.trim();
+    if (!email) { inputEl.value = inputEl.dataset.original || ''; return; }
+    const key = `${userId}`;
+    if (_profileCache[key] && _profileCache[key].name === name && _profileCache[key].email === email) return;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/profile`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notification_frequency: select.value }),
+        body: JSON.stringify({ display_name: name, email }),
       });
       if (res.ok) {
-        select.dataset.original = select.value;
+        _profileCache[key] = { name, email };
       } else {
         const d = await res.json().catch(() => ({}));
-        select.value = original;
-        alert(d.detail || 'Failed');
+        alert(d.detail || 'Failed to update profile');
+        if (field === 'email' && _profileCache[key]) emailEl.value = _profileCache[key].email;
+        if (field === 'name' && _profileCache[key]) nameEl.value = _profileCache[key].name || '';
       }
     } catch (e) {
-      select.value = original;
-    } finally {
-      select.disabled = false;
+      alert('Could not reach server');
+    }
+  }
+
+  async function _patchUserSms(userId, phone, optedIn) {
+    const res = await fetch(`/api/admin/users/${userId}/sms`, {
+      method: 'PATCH',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ phone_number: phone || null, sms_opted_in: optedIn }),
+    });
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      throw new Error(d.detail || 'Failed to update SMS');
+    }
+    return res.json();
+  }
+
+  async function updateUserSms(userId, phoneInput) {
+    let digits = phoneInput.value.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+    phoneInput.value = digits;
+    const card = phoneInput.closest('.card-flat');
+    const optInSelect = card?.querySelector(`[data-sms-select="${userId}"]`);
+    const optedIn = optInSelect ? optInSelect.value === 'true' : false;
+    try {
+      const result = await _patchUserSms(userId, digits || null, optedIn && digits.length > 0);
+      if (optInSelect) optInSelect.value = result.sms_opted_in ? 'true' : 'false';
+    } catch (e) {
+      alert(e.message);
+    }
+  }
+
+  async function updateUserSmsOptIn(userId, select) {
+    const optedIn = select.value === 'true';
+    const card = select.closest('.card-flat');
+    const phoneInput = card?.querySelector(`input[data-user-id="${userId}"]`);
+    const phone = phoneInput ? phoneInput.value.trim() : null;
+    if (optedIn && !phone) {
+      alert('Enter a phone number before enabling SMS.');
+      select.value = 'false';
+      return;
+    }
+    try {
+      await _patchUserSms(userId, phone || null, optedIn);
+    } catch (e) {
+      select.value = optedIn ? 'false' : 'true';
+      alert(e.message);
     }
   }
 

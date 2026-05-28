@@ -9,8 +9,7 @@ from app.auth.auth_config import current_active_user
 from app.db import get_async_session
 from app.models.enums import NotificationFrequency
 from app.models.user import NotificationPreference, User
-from app.schemas.account import AccountOut, NotificationUpdate, PasswordUpdate, ProfileUpdate
-from app.schemas.user import PUBLIC_NOTIFICATION_FREQUENCIES
+from app.schemas.account import AccountOut, NotificationUpdate, PasswordUpdate, ProfileUpdate, SmsUpdate
 
 router = APIRouter(prefix="/account", tags=["account"])
 password_helper = PasswordHelper()
@@ -26,7 +25,7 @@ async def _get_or_create_preference(session: AsyncSession, user_id: uuid.UUID) -
 
     preference = NotificationPreference(
         user_id=user_id,
-        frequency=NotificationFrequency.NONE,
+        frequency=NotificationFrequency.ALL_UPDATES,
     )
     session.add(preference)
     await session.commit()
@@ -40,7 +39,10 @@ def _account_out(user: User, preference: NotificationPreference) -> AccountOut:
         display_name=user.display_name,
         role=user.role,
         approval_state=user.approval_state,
+        email_opted_in=preference.email_opted_in,
         notification_frequency=preference.frequency,
+        phone_number=preference.phone_number,
+        sms_opted_in=preference.sms_opted_in,
     )
 
 
@@ -106,11 +108,25 @@ async def update_notifications(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_active_user),
 ):
-    if payload.notification_frequency not in PUBLIC_NOTIFICATION_FREQUENCIES:
-        raise HTTPException(status_code=422, detail="Unsupported notification frequency")
-
     preference = await _get_or_create_preference(session, user.id)
+    preference.email_opted_in = payload.email_opted_in
     preference.frequency = payload.notification_frequency
+    preference.phone_number = payload.phone_number
+    preference.sms_opted_in = payload.sms_opted_in and bool(payload.phone_number)
+    await session.commit()
+    await session.refresh(preference)
+    return _account_out(user, preference)
+
+
+@router.patch("/sms", response_model=AccountOut)
+async def update_sms(
+    payload: SmsUpdate,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    preference = await _get_or_create_preference(session, user.id)
+    preference.phone_number = payload.phone_number
+    preference.sms_opted_in = payload.sms_opted_in and bool(payload.phone_number)
     await session.commit()
     await session.refresh(preference)
     return _account_out(user, preference)

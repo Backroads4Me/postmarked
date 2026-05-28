@@ -22,6 +22,14 @@ from app.schemas.user import UserCreate, UserRead, UserUpdate
 from app.services.mailer import is_email_configured
 
 
+def is_sms_configured() -> bool:
+    return bool(
+        os.getenv("TWILIO_ACCOUNT_SID", "").strip()
+        and os.getenv("TWILIO_AUTH_TOKEN", "").strip()
+        and os.getenv("TWILIO_FROM_NUMBER", "").strip()
+    )
+
+
 def _env_list(var: str, default: str) -> list[str]:
     raw = os.getenv(var, default)
     return [item.strip().rstrip("/") for item in raw.split(",") if item.strip()]
@@ -204,6 +212,7 @@ app.include_router(admin_backup.router, prefix="/api/admin")
 class AppConfig(BaseModel):
     email_enabled: bool
     require_user_approval: bool
+    sms_enabled: bool
 
 
 @app.get("/api/config", response_model=AppConfig)
@@ -211,11 +220,13 @@ async def app_config():
     from sqlalchemy import select
     from app.models.system import SiteConfig
     require_approval = True
+    sms_enabled = False
     async with async_session_maker() as session:
         config = (await session.execute(select(SiteConfig).limit(1))).scalar_one_or_none()
         if config is not None:
             require_approval = config.require_user_approval
-    return {"email_enabled": is_email_configured(), "require_user_approval": require_approval}
+            sms_enabled = config.sms_enabled
+    return {"email_enabled": is_email_configured(), "require_user_approval": require_approval, "sms_enabled": sms_enabled and is_sms_configured()}
 
 
 class HealthCheck(BaseModel):

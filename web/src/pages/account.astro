@@ -14,9 +14,9 @@ if (!res.ok) {
   throw new Error(`Account API returned ${res.status}`);
 }
 const account = await res.json();
-const email_enabled = configRes.ok
-  ? await configRes.json().then((d) => d.email_enabled).catch(() => false)
-  : false;
+const configData = configRes.ok ? await configRes.json().catch(() => ({})) : {};
+const email_enabled = configData.email_enabled ?? false;
+const sms_enabled = configData.sms_enabled ?? false;
 ---
 
 <Layout title="Account — Postmarked">
@@ -24,7 +24,7 @@ const email_enabled = configRes.ok
     <section class="max-w-2xl mx-auto">
       <div class="mb-8">
         <h1 class="display text-4xl mb-2">Account</h1>
-        <p class="text-muted">Manage your profile, password, and email updates.</p>
+        <p class="text-muted">Manage your profile, password, and notification preferences.</p>
         <button type="button" class="btn mt-4" onclick="signOut()">Sign out</button>
       </div>
 
@@ -46,23 +46,64 @@ const email_enabled = configRes.ok
           </form>
         </section>
 
-        {email_enabled && (
-          <section id="email-updates" class="bg-surface border border-line rounded-lg p-6">
-            <h2 class="display text-2xl mb-4">Email Updates</h2>
-            <form class="grid gap-3" onsubmit="event.preventDefault(); updateNotifications(this);">
-              <label class="flex items-start gap-3 text-sm text-muted">
-                <input type="radio" name="notification_frequency" value="all_updates" class="mt-1" checked={account.notification_frequency === 'all_updates'} />
-                <span><strong class="text-paper">Immediate</strong><br />Email me when new updates are posted.</span>
-              </label>
-              <label class="flex items-start gap-3 text-sm text-muted">
-                <input type="radio" name="notification_frequency" value="weekly_digest" class="mt-1" checked={account.notification_frequency === 'weekly_digest'} />
-                <span><strong class="text-paper">Weekly summary</strong><br />Send a weekly roundup of new posts.</span>
-              </label>
-              <label class="flex items-start gap-3 text-sm text-muted">
-                <input type="radio" name="notification_frequency" value="none" class="mt-1" checked={account.notification_frequency === 'none'} />
-                <span><strong class="text-paper">No emails</strong><br />I will check the site myself.</span>
-              </label>
-              <button type="submit" class="btn justify-center sm:justify-self-start mt-2">Save email updates</button>
+        {(email_enabled || sms_enabled) && (
+          <section id="notifications" class="bg-surface border border-line rounded-lg p-6">
+            <h2 class="display text-2xl mb-1">Notifications</h2>
+            <p class="text-sm text-muted mb-5">Choose how you'd like to hear about new updates.</p>
+            <form class="grid gap-6" onsubmit="event.preventDefault(); updateNotifications(this);">
+
+              <div class="grid gap-3">
+                <p class="label">Channels</p>
+
+                {email_enabled && (
+                  <label class="flex items-center gap-3 text-sm cursor-pointer">
+                    <input type="checkbox" name="email_notify" class="shrink-0"
+                      checked={account.email_opted_in} />
+                    <span class="text-paper">Email updates</span>
+                  </label>
+                )}
+
+                {sms_enabled && (
+                  <div class="flex flex-col gap-3">
+                    <div class="grid gap-1">
+                      <label class="label" for="phone_number">Phone number <span class="text-muted font-normal">(optional)</span></label>
+                      <input id="phone_number" name="phone_number" type="tel"
+                        value={account.phone_number || ''}
+                        placeholder="5551234567"
+                        class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors"
+                        onblur="normalizePhone(this)" />
+                    </div>
+                    <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
+                      <input type="checkbox" name="sms_opted_in" id="sms_opted_in" class="mt-0.5 shrink-0"
+                        checked={account.sms_opted_in}
+                        onchange="onSmsOptInChange(this)" />
+                      <span>
+                        <strong class="text-paper">Text message updates</strong><br />
+                        By selecting this box, you agree to receive SMS notifications about trip updates from Postmarked.
+                        Message frequency varies. Message &amp; data rates may apply.
+                        Reply STOP to opt out at any time or HELP for help.
+                        <a href="/privacy" class="underline hover:text-ember transition-colors">Privacy Policy</a> &amp; <a href="/terms" class="underline hover:text-ember transition-colors">Terms</a>.
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <div class="grid gap-3">
+                <p class="label">Frequency</p>
+                <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
+                  <input type="radio" name="notify_frequency" value="all_updates" class="mt-0.5 shrink-0"
+                    checked={account.notification_frequency !== 'weekly_digest'} />
+                  <span><strong class="text-paper">Immediately</strong><br />As soon as new updates are posted.</span>
+                </label>
+                <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
+                  <input type="radio" name="notify_frequency" value="weekly_digest" class="mt-0.5 shrink-0"
+                    checked={account.notification_frequency === 'weekly_digest'} />
+                  <span><strong class="text-paper">Weekly</strong><br />A weekly roundup sent every Monday morning.</span>
+                </label>
+              </div>
+
+              <button type="submit" class="btn justify-center sm:justify-self-start">Save notification preferences</button>
             </form>
           </section>
         )}
@@ -94,10 +135,49 @@ const email_enabled = configRes.ok
     }, 'Profile saved.');
   }
 
+  function normalizePhone(phoneEl) {
+    let digits = phoneEl.value.replace(/\D/g, '');
+    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+    phoneEl.value = digits;
+    const optIn = document.getElementById('sms_opted_in');
+    if (digits && optIn && !optIn.checked) {
+      showMessage('Check the "Text message updates" box to opt in to SMS notifications, or clear the phone number if you don\'t want updates.', true);
+    }
+  }
+
+  function onSmsOptInChange(checkbox) {
+    const phone = document.getElementById('phone_number');
+    if (checkbox.checked) {
+      if (!phone || !phone.value.trim()) {
+        phone?.focus();
+        showMessage('Enter a phone number to receive text message updates.', true);
+      }
+    } else {
+      if (phone) phone.value = '';
+    }
+  }
+
   async function updateNotifications(form) {
+    const emailOn = form.email_notify?.checked ?? false;
+    const smsOn = form.sms_opted_in?.checked ?? false;
+    const phone = form.phone_number?.value?.trim() || '';
+    const freq = form.notify_frequency.value;
+
+    if (smsOn && !phone) {
+      showMessage('Enter a phone number to enable text message updates.', true);
+      return;
+    }
+    if (phone && phone.replace(/\D/g, '').length !== 10) {
+      showMessage('Enter a valid 10-digit phone number.', true);
+      return;
+    }
+
     await saveJson('/api/account/notifications', {
-      notification_frequency: form.notification_frequency.value,
-    }, 'Email update preferences saved.');
+      email_opted_in: emailOn,
+      notification_frequency: freq,
+      phone_number: phone || null,
+      sms_opted_in: smsOn,
+    }, 'Notification preferences saved.');
   }
 
   async function updatePassword(form) {

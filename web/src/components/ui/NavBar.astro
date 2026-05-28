@@ -38,7 +38,7 @@ const navItems = [
       }
     : {
         href: '/auth/register',
-        label: 'Register',
+        label: 'Get Updates',
         icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16v11H4z"/><path d="m4 7 8 6 8-6"/></svg>',
       },
 ];
@@ -54,7 +54,7 @@ function isActive(href: string) {
   <div class="top-nav-inner">
     <a href="/" class="flex items-center gap-3">
       <span class="brand-mark" aria-hidden="true"></span>
-      <span class="text-ember font-semibold text-lg font-display">Postmarked</span>
+      <span class="text-ember font-semibold text-2xl font-display">Postmarked</span>
     </a>
     <div class="flex items-center gap-1">
       {navItems.map(item => (

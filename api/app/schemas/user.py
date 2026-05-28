@@ -11,7 +11,6 @@ from app.models.enums import NotificationFrequency
 PUBLIC_NOTIFICATION_FREQUENCIES = {
     NotificationFrequency.ALL_UPDATES,
     NotificationFrequency.WEEKLY_DIGEST,
-    NotificationFrequency.NONE,
 }
 
 
@@ -24,7 +23,10 @@ class UserRead(schemas.BaseUser[uuid.UUID]):
 
 class UserCreate(schemas.BaseUserCreate):
     display_name: Optional[str] = None
-    notification_frequency: Optional[NotificationFrequency] = NotificationFrequency.NONE
+    email_opted_in: bool = False
+    notification_frequency: Optional[NotificationFrequency] = NotificationFrequency.ALL_UPDATES
+    phone_number: Optional[str] = None
+    sms_opted_in: bool = False
 
     @field_validator("notification_frequency")
     @classmethod
@@ -35,12 +37,18 @@ class UserCreate(schemas.BaseUserCreate):
 
     def create_update_dict(self):
         data = super().create_update_dict()
+        data.pop("email_opted_in", None)
         data.pop("notification_frequency", None)
+        data.pop("phone_number", None)
+        data.pop("sms_opted_in", None)
         return data
 
     def create_update_dict_superuser(self):
         data = super().create_update_dict_superuser()
+        data.pop("email_opted_in", None)
         data.pop("notification_frequency", None)
+        data.pop("phone_number", None)
+        data.pop("sms_opted_in", None)
         return data
 
 

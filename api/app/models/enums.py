@@ -51,7 +51,6 @@ class NotificationFrequency(str, enum.Enum):
     DAILY_DIGEST = "daily_digest"
     WEEKLY_DIGEST = "weekly_digest"
     MONTHLY_DIGEST = "monthly_digest"
-    NONE = "none"
 
 class POIType(str, enum.Enum):
     CAMPGROUND = "campground"

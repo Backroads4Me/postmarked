@@ -16,10 +16,12 @@ router = APIRouter(tags=["admin-site-config"])
 class SiteConfigOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     require_user_approval: bool
+    sms_enabled: bool
 
 
 class SiteConfigUpdate(BaseModel):
     require_user_approval: bool
+    sms_enabled: bool
 
 
 class PreApprovedEmailOut(BaseModel):
@@ -60,6 +62,7 @@ async def update_site_config(
 ):
     config = await _get_or_create_site_config(session)
     config.require_user_approval = payload.require_user_approval
+    config.sms_enabled = payload.sms_enabled
     await session.commit()
     await session.refresh(config)
     return config
