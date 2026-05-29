@@ -284,8 +284,9 @@ def process_media_asset(asset_id: str):
                 subprocess.run([
                     "ffmpeg", "-y", "-i", file_path,
                     "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                    "-profile:v", "high", "-level:v", "4.1",
                     "-c:a", "aac", "-b:a", "128k",
-                    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
                     "-movflags", "+faststart",
                     mp4_path,
                 ], check=True)
