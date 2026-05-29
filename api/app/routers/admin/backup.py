@@ -138,7 +138,7 @@ async def export_backup(
         # Bundle derivative files from disk.
         for row in media_rows:
             asset_id = row["id"]
-            for suffix in (".webp", "-poster.jpg"):
+            for suffix in (".webp", ".avif", "_sm.webp", ".mp4", "-poster.jpg"):
                 path = os.path.join(DERIVATIVES_PATH, f"{asset_id}{suffix}")
                 if os.path.exists(path):
                     zf.write(path, f"media/derivatives/{asset_id}{suffix}")

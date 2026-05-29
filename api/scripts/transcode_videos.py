@@ -43,21 +43,49 @@ def probe_dimensions(path: str) -> tuple[int, int]:
     raise ValueError("No valid video stream found")
 
 
+def transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
+    subprocess.run([
+        "ffmpeg", "-y", "-i", file_path,
+        "-map", "0:v:0",
+        "-map", "0:a:0?",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-profile:v", "main",
+        "-level:v", "4.1",
+        "-pix_fmt", "yuv420p",
+        "-tag:v", "avc1",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-vf", (
+            "scale=w='min(1920,iw)':h='min(1920,ih)':"
+            "force_original_aspect_ratio=decrease,"
+            "scale=trunc(iw/2)*2:trunc(ih/2)*2,"
+            "format=yuv420p"
+        ),
+        mp4_path,
+    ], check=True, capture_output=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Re-transcode even if mp4 already exists")
+    parser.add_argument(
+        "--include-not-ready",
+        action="store_true",
+        help="Also repair pending/failed videos, not only READY rows",
+    )
     args = parser.parse_args()
 
     engine = create_engine(DATABASE_URL)
     Session = sessionmaker(bind=engine)
     db = Session()
 
-    assets = db.execute(
-        select(MediaAsset).where(
-            MediaAsset.kind == MediaKind.VIDEO,
-            MediaAsset.processing_state == MediaProcessingState.READY,
-        )
-    ).scalars().all()
+    query = select(MediaAsset).where(MediaAsset.kind == MediaKind.VIDEO)
+    if not args.include_not_ready:
+        query = query.where(MediaAsset.processing_state == MediaProcessingState.READY)
+    assets = db.execute(query).scalars().all()
 
     total = len(assets)
     print(f"Found {total} video asset(s) to process.")
@@ -79,15 +107,7 @@ def main():
             continue
 
         try:
-            subprocess.run([
-                "ffmpeg", "-y", "-i", file_path,
-                "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                "-profile:v", "high",
-                "-c:a", "aac", "-b:a", "128k",
-                "-vf", "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
-                "-movflags", "+faststart",
-                mp4_path,
-            ], check=True, capture_output=True)
+            transcode_video_to_mp4(file_path, mp4_path)
 
             w, h = probe_dimensions(mp4_path)
             asset.width = w
@@ -97,6 +117,8 @@ def main():
             paths = dict(asset.derivative_paths or {})
             paths["mp4"] = f"/media/{asset.id}/mp4"
             asset.derivative_paths = paths
+            asset.processing_state = MediaProcessingState.READY
+            asset.error_message = None
             db.commit()
             print(f"[{i}/{total}] OK    {asset.id}")
             ok += 1

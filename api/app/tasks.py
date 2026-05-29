@@ -180,6 +180,32 @@ def _probe_video_dimensions(file_path: str) -> tuple[int, int]:
     raise ValueError("No video stream with numeric width and height found")
 
 
+def _transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
+    """Create an iOS/Safari-friendly H.264/AAC MP4 derivative."""
+    subprocess.run([
+        "ffmpeg", "-y", "-i", file_path,
+        "-map", "0:v:0",
+        "-map", "0:a:0?",
+        "-c:v", "libx264",
+        "-preset", "fast",
+        "-crf", "23",
+        "-profile:v", "main",
+        "-level:v", "4.1",
+        "-pix_fmt", "yuv420p",
+        "-tag:v", "avc1",
+        "-c:a", "aac",
+        "-b:a", "128k",
+        "-movflags", "+faststart",
+        "-vf", (
+            "scale=w='min(1920,iw)':h='min(1920,ih)':"
+            "force_original_aspect_ratio=decrease,"
+            "scale=trunc(iw/2)*2:trunc(ih/2)*2,"
+            "format=yuv420p"
+        ),
+        mp4_path,
+    ], check=True)
+
+
 @celery_app.task(name="process_media_asset")
 def process_media_asset(asset_id: str):
     """
@@ -281,17 +307,7 @@ def process_media_asset(asset_id: str):
                 # iPhone HEVC (.mov) originals won't play in Safari's <video> tag,
                 # so we always produce a web-safe derivative.
                 mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
-                subprocess.run([
-                    "ffmpeg", "-y", "-i", file_path,
-                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                    "-profile:v", "high",
-                    "-c:a", "aac", "-b:a", "128k",
-                    # Scale down to 1920px on the longest side (handles 4K iPhone),
-                    # then round to even dims and force 8-bit 4:2:0 for Safari/iOS.
-                    "-vf", "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
-                    "-movflags", "+faststart",
-                    mp4_path,
-                ], check=True)
+                _transcode_video_to_mp4(file_path, mp4_path)
 
                 # Probe dimensions from the transcoded file so rotation is
                 # already baked in and width/height match what the browser sees.
@@ -440,7 +456,11 @@ def scan_filesystem():
                     original_sha256=fhash,
                     original_filename=file,
                     original_size_bytes=os.path.getsize(dest_path),
-                    mime_type="video/mp4" if kind == MediaKind.VIDEO else "image/jpeg",
+                    mime_type=(
+                        "video/quicktime" if file_ext == ".mov"
+                        else "video/mp4" if kind == MediaKind.VIDEO
+                        else "image/jpeg"
+                    ),
                     visibility=Visibility.PRIVATE, # Private until manually assigned by admin
                     processing_state=MediaProcessingState.PENDING,
                     featured=False,

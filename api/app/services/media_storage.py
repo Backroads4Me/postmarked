@@ -13,6 +13,9 @@ def media_asset_file_paths(asset: MediaAsset) -> list[str]:
     paths.append(os.path.join(ORIGINALS_PATH, f"{asset.id}.bin"))
     paths.append(os.path.join(ORIGINALS_PATH, f"{asset.id}.json"))
     paths.append(os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp"))
+    paths.append(os.path.join(DERIVATIVES_PATH, f"{asset.id}.avif"))
+    paths.append(os.path.join(DERIVATIVES_PATH, f"{asset.id}_sm.webp"))
+    paths.append(os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4"))
     paths.append(os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg"))
     return list(dict.fromkeys(paths))
 
