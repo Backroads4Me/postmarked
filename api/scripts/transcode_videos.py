@@ -82,9 +82,9 @@ def main():
             subprocess.run([
                 "ffmpeg", "-y", "-i", file_path,
                 "-c:v", "libx264", "-preset", "fast", "-crf", "23",
-                "-profile:v", "high", "-level:v", "4.1",
+                "-profile:v", "high",
                 "-c:a", "aac", "-b:a", "128k",
-                "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
+                "-vf", "scale='min(1920,iw)':'min(1920,ih)':force_original_aspect_ratio=decrease,scale=trunc(iw/2)*2:trunc(ih/2)*2,format=yuv420p",
                 "-movflags", "+faststart",
                 mp4_path,
             ], check=True, capture_output=True)
