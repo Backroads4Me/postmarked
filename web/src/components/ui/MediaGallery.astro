@@ -37,7 +37,7 @@ const items = allMedia.slice(0, limit);
 const hiddenCount = allMedia.length - items.length;
 const isSingle = items.length === 1;
 const galleryId = 'media-gallery-' + Math.random().toString(36).slice(2);
-const allMediaData = JSON.stringify(allMedia.map(m => ({
+const allMediaData = JSON.stringify(allMedia.map((m: MediaSummary) => ({
   id: m.id,
   kind: m.kind || 'photo',
   alt: m.alt_text || m.caption || '',
@@ -78,7 +78,7 @@ function tileStyle(m: MediaSummary) {
   return 'aspect-ratio: ' + aspect + ';';
 }
 
-function tileClass(m: MediaSummary) {
+function tileClass(_m: MediaSummary) {
   return '';
 }
 ---
@@ -94,7 +94,7 @@ function tileClass(m: MediaSummary) {
       maxWidth !== 'none' ? maxWidth : '',
     ]}
   >
-    {items.map((m, index) => linkHref ? (
+    {items.map((m: MediaSummary, index: number) => linkHref ? (
       <a
         href={linkHref}
         class:list={['media-gallery-item block overflow-hidden bg-line-soft', isSingle ? 'media-gallery-link-single' : '']}
@@ -255,33 +255,52 @@ function tileClass(m: MediaSummary) {
 )}
 
 <script>
-  function ensureMediaLightbox() {
-    let dialog = document.querySelector('[data-global-media-lightbox]');
-    if (dialog) return dialog;
+  interface LightboxItem {
+    kind: string;
+    src: string;
+    poster: string;
+    alt: string;
+    caption: string;
+  }
 
-    dialog = document.createElement('dialog');
+  interface MediaLightboxDialog extends HTMLDialogElement {
+    __mediaLightboxOpen: (items: LightboxItem[], index: number) => void;
+  }
+
+  interface SerializedMedia {
+    id: string;
+    kind: string;
+    alt: string;
+    caption: string;
+    hasMp4?: boolean;
+  }
+
+  function ensureMediaLightbox(): MediaLightboxDialog {
+    const existing = document.querySelector<MediaLightboxDialog>('[data-global-media-lightbox]');
+    if (existing) return existing;
+
+    const dialog = document.createElement('dialog') as MediaLightboxDialog;
     dialog.className = 'media-lightbox';
     dialog.dataset.globalMediaLightbox = 'true';
     dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button><div class="media-lightbox-footer"><p class="media-lightbox-caption" data-media-lightbox-caption></p><div class="media-lightbox-count" data-media-lightbox-count></div></div>';
     document.body.append(dialog);
 
-    const image = dialog.querySelector('[data-media-lightbox-image]');
-    const video = dialog.querySelector('[data-media-lightbox-video]');
-    const count = dialog.querySelector('[data-media-lightbox-count]');
-    const caption = dialog.querySelector('[data-media-lightbox-caption]');
-    const prev = dialog.querySelector('[data-media-lightbox-prev]');
-    const next = dialog.querySelector('[data-media-lightbox-next]');
-    const close = dialog.querySelector('[data-media-lightbox-close]');
-    const state = { items: [], activeIndex: 0 };
-    dialog.__mediaLightboxState = state;
+    const image = dialog.querySelector<HTMLImageElement>('[data-media-lightbox-image]')!;
+    const video = dialog.querySelector<HTMLVideoElement>('[data-media-lightbox-video]')!;
+    const count = dialog.querySelector<HTMLElement>('[data-media-lightbox-count]')!;
+    const caption = dialog.querySelector<HTMLElement>('[data-media-lightbox-caption]')!;
+    const prev = dialog.querySelector<HTMLButtonElement>('[data-media-lightbox-prev]')!;
+    const next = dialog.querySelector<HTMLButtonElement>('[data-media-lightbox-next]')!;
+    const close = dialog.querySelector<HTMLButtonElement>('[data-media-lightbox-close]')!;
+    const state: { items: LightboxItem[]; activeIndex: number } = { items: [], activeIndex: 0 };
 
-    function preloadItem(item) {
+    function preloadItem(item: LightboxItem | undefined) {
       if (!item || item.kind === 'video') return;
       const img = new Image();
       img.src = item.src;
     }
 
-    function show(index) {
+    function show(index: number) {
       if (!state.items.length) return;
       state.activeIndex = Math.max(0, Math.min(index, state.items.length - 1));
       const item = state.items[state.activeIndex];
@@ -311,7 +330,7 @@ function tileClass(m: MediaSummary) {
       preloadItem(state.items[state.activeIndex - 1]);
     }
 
-    dialog.__mediaLightboxOpen = function open(items, index) {
+    dialog.__mediaLightboxOpen = function(items: LightboxItem[], index: number) {
       state.items = items;
       show(index);
       dialog.showModal();
@@ -345,27 +364,29 @@ function tileClass(m: MediaSummary) {
   }
 
   function initMediaGalleries() {
-    document.querySelectorAll('[data-media-gallery]').forEach((gallery) => {
+    document.querySelectorAll<HTMLElement>('[data-media-gallery]').forEach((gallery) => {
       if (gallery.dataset.mediaGalleryReady === 'true') return;
       gallery.dataset.mediaGalleryReady = 'true';
 
-      const triggers = Array.from(gallery.querySelectorAll('[data-media-lightbox-trigger]'));
+      const triggers = Array.from(gallery.querySelectorAll<HTMLElement>('[data-media-lightbox-trigger]'));
       if (!triggers.length) return;
 
       const allMediaRaw = gallery.dataset.allMedia;
-      const allItems = allMediaRaw ? JSON.parse(allMediaRaw).map((m) => ({
-        kind: m.kind || 'photo',
-        src: m.kind === 'video' ? '/media/' + m.id + (m.hasMp4 ? '/mp4' : '/original') : '/media/' + m.id + '/webp',
-        poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
-        alt: m.alt || '',
-        caption: m.caption || '',
-      })) : triggers.map((item) => ({
-        kind: item.dataset.mediaKind || 'photo',
-        src: item.dataset.mediaSrc || '',
-        poster: item.dataset.mediaPoster || '',
-        alt: item.dataset.mediaAlt || '',
-        caption: item.dataset.mediaCaption || '',
-      }));
+      const allItems: LightboxItem[] = allMediaRaw
+        ? (JSON.parse(allMediaRaw) as SerializedMedia[]).map((m) => ({
+            kind: m.kind || 'photo',
+            src: m.kind === 'video' ? '/media/' + m.id + (m.hasMp4 ? '/mp4' : '/original') : '/media/' + m.id + '/webp',
+            poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
+            alt: m.alt || '',
+            caption: m.caption || '',
+          }))
+        : triggers.map((item) => ({
+            kind: item.dataset.mediaKind || 'photo',
+            src: item.dataset.mediaSrc || '',
+            poster: item.dataset.mediaPoster || '',
+            alt: item.dataset.mediaAlt || '',
+            caption: item.dataset.mediaCaption || '',
+          }));
 
       triggers.forEach((trigger, index) => {
         trigger.addEventListener('click', () => {
@@ -382,7 +403,7 @@ function tileClass(m: MediaSummary) {
   initMediaGalleries();
 
   // Fade in gallery images when they finish loading
-  document.querySelectorAll('.media-gallery-image').forEach((img) => {
+  document.querySelectorAll<HTMLImageElement>('.media-gallery-image').forEach((img) => {
     if (img.complete) {
       img.classList.add('loaded');
     } else {
@@ -391,7 +412,7 @@ function tileClass(m: MediaSummary) {
     }
   });
   document.addEventListener('astro:page-load', () => {
-    document.querySelectorAll('.media-gallery-image:not(.loaded)').forEach((img) => {
+    document.querySelectorAll<HTMLImageElement>('.media-gallery-image:not(.loaded)').forEach((img) => {
       if (img.complete) {
         img.classList.add('loaded');
       } else {

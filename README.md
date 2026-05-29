@@ -4,19 +4,13 @@ Postmarked is a self-hosted travel journal for sharing your journey with friends
 
 It is not a trip planning tool, a blogging platform, or a journaling app. Just quick, lightweight updates from the road.
 
-## Current Status
+## Features
 
-Ready for beta testing. The stabilization pass is complete:
-
-- Docker stack boots with Astro, FastAPI, Postgres/PostGIS, Redis, and Celery.
-- Alembic migrations are at head (`a2b3c4d5e6f7`).
-- Seed data creates trips with stops, a current stop, a future stop, and recent posts.
-- Public reader APIs are wired to the frontend.
-- Admin can manage trips, stops, posts, activities, imports, media, and pending users.
-- RV Trip Wizard Excel preview/apply creates and updates normal draft stops.
-- Frontend production build passes.
-
-Open polish work remains but is not blocking beta testing.
+- Post quick updates from the road with text, photos, and location.
+- Visitors can check in anytime, or subscribe for notifications when something new is posted.
+- Admin panel for managing trips, stops, posts, activities, media, and users.
+- Import route itineraries from RV Trip Wizard Excel exports.
+- Docker-based stack: Astro frontend, FastAPI backend, Postgres/PostGIS, Redis, and Celery.
 
 ## Local URLs
 
@@ -174,12 +168,7 @@ If media images start returning 404s after a compose/project-name migration,
 run `./scripts/check-media-storage.sh` to confirm the database still points at
 files present in the active Docker media volumes.
 
-## Remaining Non-Blocking Work
+## License
 
-See `docs/path-to-testing.md` for the current test checklist and polish backlog. The highest-value items before wider beta testing are:
+This project is licensed under the [GNU General Public License v3.0](LICENSE).
 
-- Self-host fonts.
-- Clean up visible icon/emoji polish.
-- Run a mobile-width admin and reader pass.
-- Add deeper regression tests for import and visibility edge cases.
-- Finish production reverse-proxy/TLS/header review before deploying on a public domain.
