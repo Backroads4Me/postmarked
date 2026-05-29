@@ -616,6 +616,10 @@ function tileClass(_m: MediaSummary) {
     width: 34px;
   }
 
+  :global(.media-lightbox:not([open])) {
+    display: none;
+  }
+
   :global(.media-lightbox) {
     background: rgb(10 13 17 / 0.94);
     border: 1px solid rgb(255 255 255 / 0.14);
