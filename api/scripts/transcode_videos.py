@@ -96,7 +96,21 @@ def main():
         mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
 
         if not args.force and os.path.exists(mp4_path):
-            print(f"[{i}/{total}] SKIP  {asset.id}  — mp4 already exists (use --force to overwrite)")
+            paths = dict(asset.derivative_paths or {})
+            changed = False
+            if paths.get("mp4") != f"/media/{asset.id}/mp4":
+                paths["mp4"] = f"/media/{asset.id}/mp4"
+                asset.derivative_paths = paths
+                changed = True
+            if asset.processing_state != MediaProcessingState.READY:
+                asset.processing_state = MediaProcessingState.READY
+                asset.error_message = None
+                changed = True
+            if changed:
+                db.commit()
+                print(f"[{i}/{total}] FIXED {asset.id}  — mp4 metadata updated")
+            else:
+                print(f"[{i}/{total}] SKIP  {asset.id}  — mp4 already exists (use --force to overwrite)")
             skipped += 1
             continue
 

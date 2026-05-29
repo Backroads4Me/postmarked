@@ -42,7 +42,6 @@ const allMediaData = JSON.stringify(allMedia.map((m: MediaSummary) => ({
   kind: m.kind || 'photo',
   alt: m.alt_text || m.caption || '',
   caption: m.caption || '',
-  hasMp4: !!(m.derivative_paths && m.derivative_paths['mp4']),
 })));
 
 function isVideo(m: MediaSummary) {
@@ -54,7 +53,7 @@ function posterSrc(m: MediaSummary) {
 }
 
 function videoSrc(m: MediaSummary) {
-  return m.derivative_paths?.mp4 ? '/media/' + m.id + '/mp4' : '/media/' + m.id + '/original';
+  return '/media/' + m.id + '/mp4';
 }
 
 function avifSrc(m: MediaSummary) {
@@ -272,7 +271,6 @@ function tileClass(_m: MediaSummary) {
     kind: string;
     alt: string;
     caption: string;
-    hasMp4?: boolean;
   }
 
   function ensureMediaLightbox(): MediaLightboxDialog {
@@ -375,7 +373,7 @@ function tileClass(_m: MediaSummary) {
       const allItems: LightboxItem[] = allMediaRaw
         ? (JSON.parse(allMediaRaw) as SerializedMedia[]).map((m) => ({
             kind: m.kind || 'photo',
-            src: m.kind === 'video' ? '/media/' + m.id + (m.hasMp4 ? '/mp4' : '/original') : '/media/' + m.id + '/webp',
+            src: m.kind === 'video' ? '/media/' + m.id + '/mp4' : '/media/' + m.id + '/webp',
             poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
             alt: m.alt || '',
             caption: m.caption || '',
