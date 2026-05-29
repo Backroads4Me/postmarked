@@ -1,4 +1,6 @@
+import hashlib
 import os
+import shutil
 import uuid
 import logging
 import json
@@ -206,6 +208,32 @@ def _transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
     ], check=True)
 
 
+def _derivative_hash(path: str) -> str:
+    """Return the first 8 hex chars of the SHA-256 of a file's bytes."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+    return h.hexdigest()[:8]
+
+
+def _immutable_derivative(
+    tmp_path: str,
+    asset_id: uuid.UUID,
+    variant: str,
+    ext: str,
+) -> tuple[str, str]:
+    """
+    Hash a generated derivative file and atomically rename it to its immutable
+    filename.  Returns (disk_path, public_url_path).
+    """
+    hash8 = _derivative_hash(tmp_path)
+    filename = f"{variant}-{hash8}.{ext}"
+    final_path = os.path.join(DERIVATIVES_PATH, f"{asset_id}-{filename}")
+    os.replace(tmp_path, final_path)
+    return final_path, f"/media/{asset_id}/{filename}"
+
+
 @celery_app.task(name="process_media_asset")
 def process_media_asset(asset_id: str):
     """
@@ -255,20 +283,28 @@ def process_media_asset(asset_id: str):
                     # Full-size derivatives at max 1400px
                     full = img.copy()
                     full.thumbnail((1400, 1400), Image.Resampling.LANCZOS)
-                    full.save(os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp"), format="WEBP", quality=80)
-                    full.save(os.path.join(DERIVATIVES_PATH, f"{asset.id}.avif"), quality=70)
+
+                    tmp_webp = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.webp")
+                    tmp_avif = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.avif")
+                    full.save(tmp_webp, format="WEBP", quality=80)
+                    full.save(tmp_avif, quality=70)
+
+                    _, webp_url = _immutable_derivative(tmp_webp, asset.id, "webp", "webp")
+                    _, avif_url = _immutable_derivative(tmp_avif, asset.id, "avif", "avif")
 
                     derivative_paths: dict[str, str] = {
-                        "webp": f"/media/{asset.id}/webp",
-                        "avif": f"/media/{asset.id}/avif",
+                        "webp": webp_url,
+                        "avif": avif_url,
                     }
 
                     # Small variant at max 768px — only when the original exceeds that size
                     if img.width > 768 or img.height > 768:
                         sm = img.copy()
                         sm.thumbnail((768, 768), Image.Resampling.LANCZOS)
-                        sm.save(os.path.join(DERIVATIVES_PATH, f"{asset.id}_sm.webp"), format="WEBP", quality=80)
-                        derivative_paths["webp_sm"] = f"/media/{asset.id}/webp_sm"
+                        tmp_sm = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp_sm.webp")
+                        sm.save(tmp_sm, format="WEBP", quality=80)
+                        _, sm_url = _immutable_derivative(tmp_sm, asset.id, "webp_sm", "webp")
+                        derivative_paths["webp_sm"] = sm_url
 
                     # Dominant color from the already-thumbnailed full copy
                     full.thumbnail((1, 1))
@@ -299,31 +335,34 @@ def process_media_asset(asset_id: str):
                 asset.duration_seconds = float(duration_str)
 
                 # Extract poster image
-                poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")
-                ffmpeg_cmd = ["ffmpeg", "-y", "-i", file_path, "-vframes", "1", "-q:v", "2", poster_path]
+                tmp_poster = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp-poster.jpg")
+                ffmpeg_cmd = ["ffmpeg", "-y", "-i", file_path, "-vframes", "1", "-q:v", "2", tmp_poster]
                 subprocess.run(ffmpeg_cmd, check=True)
 
                 # Transcode to H.264/AAC MP4 for universal browser compatibility.
                 # iPhone HEVC (.mov) originals won't play in Safari's <video> tag,
                 # so we always produce a web-safe derivative.
-                mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
-                _transcode_video_to_mp4(file_path, mp4_path)
+                tmp_mp4 = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.mp4")
+                _transcode_video_to_mp4(file_path, tmp_mp4)
 
                 # Probe dimensions from the transcoded file so rotation is
                 # already baked in and width/height match what the browser sees.
-                w, h = _probe_video_dimensions(mp4_path)
+                w, h = _probe_video_dimensions(tmp_mp4)
                 asset.width = w
                 asset.height = h
                 asset.aspect_ratio = round(w / h, 4)
 
                 # Blurhash the poster
-                with Image.open(poster_path) as img:
+                with Image.open(tmp_poster) as img:
                     img.thumbnail((32, 32))
                     asset.blurhash = blurhash.encode(img, x_components=4, y_components=3)
 
+                _, poster_url = _immutable_derivative(tmp_poster, asset.id, "poster", "jpg")
+                _, mp4_url = _immutable_derivative(tmp_mp4, asset.id, "mp4", "mp4")
+
                 asset.derivative_paths = {
-                    "poster": f"/media/{asset.id}/poster",
-                    "mp4": f"/media/{asset.id}/mp4",
+                    "poster": poster_url,
+                    "mp4": mp4_url,
                 }
                 asset.processing_state = MediaProcessingState.READY
                 asset.error_message = None
@@ -375,9 +414,6 @@ def dispatch_post_notification(post_id: str):
         return f"Sent {sent_count} immediate post notifications"
     finally:
         db.close()
-
-import hashlib
-import shutil
 
 INGEST_PATH = os.getenv("INGEST_PATH", "/tmp/ingest")
 PROCESSED_INGEST_PATH = os.path.join(INGEST_PATH, "processed")

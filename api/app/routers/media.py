@@ -10,11 +10,12 @@ Browsers sending the session cookie get authorized automatically (same-origin
 fetch from <img> / <video>). Cross-origin embeds are not supported in V1.
 """
 import os
+import re
 import uuid
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
-from fastapi.responses import FileResponse, Response, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
@@ -33,13 +34,17 @@ DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
 PHOTO_VARIANTS = {"original", "webp", "avif", "webp_sm"}
 VIDEO_VARIANTS = {"original", "poster", "mp4"}
 
+# Regex matching a hashed derivative filename: {variant}-{hash8}.{ext}
+_HASHED_FILENAME_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
+
 router = APIRouter(prefix="/media", tags=["media"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
 
 
-def _resolve_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
+def _resolve_legacy_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
     """
-    Map (asset, variant) to (filesystem_path, mime_type) or None if unknown.
+    Map (asset, legacy variant name) to (filesystem_path, mime_type) or None.
+    Used only for the legacy fallback when derivative_paths has no hashed entry.
     """
     if variant == "original":
         return asset.original_path, asset.mime_type or "application/octet-stream"
@@ -65,6 +70,38 @@ def _resolve_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
         return path, "image/jpeg"
 
     return None
+
+
+def _resolve_hashed_path(asset: MediaAsset, filename: str) -> Optional[tuple[str, str]]:
+    """
+    Map a hashed derivative filename to (filesystem_path, mime_type) or None.
+    Only accepts filenames that exactly match a value in derivative_paths.
+    """
+    dp = asset.derivative_paths or {}
+    # Check that this filename is in the asset's derivative_paths values
+    matched = False
+    for url_path in dp.values():
+        # url_path looks like /media/{asset_id}/{filename}
+        if url_path.endswith("/" + filename):
+            matched = True
+            break
+    if not matched:
+        return None
+
+    # Derive filesystem path — on disk: {DERIVATIVES_PATH}/{asset_id}-{filename}
+    disk_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-{filename}")
+
+    # Determine MIME type from extension
+    ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
+    mime_map = {
+        "mp4": "video/mp4",
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "webp": "image/webp",
+        "avif": "image/avif",
+    }
+    mime_type = mime_map.get(ext, "application/octet-stream")
+    return disk_path, mime_type
 
 
 async def _parent_visibility(session: AsyncSession, asset: MediaAsset):
@@ -154,28 +191,28 @@ def _file_etag(path: str, variant: str) -> str:
     return f'"file-{mtime_ns:x}-{stat.st_size:x}-{variant}"'
 
 
-def _cache_control(variant: str, is_public: bool) -> str:
+def _cache_control_immutable() -> str:
+    """Cache headers for hashed (immutable) derivatives."""
+    return "public, max-age=31536000, immutable, no-transform"
+
+
+def _cache_control_legacy(variant: str, is_public: bool) -> str:
+    """Cache headers for legacy (unhashed) derivative routes."""
     if not is_public:
         return "private, max-age=86400"
-    if variant in {"mp4", "original"}:
-        return "public, max-age=3600, must-revalidate, no-transform"
-    return "public, max-age=31536000, must-revalidate, no-transform"
+    # Short cache for all legacy routes — they'll 301 once backfilled.
+    return "public, max-age=3600, must-revalidate, no-transform"
 
 
-async def _media_response(
+async def _check_asset_access(
     asset_id: uuid.UUID,
-    variant: str,
-    request: Request,
-    head_only: bool,
-    session: AsyncSession = Depends(get_async_session),
-    user=Depends(current_user_optional),
-):
+    session: AsyncSession,
+    user,
+) -> tuple[MediaAsset, str, bool]:
+    """Load asset and verify visibility. Returns (asset, eff_vis, parent_published).
+    Raises HTTPException(404) on denial."""
     asset = await session.get(MediaAsset, asset_id)
     if not asset:
-        raise HTTPException(status_code=404, detail="Not found")
-
-    allowed = PHOTO_VARIANTS if asset.kind == MediaKind.PHOTO else VIDEO_VARIANTS
-    if variant not in allowed:
         raise HTTPException(status_code=404, detail="Not found")
 
     parent_vis, parent_published = await _parent_visibility(session, asset)
@@ -186,17 +223,22 @@ async def _media_response(
         # Deny == 404, not 403, per spec.
         raise HTTPException(status_code=404, detail="Not found")
 
-    resolved = _resolve_path(asset, variant)
-    if not resolved:
-        raise HTTPException(status_code=404, detail="Not found")
+    return asset, eff_vis, parent_published
 
-    path, mime_type = resolved
+
+def _serve_file(
+    path: str,
+    mime_type: str,
+    variant: str,
+    cache_control: str,
+    request: Request,
+    head_only: bool,
+) -> Response:
+    """Common file serving logic with ETag, Range, and HEAD support."""
     if not os.path.exists(path):
-        # Asset row exists but bytes are missing (worker still pending, or lost file).
         raise HTTPException(status_code=404, detail="Not found")
 
     etag = _file_etag(path, variant)
-    cache_control = _cache_control(variant, eff_vis == "public" and parent_published)
 
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304)
@@ -251,6 +293,96 @@ async def _media_response(
             "Accept-Ranges": "bytes",
         },
     )
+
+
+def _is_hashed_filename(filename: str) -> bool:
+    """Check if a filename matches the immutable pattern: {variant}-{hash8}.{ext}"""
+    return bool(_HASHED_FILENAME_RE.match(filename))
+
+
+def _find_hashed_url(asset: MediaAsset, variant: str) -> Optional[str]:
+    """
+    Check if derivative_paths has a hashed URL for the given legacy variant name.
+    Returns the hashed URL path (e.g. /media/{id}/mp4-a1b2c3d4.mp4) or None.
+    """
+    dp = asset.derivative_paths or {}
+    url_path = dp.get(variant)
+    if not url_path:
+        return None
+    # Check if it's a hashed URL (contains a hash pattern) vs old-style /media/{id}/mp4
+    # Old-style: /media/{id}/{variant}   (no dot, no hash)
+    # Hashed:    /media/{id}/{variant}-{hash8}.{ext}
+    parts = url_path.rsplit("/", 1)
+    if len(parts) == 2 and _is_hashed_filename(parts[1]):
+        return url_path
+    return None
+
+
+async def _legacy_media_response(
+    asset_id: uuid.UUID,
+    variant: str,
+    request: Request,
+    head_only: bool,
+    session: AsyncSession,
+    user,
+):
+    """Handle legacy variant routes like /media/{id}/mp4, /media/{id}/poster, etc."""
+    asset, eff_vis, parent_published = await _check_asset_access(asset_id, session, user)
+
+    allowed = PHOTO_VARIANTS if asset.kind == MediaKind.PHOTO else VIDEO_VARIANTS
+    if variant not in allowed:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    # If derivative_paths has a hashed URL for this variant, 301 redirect
+    hashed_url = _find_hashed_url(asset, variant)
+    if hashed_url:
+        return RedirectResponse(url=hashed_url, status_code=301)
+
+    resolved = _resolve_legacy_path(asset, variant)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    path, mime_type = resolved
+    is_public = eff_vis == "public" and parent_published
+    cache_control = _cache_control_legacy(variant, is_public)
+    return _serve_file(path, mime_type, variant, cache_control, request, head_only)
+
+
+async def _hashed_media_response(
+    asset_id: uuid.UUID,
+    filename: str,
+    request: Request,
+    head_only: bool,
+    session: AsyncSession,
+    user,
+):
+    """Handle hashed derivative routes like /media/{id}/mp4-a1b2c3d4.mp4."""
+    asset, eff_vis, parent_published = await _check_asset_access(asset_id, session, user)
+
+    resolved = _resolve_hashed_path(asset, filename)
+    if not resolved:
+        raise HTTPException(status_code=404, detail="Not found")
+
+    path, mime_type = resolved
+    variant = filename.rsplit("-", 1)[0] if "-" in filename else filename
+    is_public = eff_vis == "public" and parent_published
+    cache_control = _cache_control_immutable() if is_public else "private, max-age=86400"
+    return _serve_file(path, mime_type, variant, cache_control, request, head_only)
+
+
+async def _media_response(
+    asset_id: uuid.UUID,
+    variant: str,
+    request: Request,
+    head_only: bool,
+    session: AsyncSession,
+    user,
+):
+    """Unified dispatcher: routes hashed filenames to immutable handler, legacy names to legacy handler."""
+    if _is_hashed_filename(variant):
+        return await _hashed_media_response(asset_id, variant, request, head_only, session, user)
+    else:
+        return await _legacy_media_response(asset_id, variant, request, head_only, session, user)
 
 
 @router.get("/{asset_id}/{variant}")

@@ -3,6 +3,9 @@ Regenerate all photo derivatives for existing assets: WebP (1400px), AVIF (1400p
 and small WebP (768px) for images that exceed that size. Also updates derivative_paths
 in the database so the API serves the new variants.
 
+Derivative files are content-hashed and given immutable filenames so they can be
+cached indefinitely by Cloudflare.
+
 Run from the api container:
 
     docker compose exec api python /app/scripts/regen_webp.py
@@ -11,7 +14,9 @@ Options:
   --force   Overwrite derivatives even if they already exist on disk (default: skip)
 """
 
+import hashlib
 import os
+import re
 import sys
 import argparse
 from sqlalchemy import create_engine, select
@@ -36,6 +41,44 @@ FULL_MAX = 1400
 SM_MAX = 768
 WEBP_QUALITY = 80
 AVIF_QUALITY = 70
+
+
+def _derivative_hash(path: str) -> str:
+    """Return the first 8 hex chars of the SHA-256 of a file's bytes."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+    return h.hexdigest()[:8]
+
+
+def _immutable_rename(tmp_path: str, asset_id, variant: str, ext: str) -> tuple[str, str]:
+    """Hash a derivative file and atomically rename to its immutable filename.
+    Returns (disk_path, public_url_path)."""
+    hash8 = _derivative_hash(tmp_path)
+    filename = f"{variant}-{hash8}.{ext}"
+    final_path = os.path.join(DERIVATIVES_PATH, f"{asset_id}-{filename}")
+    os.replace(tmp_path, final_path)
+    return final_path, f"/media/{asset_id}/{filename}"
+
+
+def _is_hashed_url(url: str) -> bool:
+    """Check if a derivative_paths URL is a hashed (immutable) URL."""
+    parts = url.rsplit("/", 1)
+    return len(parts) == 2 and bool(re.match(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$", parts[1]))
+
+
+def _all_photo_variants_hashed(dp: dict) -> bool:
+    """Check if all photo derivative_paths entries are already hashed."""
+    for key in ("webp", "avif"):
+        url = dp.get(key, "")
+        if not url or not _is_hashed_url(url):
+            return False
+    # webp_sm is optional — only check if present
+    sm_url = dp.get("webp_sm", "")
+    if sm_url and not _is_hashed_url(sm_url):
+        return False
+    return True
 
 
 def main():
@@ -68,12 +111,10 @@ def main():
             skipped += 1
             continue
 
-        webp_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.webp")
-        avif_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.avif")
-        sm_path   = os.path.join(DERIVATIVES_PATH, f"{asset.id}_sm.webp")
+        dp = dict(asset.derivative_paths or {})
 
-        if not args.force and os.path.exists(avif_path):
-            print(f"[{i}/{total}] SKIP  {asset.id}  — derivatives already exist (use --force to overwrite)")
+        if not args.force and _all_photo_variants_hashed(dp):
+            print(f"[{i}/{total}] SKIP  {asset.id}  — derivatives already hashed (use --force to overwrite)")
             skipped += 1
             continue
 
@@ -92,20 +133,28 @@ def main():
                 # Full-size derivatives
                 full = img.copy()
                 full.thumbnail((FULL_MAX, FULL_MAX), Image.Resampling.LANCZOS)
-                full.save(webp_path, format="WEBP", quality=WEBP_QUALITY)
-                full.save(avif_path, quality=AVIF_QUALITY)
+
+                tmp_webp = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.webp")
+                tmp_avif = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.avif")
+                full.save(tmp_webp, format="WEBP", quality=WEBP_QUALITY)
+                full.save(tmp_avif, quality=AVIF_QUALITY)
+
+                _, webp_url = _immutable_rename(tmp_webp, asset.id, "webp", "webp")
+                _, avif_url = _immutable_rename(tmp_avif, asset.id, "avif", "avif")
 
                 derivative_paths: dict[str, str] = {
-                    "webp": f"/media/{asset.id}/webp",
-                    "avif": f"/media/{asset.id}/avif",
+                    "webp": webp_url,
+                    "avif": avif_url,
                 }
 
                 # Small variant only for images larger than 768px
                 if original_width > SM_MAX or original_height > SM_MAX:
                     sm = img.copy()
                     sm.thumbnail((SM_MAX, SM_MAX), Image.Resampling.LANCZOS)
-                    sm.save(sm_path, format="WEBP", quality=WEBP_QUALITY)
-                    derivative_paths["webp_sm"] = f"/media/{asset.id}/webp_sm"
+                    tmp_sm = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp_sm.webp")
+                    sm.save(tmp_sm, format="WEBP", quality=WEBP_QUALITY)
+                    _, sm_url = _immutable_rename(tmp_sm, asset.id, "webp_sm", "webp")
+                    derivative_paths["webp_sm"] = sm_url
 
             asset.derivative_paths = derivative_paths
             db.commit()

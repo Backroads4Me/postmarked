@@ -42,24 +42,32 @@ const allMediaData = JSON.stringify(allMedia.map((m: MediaSummary) => ({
   kind: m.kind || 'photo',
   alt: m.alt_text || m.caption || '',
   caption: m.caption || '',
-  src: isVideo(m) ? videoSrc(m) : '/media/' + m.id + '/webp',
+  src: isVideo(m) ? videoSrc(m) : photoSrc(m),
   fallbackSrc: isVideo(m) ? '/media/' + m.id + '/original' : '',
+  poster: isVideo(m) ? posterSrc(m) : '',
 })));
 
 function isVideo(m: MediaSummary) {
   return m.kind === 'video';
 }
 
+function photoSrc(m: MediaSummary) {
+  return m.derivative_paths?.webp || '/media/' + m.id + '/webp';
+}
+
 function posterSrc(m: MediaSummary) {
-  return isVideo(m) ? '/media/' + m.id + '/poster' : '/media/' + m.id + '/webp';
+  if (isVideo(m)) {
+    return m.derivative_paths?.poster || '/media/' + m.id + '/poster';
+  }
+  return m.derivative_paths?.webp || '/media/' + m.id + '/webp';
 }
 
 function videoSrc(m: MediaSummary) {
-  return m.derivative_paths?.mp4 ? '/media/' + m.id + '/mp4' : '/media/' + m.id + '/original';
+  return m.derivative_paths?.mp4 || '/media/' + m.id + '/original';
 }
 
 function avifSrc(m: MediaSummary) {
-  return '/media/' + m.id + '/avif';
+  return m.derivative_paths?.avif || '/media/' + m.id + '/avif';
 }
 
 function hasAvif(m: MediaSummary) {
@@ -67,12 +75,13 @@ function hasAvif(m: MediaSummary) {
 }
 
 function webpSmSrc(m: MediaSummary) {
-  return '/media/' + m.id + '/webp_sm';
+  return m.derivative_paths?.webp_sm || '/media/' + m.id + '/webp_sm';
 }
 
 function hasSmVariant(m: MediaSummary) {
-  return (m.width || 0) > 768 || (m.height || 0) > 768;
+  return !!(m.derivative_paths?.webp_sm) || ((m.width || 0) > 768 || (m.height || 0) > 768);
 }
+
 
 function tileStyle(m: MediaSummary) {
   const aspect = m.width && m.height ? m.width + ' / ' + m.height : '4 / 3';
@@ -278,6 +287,7 @@ function tileClass(_m: MediaSummary) {
     caption: string;
     src: string;
     fallbackSrc: string;
+    poster: string;
   }
 
   function ensureMediaLightbox(): MediaLightboxDialog {
@@ -390,9 +400,9 @@ function tileClass(_m: MediaSummary) {
       const allItems: LightboxItem[] = allMediaRaw
         ? (JSON.parse(allMediaRaw) as SerializedMedia[]).map((m) => ({
             kind: m.kind || 'photo',
-            src: m.src || (m.kind === 'video' ? '/media/' + m.id + '/original' : '/media/' + m.id + '/webp'),
+            src: m.src || '',
             fallbackSrc: m.fallbackSrc || '',
-            poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
+            poster: m.poster || '',
             alt: m.alt || '',
             caption: m.caption || '',
           }))

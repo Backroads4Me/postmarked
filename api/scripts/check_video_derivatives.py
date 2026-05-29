@@ -1,5 +1,6 @@
 """
 Report video assets whose MP4 or poster derivative is missing or invalid.
+After backfill, also validates that derivative_paths URLs are hashed (immutable).
 
 Run from the api container:
 
@@ -7,6 +8,7 @@ Run from the api container:
 """
 
 import os
+import re
 import subprocess
 
 from sqlalchemy import create_engine, select
@@ -22,10 +24,34 @@ DATABASE_URL = os.getenv(
 
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/derivatives")
 
+_HASHED_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
+
+
+def _is_hashed_url(url: str) -> bool:
+    """Check if a derivative_paths URL is a hashed (immutable) URL."""
+    parts = url.rsplit("/", 1)
+    return len(parts) == 2 and bool(_HASHED_RE.match(parts[1]))
+
+
+def _disk_path_for_url(asset_id: str, url: str) -> str | None:
+    """Resolve a derivative_paths URL to a filesystem path."""
+    parts = url.rsplit("/", 1)
+    if len(parts) != 2:
+        return None
+    filename = parts[1]
+    if _HASHED_RE.match(filename):
+        return os.path.join(DERIVATIVES_PATH, f"{asset_id}-{filename}")
+    # Legacy filenames
+    legacy_map = {
+        "mp4": f"{asset_id}.mp4",
+        "poster": f"{asset_id}-poster.jpg",
+    }
+    return os.path.join(DERIVATIVES_PATH, legacy_map.get(filename, filename))
+
 
 def is_valid_mp4(path: str) -> bool:
     try:
-        subprocess.run(
+        result = subprocess.run(
             [
                 "ffprobe",
                 "-v",
@@ -42,7 +68,7 @@ def is_valid_mp4(path: str) -> bool:
             capture_output=True,
             text=True,
         )
-        return True
+        return result.stdout.strip() == "h264"
     except subprocess.CalledProcessError:
         return False
 
@@ -61,42 +87,69 @@ def main() -> None:
         missing_metadata = 0
         invalid_file = 0
         missing_poster = 0
+        old_style_mp4 = 0
+        old_style_poster = 0
 
         for asset in assets:
-            mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
-            poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")
-            has_file = os.path.exists(mp4_path)
-            valid_file = has_file and is_valid_mp4(mp4_path)
-            has_poster = os.path.exists(poster_path)
-            has_metadata = bool((asset.derivative_paths or {}).get("mp4"))
-            if has_file and valid_file and has_poster and has_metadata:
-                continue
+            dp = asset.derivative_paths or {}
+            mp4_url = dp.get("mp4", "")
+            poster_url = dp.get("poster", "")
+
+            has_mp4_metadata = bool(mp4_url)
+            mp4_is_hashed = _is_hashed_url(mp4_url) if mp4_url else False
+            poster_is_hashed = _is_hashed_url(poster_url) if poster_url else False
+
+            # Resolve file paths
+            mp4_disk = _disk_path_for_url(str(asset.id), mp4_url) if mp4_url else None
+            poster_disk = _disk_path_for_url(str(asset.id), poster_url) if poster_url else None
+
+            has_file = mp4_disk and os.path.exists(mp4_disk)
+            valid_file = has_file and is_valid_mp4(mp4_disk)
+            has_poster = poster_disk and os.path.exists(poster_disk)
+
+            problems = []
 
             if not has_file:
                 missing_file += 1
+                problems.append("file=no")
             elif not valid_file:
                 invalid_file += 1
+                problems.append("valid=no")
+
             if not has_poster:
                 missing_poster += 1
-            if not has_metadata:
+                problems.append("poster=no")
+
+            if not has_mp4_metadata:
                 missing_metadata += 1
+                problems.append("metadata=no")
+
+            if mp4_url and not mp4_is_hashed:
+                old_style_mp4 += 1
+                problems.append("mp4_hashed=no")
+
+            if poster_url and not poster_is_hashed:
+                old_style_poster += 1
+                problems.append("poster_hashed=no")
+
+            if not problems:
+                continue
 
             print(
                 f"{asset.id} state={asset.processing_state.value} "
-                f"file={'yes' if has_file else 'no'} "
-                f"valid={'yes' if valid_file else 'no'} "
-                f"poster={'yes' if has_poster else 'no'} "
-                f"metadata={'yes' if has_metadata else 'no'} "
+                f"{' '.join(problems)} "
                 f"mime={asset.mime_type} original={asset.original_filename}"
             )
             if asset.error_message:
                 print(f"  error={asset.error_message}")
 
         print(
-            f"Missing files: {missing_file}. "
+            f"\nMissing files: {missing_file}. "
             f"Invalid files: {invalid_file}. "
             f"Missing posters: {missing_poster}. "
-            f"Missing derivative_paths.mp4 metadata: {missing_metadata}."
+            f"Missing derivative_paths.mp4 metadata: {missing_metadata}. "
+            f"Old-style (unhashed) mp4 URLs: {old_style_mp4}. "
+            f"Old-style (unhashed) poster URLs: {old_style_poster}."
         )
     finally:
         db.close()

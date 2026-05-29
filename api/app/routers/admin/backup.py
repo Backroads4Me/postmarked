@@ -135,13 +135,45 @@ async def export_backup(
 
         await _dump("site_text_sections", SiteTextSection)
 
-        # Bundle derivative files from disk.
+        # Bundle derivative files from disk — read paths from derivative_paths.
+        import re
+        _HASHED_FILENAME_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
         for row in media_rows:
             asset_id = row["id"]
+            dp = row.get("derivative_paths") or {}
+            added_paths: set[str] = set()
+            for variant, url_path in dp.items():
+                if not url_path:
+                    continue
+                # Extract filename from URL path like /media/{id}/{filename}
+                parts = url_path.rsplit("/", 1)
+                if len(parts) != 2:
+                    continue
+                filename = parts[1]
+                # Determine disk path based on whether filename is hashed
+                if _HASHED_FILENAME_RE.match(filename):
+                    disk_path = os.path.join(DERIVATIVES_PATH, f"{asset_id}-{filename}")
+                else:
+                    # Legacy filenames — map variant to old naming convention
+                    legacy_map = {
+                        "webp": f"{asset_id}.webp",
+                        "avif": f"{asset_id}.avif",
+                        "webp_sm": f"{asset_id}_sm.webp",
+                        "mp4": f"{asset_id}.mp4",
+                        "poster": f"{asset_id}-poster.jpg",
+                    }
+                    disk_filename = legacy_map.get(variant, filename)
+                    disk_path = os.path.join(DERIVATIVES_PATH, disk_filename)
+                if os.path.exists(disk_path):
+                    archive_name = os.path.basename(disk_path)
+                    zf.write(disk_path, f"media/derivatives/{archive_name}")
+                    added_paths.add(disk_path)
+            # Safety net: include legacy-named files for assets whose
+            # derivative_paths is NULL or missing (FAILED/pre-backfill state).
             for suffix in (".webp", ".avif", "_sm.webp", ".mp4", "-poster.jpg"):
-                path = os.path.join(DERIVATIVES_PATH, f"{asset_id}{suffix}")
-                if os.path.exists(path):
-                    zf.write(path, f"media/derivatives/{asset_id}{suffix}")
+                legacy_path = os.path.join(DERIVATIVES_PATH, f"{asset_id}{suffix}")
+                if legacy_path not in added_paths and os.path.exists(legacy_path):
+                    zf.write(legacy_path, f"media/derivatives/{asset_id}{suffix}")
 
         zf.writestr(
             "manifest.json",

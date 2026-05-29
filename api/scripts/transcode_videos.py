@@ -3,6 +3,9 @@ Transcode existing video assets to H.264/AAC MP4 for universal browser playback.
 iPhone HEVC originals won't play in Safari's <video> tag — this produces a
 web-safe derivative and updates derivative_paths in the database.
 
+Derivative files are content-hashed and given immutable filenames so they can be
+cached indefinitely by Cloudflare.
+
 Run from the api container:
 
     docker compose exec api python /app/scripts/transcode_videos.py
@@ -12,6 +15,7 @@ Options:
   --force-poster   Regenerate posters even if they already exist
 """
 
+import hashlib
 import os
 import sys
 import argparse
@@ -28,6 +32,25 @@ DATABASE_URL = os.getenv(
 ).replace("postgresql://", "postgresql+psycopg://", 1)
 
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/derivatives")
+
+
+def _derivative_hash(path: str) -> str:
+    """Return the first 8 hex chars of the SHA-256 of a file's bytes."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        while chunk := f.read(8192):
+            h.update(chunk)
+    return h.hexdigest()[:8]
+
+
+def _immutable_rename(tmp_path: str, asset_id, variant: str, ext: str) -> tuple[str, str]:
+    """Hash a derivative file and atomically rename to its immutable filename.
+    Returns (disk_path, public_url_path)."""
+    hash8 = _derivative_hash(tmp_path)
+    filename = f"{variant}-{hash8}.{ext}"
+    final_path = os.path.join(DERIVATIVES_PATH, f"{asset_id}-{filename}")
+    os.replace(tmp_path, final_path)
+    return final_path, f"/media/{asset_id}/{filename}"
 
 
 def probe_dimensions(path: str) -> tuple[int, int]:
@@ -98,6 +121,13 @@ def extract_poster(file_path: str, poster_path: str) -> None:
     ], check=True, capture_output=True)
 
 
+def _is_hashed_url(url: str) -> bool:
+    """Check if a derivative_paths URL is a hashed (immutable) URL."""
+    import re
+    parts = url.rsplit("/", 1)
+    return len(parts) == 2 and bool(re.match(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$", parts[1]))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Re-transcode even if mp4 already exists")
@@ -129,57 +159,90 @@ def main():
     posters_ok = 0
 
     for i, asset in enumerate(assets, 1):
-        mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
-        poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")
-
+        paths = dict(asset.derivative_paths or {})
         file_path = asset.original_path
         if not file_path or not os.path.exists(file_path):
             print(f"[{i}/{total}] SKIP  {asset.id}  — original not found: {file_path}", file=sys.stderr)
             skipped += 1
             continue
 
+        # --- Poster ---
         try:
-            if args.force_poster or not os.path.exists(poster_path):
-                extract_poster(file_path, poster_path)
+            poster_needs_hash = not _is_hashed_url(paths.get("poster", ""))
+            if args.force_poster or poster_needs_hash:
+                tmp_poster = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp-poster.jpg")
+                extract_poster(file_path, tmp_poster)
+                _, poster_url = _immutable_rename(tmp_poster, asset.id, "poster", "jpg")
+                paths["poster"] = poster_url
                 posters_ok += 1
         except Exception as exc:
             errors += 1
             print(f"[{i}/{total}] ERROR {asset.id}  — poster failed: {exc}", file=sys.stderr)
 
-        if not args.force and os.path.exists(mp4_path) and is_valid_mp4(mp4_path):
-            paths = dict(asset.derivative_paths or {})
+        # --- MP4 ---
+        mp4_needs_hash = not _is_hashed_url(paths.get("mp4", ""))
+
+        # If we already have a hashed mp4 and --force is not set, just update metadata
+        if not args.force and not mp4_needs_hash:
             changed = False
-            if paths.get("poster") != f"/media/{asset.id}/poster":
-                paths["poster"] = f"/media/{asset.id}/poster"
-                asset.derivative_paths = paths
-                changed = True
-            if paths.get("mp4") != f"/media/{asset.id}/mp4":
-                paths["mp4"] = f"/media/{asset.id}/mp4"
-                asset.derivative_paths = paths
-                changed = True
             if asset.processing_state != MediaProcessingState.READY:
                 asset.processing_state = MediaProcessingState.READY
                 asset.error_message = None
                 changed = True
+            if paths != (asset.derivative_paths or {}):
+                asset.derivative_paths = paths
+                changed = True
             if changed:
                 db.commit()
-                print(f"[{i}/{total}] FIXED {asset.id}  — mp4 metadata updated")
+                print(f"[{i}/{total}] FIXED {asset.id}  — metadata updated")
             else:
-                print(f"[{i}/{total}] SKIP  {asset.id}  — mp4 already exists (use --force to overwrite)")
+                print(f"[{i}/{total}] SKIP  {asset.id}  — already hashed (use --force to overwrite)")
             skipped += 1
             continue
 
-        try:
-            transcode_video_to_mp4(file_path, mp4_path)
+        # Check for an existing unhashed mp4 on disk that we can just hash-rename
+        old_mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
+        if not args.force and mp4_needs_hash and os.path.exists(old_mp4_path) and is_valid_mp4(old_mp4_path):
+            # Compute hash first — old file stays put until after DB commit so
+            # a commit failure leaves the asset accessible via the legacy path.
+            hash8 = _derivative_hash(old_mp4_path)
+            filename = f"mp4-{hash8}.mp4"
+            final_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-{filename}")
+            mp4_url = f"/media/{asset.id}/{filename}"
 
-            w, h = probe_dimensions(mp4_path)
+            paths["mp4"] = mp4_url
+            asset.derivative_paths = paths
+            asset.processing_state = MediaProcessingState.READY
+            asset.error_message = None
+
+            # Update dimensions if missing — probe before the rename
+            if not asset.width or not asset.height:
+                try:
+                    w, h = probe_dimensions(old_mp4_path)
+                    asset.width = w
+                    asset.height = h
+                    asset.aspect_ratio = round(w / h, 4)
+                except Exception:
+                    pass
+
+            db.commit()  # commit first; if this fails, old file is still in place
+            os.replace(old_mp4_path, final_path)  # rename only after successful commit
+            print(f"[{i}/{total}] HASH  {asset.id}  — renamed existing mp4 to hashed filename")
+            ok += 1
+            continue
+
+        # Full transcode needed
+        try:
+            tmp_mp4 = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.mp4")
+            transcode_video_to_mp4(file_path, tmp_mp4)
+
+            w, h = probe_dimensions(tmp_mp4)
             asset.width = w
             asset.height = h
             asset.aspect_ratio = round(w / h, 4)
 
-            paths = dict(asset.derivative_paths or {})
-            paths["poster"] = f"/media/{asset.id}/poster"
-            paths["mp4"] = f"/media/{asset.id}/mp4"
+            _, mp4_url = _immutable_rename(tmp_mp4, asset.id, "mp4", "mp4")
+            paths["mp4"] = mp4_url
             asset.derivative_paths = paths
             asset.processing_state = MediaProcessingState.READY
             asset.error_message = None
