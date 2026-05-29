@@ -45,6 +45,9 @@ function isActive(href: string) {
 
       root.dataset.theme = resolvedTheme;
       root.dataset.themePreference = storedTheme || 'system';
+
+      const themeColor = document.querySelector('meta[name="theme-color"]');
+      if (themeColor) themeColor.setAttribute('content', resolvedTheme === 'dark' ? '#0D141C' : '#E1D7BE');
     })();
   </script>
 </head>
