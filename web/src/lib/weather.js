@@ -70,7 +70,7 @@ async function fetchWeatherNWS(lat, lon) {
   try {
     const pointsRes = await fetch(
       `https://api.weather.gov/points/${lat},${lon}`,
-      { headers: { 'User-Agent': 'postmarked-app/1.0 (${import.meta.env.ADMIN_EMAIL ?? 'contact@example.com'})' } },
+      { headers: { 'User-Agent': `postmarked-app/1.0 (${import.meta.env.ADMIN_EMAIL ?? 'contact@example.com'})` } },
     );
     if (!pointsRes.ok) return null;
     const pointsData = await pointsRes.json();
@@ -79,7 +79,7 @@ async function fetchWeatherNWS(lat, lon) {
     const forecastHourlyUrl = pointsData.properties?.forecastHourly;
     if (!forecastUrl || !forecastHourlyUrl) return null;
 
-    const ua = { headers: { 'User-Agent': 'postmarked-app/1.0 (${import.meta.env.ADMIN_EMAIL ?? 'contact@example.com'})' } };
+    const ua = { headers: { 'User-Agent': `postmarked-app/1.0 (${import.meta.env.ADMIN_EMAIL ?? 'contact@example.com'})` } };
     const [dailyRes, hourlyRes] = await Promise.all([
       fetch(forecastUrl, ua),
       fetch(forecastHourlyUrl, ua),
