@@ -1,5 +1,5 @@
 """
-Report video assets whose MP4 derivative is missing on disk or in metadata.
+Report video assets whose MP4 or poster derivative is missing or invalid.
 
 Run from the api container:
 
@@ -60,19 +60,24 @@ def main() -> None:
         missing_file = 0
         missing_metadata = 0
         invalid_file = 0
+        missing_poster = 0
 
         for asset in assets:
             mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
+            poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")
             has_file = os.path.exists(mp4_path)
             valid_file = has_file and is_valid_mp4(mp4_path)
+            has_poster = os.path.exists(poster_path)
             has_metadata = bool((asset.derivative_paths or {}).get("mp4"))
-            if has_file and valid_file and has_metadata:
+            if has_file and valid_file and has_poster and has_metadata:
                 continue
 
             if not has_file:
                 missing_file += 1
             elif not valid_file:
                 invalid_file += 1
+            if not has_poster:
+                missing_poster += 1
             if not has_metadata:
                 missing_metadata += 1
 
@@ -80,6 +85,7 @@ def main() -> None:
                 f"{asset.id} state={asset.processing_state.value} "
                 f"file={'yes' if has_file else 'no'} "
                 f"valid={'yes' if valid_file else 'no'} "
+                f"poster={'yes' if has_poster else 'no'} "
                 f"metadata={'yes' if has_metadata else 'no'} "
                 f"mime={asset.mime_type} original={asset.original_filename}"
             )
@@ -89,6 +95,7 @@ def main() -> None:
         print(
             f"Missing files: {missing_file}. "
             f"Invalid files: {invalid_file}. "
+            f"Missing posters: {missing_poster}. "
             f"Missing derivative_paths.mp4 metadata: {missing_metadata}."
         )
     finally:

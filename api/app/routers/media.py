@@ -162,11 +162,11 @@ def _cache_control(variant: str, is_public: bool) -> str:
     return "public, max-age=31536000, no-transform"
 
 
-@router.get("/{asset_id}/{variant}")
-async def get_media(
+async def _media_response(
     asset_id: uuid.UUID,
     variant: str,
     request: Request,
+    head_only: bool,
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
 ):
@@ -203,7 +203,33 @@ async def get_media(
 
     range_header = request.headers.get("range")
     if range_header:
+        if head_only:
+            file_size = os.path.getsize(path)
+            return Response(
+                status_code=206,
+                media_type=mime_type,
+                headers={
+                    "Content-Range": f"bytes 0-{file_size - 1}/{file_size}",
+                    "Accept-Ranges": "bytes",
+                    "Content-Length": str(file_size),
+                    "Cache-Control": cache_control,
+                    "ETag": etag,
+                },
+            )
         return _range_response(path, mime_type, range_header, etag, cache_control)
+
+    if head_only:
+        stat = os.stat(path)
+        return Response(
+            status_code=200,
+            media_type=mime_type,
+            headers={
+                "Cache-Control": cache_control,
+                "ETag": etag,
+                "Accept-Ranges": "bytes",
+                "Content-Length": str(stat.st_size),
+            },
+        )
 
     return FileResponse(
         path,
@@ -214,3 +240,25 @@ async def get_media(
             "Accept-Ranges": "bytes",
         },
     )
+
+
+@router.get("/{asset_id}/{variant}")
+async def get_media(
+    asset_id: uuid.UUID,
+    variant: str,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_user_optional),
+):
+    return await _media_response(asset_id, variant, request, False, session, user)
+
+
+@router.head("/{asset_id}/{variant}")
+async def head_media(
+    asset_id: uuid.UUID,
+    variant: str,
+    request: Request,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_user_optional),
+):
+    return await _media_response(asset_id, variant, request, True, session, user)

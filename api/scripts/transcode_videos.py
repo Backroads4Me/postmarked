@@ -9,6 +9,7 @@ Run from the api container:
 
 Options:
   --force   Re-transcode even if an mp4 derivative already exists on disk
+  --force-poster   Regenerate posters even if they already exist
 """
 
 import os
@@ -76,9 +77,30 @@ def transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
     ], check=True, capture_output=True)
 
 
+def extract_poster(file_path: str, poster_path: str) -> None:
+    subprocess.run([
+        "ffmpeg",
+        "-y",
+        "-i",
+        file_path,
+        "-map",
+        "0:v:0",
+        "-frames:v",
+        "1",
+        "-q:v",
+        "2",
+        poster_path,
+    ], check=True, capture_output=True)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--force", action="store_true", help="Re-transcode even if mp4 already exists")
+    parser.add_argument(
+        "--force-poster",
+        action="store_true",
+        help="Regenerate poster images even if they already exist",
+    )
     parser.add_argument(
         "--include-not-ready",
         action="store_true",
@@ -99,13 +121,32 @@ def main():
     print(f"Found {total} video asset(s) to process.")
 
     ok = skipped = errors = 0
+    posters_ok = 0
 
     for i, asset in enumerate(assets, 1):
         mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
+        poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")
+
+        file_path = asset.original_path
+        if not file_path or not os.path.exists(file_path):
+            print(f"[{i}/{total}] SKIP  {asset.id}  — original not found: {file_path}", file=sys.stderr)
+            skipped += 1
+            continue
+
+        try:
+            if args.force_poster or not os.path.exists(poster_path):
+                extract_poster(file_path, poster_path)
+                posters_ok += 1
+        except Exception as exc:
+            print(f"[{i}/{total}] ERROR {asset.id}  — poster failed: {exc}", file=sys.stderr)
 
         if not args.force and os.path.exists(mp4_path) and is_valid_mp4(mp4_path):
             paths = dict(asset.derivative_paths or {})
             changed = False
+            if paths.get("poster") != f"/media/{asset.id}/poster":
+                paths["poster"] = f"/media/{asset.id}/poster"
+                asset.derivative_paths = paths
+                changed = True
             if paths.get("mp4") != f"/media/{asset.id}/mp4":
                 paths["mp4"] = f"/media/{asset.id}/mp4"
                 asset.derivative_paths = paths
@@ -122,12 +163,6 @@ def main():
             skipped += 1
             continue
 
-        file_path = asset.original_path
-        if not file_path or not os.path.exists(file_path):
-            print(f"[{i}/{total}] SKIP  {asset.id}  — original not found: {file_path}", file=sys.stderr)
-            skipped += 1
-            continue
-
         try:
             transcode_video_to_mp4(file_path, mp4_path)
 
@@ -137,6 +172,7 @@ def main():
             asset.aspect_ratio = round(w / h, 4)
 
             paths = dict(asset.derivative_paths or {})
+            paths["poster"] = f"/media/{asset.id}/poster"
             paths["mp4"] = f"/media/{asset.id}/mp4"
             asset.derivative_paths = paths
             asset.processing_state = MediaProcessingState.READY
@@ -150,7 +186,7 @@ def main():
             errors += 1
 
     db.close()
-    print(f"\nDone. {ok} transcoded, {skipped} skipped, {errors} errors.")
+    print(f"\nDone. {ok} transcoded, {posters_ok} poster(s) generated, {skipped} skipped, {errors} errors.")
     if errors:
         sys.exit(1)
 
