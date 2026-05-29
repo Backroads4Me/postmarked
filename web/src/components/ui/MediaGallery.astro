@@ -14,6 +14,7 @@ interface MediaSummary {
   dominant_color?: string | null;
   alt_text?: string | null;
   caption?: string | null;
+  derivative_paths?: Record<string, string> | null;
 }
 
 interface Props {
@@ -55,6 +56,10 @@ function avifSrc(m: MediaSummary) {
   return '/media/' + m.id + '/avif';
 }
 
+function hasAvif(m: MediaSummary) {
+  return !!(m.derivative_paths && m.derivative_paths['avif']);
+}
+
 function webpSmSrc(m: MediaSummary) {
   return '/media/' + m.id + '/webp_sm';
 }
@@ -92,7 +97,7 @@ function tileClass(m: MediaSummary) {
       >
         {isSingle ? (
           <picture>
-            {!isVideo(m) && <source type="image/avif" srcset={avifSrc(m)} />}
+            {!isVideo(m) && hasAvif(m) && <source type="image/avif" srcset={avifSrc(m)} />}
             <img
               src={posterSrc(m)}
               alt={m.alt_text || m.caption || ''}
@@ -105,7 +110,7 @@ function tileClass(m: MediaSummary) {
         ) : (
           <div class="media-gallery-thumb">
             <picture>
-              {!isVideo(m) && <source type="image/avif" srcset={avifSrc(m)} />}
+              {!isVideo(m) && hasAvif(m) && <source type="image/avif" srcset={avifSrc(m)} />}
               {!isVideo(m) && hasSmVariant(m) && <source type="image/webp" srcset={`${posterSrc(m)} 1400w, ${webpSmSrc(m)} 768w`} sizes="(max-width: 640px) 100vw, 50vw" />}
               <img
                 src={posterSrc(m)}
@@ -163,7 +168,7 @@ function tileClass(m: MediaSummary) {
         style={tileStyle(m)}
       >
         <picture>
-          <source type="image/avif" srcset={avifSrc(m)} />
+          {hasAvif(m) && <source type="image/avif" srcset={avifSrc(m)} />}
           <img
             src={posterSrc(m)}
             alt={m.alt_text || m.caption || ''}
@@ -222,7 +227,7 @@ function tileClass(m: MediaSummary) {
       >
         <div class="media-gallery-thumb">
           <picture>
-            <source type="image/avif" srcset={avifSrc(m)} />
+            {hasAvif(m) && <source type="image/avif" srcset={avifSrc(m)} />}
             {hasSmVariant(m) && <source type="image/webp" srcset={`${posterSrc(m)} 1400w, ${webpSmSrc(m)} 768w`} sizes="(max-width: 640px) 100vw, 50vw" />}
             <img
               src={posterSrc(m)}
@@ -499,6 +504,10 @@ function tileClass(m: MediaSummary) {
     height: 100%;
     min-height: 100%;
     position: relative;
+  }
+
+  .media-gallery-thumb picture {
+    display: contents;
   }
 
   .media-gallery-image {
