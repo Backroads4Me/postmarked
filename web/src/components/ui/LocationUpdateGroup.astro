@@ -117,6 +117,12 @@ function postHref(post: PostSummary) {
     border-radius: 8px;
     box-shadow: var(--shadow-card);
     overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .location-update-group:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float);
   }
 
   .location-update-header {

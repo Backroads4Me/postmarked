@@ -86,17 +86,18 @@ export default function LikesIsland({ targetKind, targetId }) {
         alignItems: "center",
         gap: 5,
         background: "none",
-        border: "1px solid var(--line-soft)",
+        border: "2px solid",
         borderRadius: 20,
         padding: "4px 12px",
         cursor: canLike ? "pointer" : "default",
-        color: (count > 0) ? "var(--ember)" : "var(--muted)",
+        color: (count > 0) ? "var(--ember)" : "var(--paper)",
         fontSize: 13,
+        fontWeight: 500,
         transition: "color 0.15s, border-color 0.15s",
-        borderColor: (count > 0) ? "var(--ember)" : "var(--line-soft)",
+        borderColor: (count > 0) ? "var(--ember)" : "var(--line)",
       }}
     >
-      <span style={{ fontSize: 15, lineHeight: 1 }}>{liked ? "♥" : "♡"}</span>
+      <span style={{ fontSize: 16, lineHeight: 1 }}>{liked ? "♥" : "♡"}</span>
       {count !== null && <span>{count}</span>}
     </button>
   );

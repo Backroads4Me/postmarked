@@ -201,7 +201,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
             style={{
               width: "100%",
               padding: "10px 12px",
-              background: "var(--surface-2)",
+              background: "var(--surface)",
               border: "1px solid var(--line)",
               borderRadius: 6,
               color: "var(--paper)",
@@ -219,7 +219,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
               type="submit"
               className="btn"
               disabled={posting || !draft.trim()}
-              style={{ minHeight: 36 }}
+              style={{ minHeight: 36, background: "var(--surface)", borderColor: "var(--line)" }}
             >
               {posting ? "Posting…" : "Post comment"}
             </button>

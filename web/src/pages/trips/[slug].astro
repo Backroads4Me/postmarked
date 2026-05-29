@@ -171,7 +171,7 @@ function fmtRange(start, end) {
               >
                 <div class="flex items-start gap-4">
                   <div
-                    style={`flex: 0 0 32px; height: 32px; border-radius: 50%; background: ${stop.is_current ? 'var(--ember-glow)' : 'var(--surface-2)'}; color: ${stop.is_current ? 'var(--ember)' : 'var(--muted)'}; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; font-weight: 600;`}
+                    style={`flex: 0 0 32px; height: 32px; border-radius: 50%; background: ${stop.is_current ? 'var(--ember-glow)' : 'color-mix(in srgb, var(--sky) 14%, transparent)'}; color: ${stop.is_current ? 'var(--ember)' : 'var(--sky)'}; display: flex; align-items: center; justify-content: center; font-family: var(--mono); font-size: 12px; font-weight: 600;`}
                   >
                     {idx + 1}
                   </div>

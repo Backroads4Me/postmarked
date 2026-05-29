@@ -49,85 +49,86 @@ function fmtTime(d, timezoneId) {
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
     {loadError && <div class="card-flat mb-4 text-sm text-ember" style="max-width: 720px; margin: 0 auto;">{loadError}</div>}
 
-    {/* ── Breadcrumb ───────────────────────────────────────── */}
-    <div style="max-width: 720px; margin: 0 auto;">
+    {/* ── Post article card ────────────────────────────────── */}
+    <div class="post-article-card">
+      {/* ── Breadcrumb ─────────────────────────────────────── */}
       <Breadcrumb items={[
         { label: 'Home', href: '/' },
         { label: cityStateFromAddress(post.stop_address_label) || post.stop_place_name || post.stop_title, href: `/trips/${post.trip_slug}/stops/${post.stop_slug}` },
       ]} />
-    </div>
 
-    {/* ── Hero ─────────────────────────────────────────────── */}
-    <section class="mb-12" style="max-width: 720px; margin: 0 auto;">
-      <div class="flex items-center gap-2 mb-3 flex-wrap">
-        {post.activity_type && (
-          <span class="badge" style="text-transform: capitalize;">
-            {post.activity_type.replace(/_/g, ' ')}
-          </span>
-        )}
-        {post.activity_started_at && (
-          <span class="label">{fmtActivityTime(post.activity_started_at, post.stop_timezone_id)}</span>
-        )}
-        {post.activity_ended_at && (
-          <span class="label">– {fmtTime(post.activity_ended_at, post.stop_timezone_id)}</span>
-        )}
-      </div>
-      <h1 class="display text-3xl md:text-5xl">{post.title}</h1>
-      {post.summary && (
-        <p class="lede mt-4 text-base" style="font-family: var(--sans);">{post.summary}</p>
-      )}
-    </section>
-
-    {/* ── Gallery ──────────────────────────────────────────── */}
-    {post.media && post.media.length > 0 && (
-      <section class="mb-16" style="max-width: 720px; margin: 0 auto;">
-        <MediaGallery media={post.media} limit={post.media.length} />
-      </section>
-    )}
-
-    {/* ── Body ─────────────────────────────────────────────── */}
-    {post.body && (
-      <section class="post-body mt-8 mb-6" style="max-width: 720px; margin-left: auto; margin-right: auto;" set:html={renderMarkdown(post.body)} />
-    )}
-
-    {/* ── POI Card ─────────────────────────────────────────── */}
-    {post.poi && (
-      <section class="mb-10" style="max-width: 720px; margin: 0 auto;">
-        <div class="card-flat">
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="label mb-1" style="text-transform: capitalize;">
-                {post.poi.poi_type.replace(/_/g, ' ')}
-              </div>
-              <h3 class="display text-lg">{post.poi.label}</h3>
-            </div>
-            {post.poi.google_maps_url && (
-              <a
-                href={post.poi.google_maps_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                class="btn btn-sm btn-ghost"
-                style="white-space: nowrap;"
-              >
-                Maps ↗
-              </a>
-            )}
-          </div>
+      {/* ── Hero ───────────────────────────────────────────── */}
+      <section class="mt-6 mb-10">
+        <div class="flex items-center gap-2 mb-3 flex-wrap">
+          {post.activity_type && (
+            <span class="badge" style="text-transform: capitalize;">
+              {post.activity_type.replace(/_/g, ' ')}
+            </span>
+          )}
+          {post.activity_started_at && (
+            <span class="label">{fmtActivityTime(post.activity_started_at, post.stop_timezone_id)}</span>
+          )}
+          {post.activity_ended_at && (
+            <span class="label">– {fmtTime(post.activity_ended_at, post.stop_timezone_id)}</span>
+          )}
         </div>
+        <h1 class="display text-3xl md:text-5xl">{post.title}</h1>
+        {post.summary && (
+          <p class="lede mt-4 text-base" style="font-family: var(--sans);">{post.summary}</p>
+        )}
       </section>
-    )}
 
-    {/* ── Likes + Comments ────────────────────────────────── */}
-    <section class="mb-6" style="max-width: 720px; margin-left: auto; margin-right: auto;">
-      <div class="mb-4">
-        <LikesIsland client:load targetKind="post" targetId={post.id} />
-      </div>
-      <CommentsIsland client:load targetKind="post" targetId={post.id} />
-    </section>
+      {/* ── Gallery ────────────────────────────────────────── */}
+      {post.media && post.media.length > 0 && (
+        <section class="mb-12">
+          <MediaGallery media={post.media} limit={post.media.length} />
+        </section>
+      )}
+
+      {/* ── Body ───────────────────────────────────────────── */}
+      {post.body && (
+        <section class="post-body mb-6" set:html={renderMarkdown(post.body)} />
+      )}
+
+      {/* ── POI Card ───────────────────────────────────────── */}
+      {post.poi && (
+        <section class="mb-6">
+          <div class="card-flat">
+            <div class="flex items-start justify-between gap-3">
+              <div>
+                <div class="label mb-1" style="text-transform: capitalize;">
+                  {post.poi.poi_type.replace(/_/g, ' ')}
+                </div>
+                <h3 class="display text-lg">{post.poi.label}</h3>
+              </div>
+              {post.poi.google_maps_url && (
+                <a
+                  href={post.poi.google_maps_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-sm btn-ghost"
+                  style="white-space: nowrap;"
+                >
+                  Maps ↗
+                </a>
+              )}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Likes + Comments ───────────────────────────────── */}
+      <section class="mt-8">
+        <div class="mb-4">
+          <LikesIsland client:load targetKind="post" targetId={post.id} />
+        </div>
+        <CommentsIsland client:load targetKind="post" targetId={post.id} />
+      </section>
+    </div>
 
     {/* ── Prev / Next Posts ───────────────────────────────── */}
     {(post.prev_post || post.next_post) && (
-      <nav class="grid grid-cols-2 gap-3 mt-6 pt-6" style="border-top: 1px solid var(--line-soft); max-width: 720px; margin-left: auto; margin-right: auto;">
+      <nav class="post-nav-row grid grid-cols-2 gap-3 mt-6 pt-6">
         <div>
           {post.prev_post && (
             <a
@@ -166,6 +167,29 @@ function fmtTime(d, timezoneId) {
 </Layout>
 
 <style>
+  .post-article-card {
+    max-width: 720px;
+    margin: 0 auto;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    box-shadow: var(--shadow-card);
+    padding: 28px 32px;
+  }
+
+  @media (max-width: 640px) {
+    .post-article-card {
+      padding: 20px 18px;
+    }
+  }
+
+  .post-nav-row {
+    max-width: 720px;
+    margin-left: auto;
+    margin-right: auto;
+    border-top: 1px solid var(--line-soft);
+  }
+
   .post-body {
     font-family: var(--sans);
     line-height: 1.8;

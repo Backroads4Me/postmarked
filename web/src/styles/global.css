@@ -388,6 +388,7 @@
     padding: 4px 10px;
     font-size: 11px;
     font-family: var(--mono);
+    font-weight: 600;
     letter-spacing: 0.08em;
     text-transform: uppercase;
     border-radius: 6px;

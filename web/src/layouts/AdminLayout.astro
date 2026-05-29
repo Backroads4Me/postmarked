@@ -51,22 +51,26 @@ function isActive(href: string) {
 </head>
 <body style="padding-bottom: 0;">
   <nav class="admin-top-nav">
-    <div class="admin-brand">
-      <span class="text-ember font-bold">POSTMARKED</span>
-      <span class="admin-separator">ADMIN</span>
+    <div class="admin-nav-inner">
+      <a href="/" class="admin-home-link">
+        <span class="admin-brand-name text-ember">POSTMARKED</span>
+        <span class="admin-separator">ADMIN</span>
+      </a>
+      <div class="admin-links">
+        {navItems.map(item => (
+          <a
+            href={item.href}
+            class:list={['admin-link', { active: isActive(item.href) }]}
+          >
+            {item.label}
+          </a>
+        ))}
+      </div>
+      <div class="admin-actions">
+        <ThemeToggle class="theme-toggle--admin" />
+        <a href="/" class="admin-link" target="_blank" rel="noopener noreferrer">View Site</a>
+      </div>
     </div>
-    <div class="admin-links">
-      {navItems.map(item => (
-        <a
-          href={item.href}
-          class:list={['admin-link', { active: isActive(item.href) }]}
-        >
-          {item.label}
-        </a>
-      ))}
-    </div>
-    <ThemeToggle class="theme-toggle--admin" />
-    <a href="/" class="admin-link" style="margin-left: auto;" target="_blank" rel="noopener noreferrer">View Site</a>
   </nav>
   <main class="frame" style="padding-top: 40px; padding-bottom: 80px;">
     <slot />
@@ -79,34 +83,54 @@ function isActive(href: string) {
     position: sticky;
     top: 0;
     z-index: 50;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 0 24px;
     height: 48px;
     background: var(--nav-bg-strong);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--line);
     overflow-x: auto;
   }
-  .admin-brand {
+  .admin-nav-inner {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 24px;
+    height: 100%;
     display: flex;
     align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    font-weight: 700;
+    gap: 8px;
+  }
+  .admin-home-link {
+    display: flex;
+    align-items: baseline;
+    gap: 7px;
     font-family: var(--mono);
     letter-spacing: 0.1em;
     white-space: nowrap;
-    margin-right: 16px;
+    margin-right: 8px;
+    text-decoration: none;
+    flex-shrink: 0;
+  }
+  .admin-home-link .admin-brand-name {
+    font-size: 16px;
+    font-weight: 700;
   }
   .admin-separator {
     color: var(--dim);
-    font-weight: 400;
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
   }
   .admin-links {
     display: flex;
     gap: 2px;
+    flex: 1;
+    overflow-x: auto;
+  }
+  .admin-actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin-left: auto;
   }
   .admin-link {
     font-family: var(--mono);

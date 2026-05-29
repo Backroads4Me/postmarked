@@ -144,11 +144,12 @@ const dateLabel = formatDate(posted_at);
   .post-card-linked {
     border-radius: 6px;
     cursor: pointer;
-    transition: background-color 0.18s ease;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
   }
 
   .post-card-linked:hover {
-    background-color: rgba(255, 255, 255, 0.03);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-float);
   }
 
   .post-card-readmore {

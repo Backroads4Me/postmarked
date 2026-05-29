@@ -131,7 +131,7 @@ function stopSiblingLabel(stop) {
     {/* ── Updates ──────────────────────────────────────────── */}
     {updates.length > 0 && (
       <section style="max-width: 1100px; margin: 0 auto;">
-        <div>
+        <div class="stop-posts-list">
           {updates.map(p => (
             <PostCard
               title={p.title}
@@ -140,7 +140,7 @@ function stopSiblingLabel(stop) {
               summary={p.summary}
               media={p.media}
               href={`/trips/${detail.trip_slug}/stops/${detail.slug}/posts/${p.slug}`}
-              cardClass="post-entry"
+              cardClass="stop-post-card"
             />
           ))}
         </div>
@@ -175,18 +175,33 @@ function stopSiblingLabel(stop) {
 </Layout>
 
 <style>
-  :global(.post-entry .location-post-title) {
+  .stop-posts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 8px;
+  }
+
+  :global(.stop-post-card) {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+    padding: 20px;
+  }
+
+  :global(.stop-post-card .location-post-title) {
     font-size: 1.1rem;
   }
 
-  :global(.post-entry .location-post-header) {
+  :global(.stop-post-card .location-post-header) {
     align-items: flex-start;
     display: flex;
     flex-direction: column;
     gap: 0.2rem;
   }
 
-  :global(.post-entry .location-post-header .label) {
+  :global(.stop-post-card .location-post-header .label) {
     color: var(--muted);
     font-size: 0.72rem;
   }
