@@ -72,14 +72,14 @@ export default function CurrentStopPickerIsland() {
 
   if (loading) {
     return (
-      <div className="card-hero" style={{ minHeight: 120 }}>
+      <div className="card" style={{ minHeight: 120 }}>
         <span className="label">Loading current location…</span>
       </div>
     );
   }
 
   return (
-    <div className="card-hero" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div className="card" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
         <span className="pulse-dot" />
         <span className="eyebrow">Current Stop</span>

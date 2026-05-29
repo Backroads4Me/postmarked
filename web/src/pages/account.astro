@@ -36,13 +36,13 @@ const sms_enabled = configData.sms_enabled ?? false;
           <form class="grid gap-4" onsubmit="event.preventDefault(); updateProfile(this);">
             <div class="grid gap-1">
               <label class="label" for="display_name">Display name</label>
-              <input id="display_name" name="display_name" value={account.display_name || ''} class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+              <input id="display_name" name="display_name" value={account.display_name || ''} class="form-input" />
             </div>
             <div class="grid gap-1">
               <label class="label" for="email">Email address</label>
-              <input id="email" name="email" type="email" value={account.email} required class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+              <input id="email" name="email" type="email" value={account.email} required class="form-input" />
             </div>
-            <button type="submit" class="btn justify-center sm:justify-self-start">Save profile</button>
+            <button type="submit" class="btn btn-primary justify-center sm:justify-self-start">Save profile</button>
           </form>
         </section>
 
@@ -70,7 +70,7 @@ const sms_enabled = configData.sms_enabled ?? false;
                       <input id="phone_number" name="phone_number" type="tel"
                         value={account.phone_number || ''}
                         placeholder="5551234567"
-                        class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors"
+                        class="form-input"
                         onblur="normalizePhone(this)" />
                     </div>
                     <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
@@ -103,7 +103,7 @@ const sms_enabled = configData.sms_enabled ?? false;
                 </label>
               </div>
 
-              <button type="submit" class="btn justify-center sm:justify-self-start">Save notification preferences</button>
+              <button type="submit" class="btn btn-primary justify-center sm:justify-self-start">Save notification preferences</button>
             </form>
           </section>
         )}
@@ -113,13 +113,13 @@ const sms_enabled = configData.sms_enabled ?? false;
           <form class="grid gap-4" onsubmit="event.preventDefault(); updatePassword(this);">
             <div class="grid gap-1">
               <label class="label" for="current_password">Current password</label>
-              <input id="current_password" name="current_password" type="password" required class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+              <input id="current_password" name="current_password" type="password" required class="form-input" />
             </div>
             <div class="grid gap-1">
               <label class="label" for="new_password">New password</label>
-              <input id="new_password" name="new_password" type="password" required minlength="8" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" />
+              <input id="new_password" name="new_password" type="password" required minlength="8" class="form-input" />
             </div>
-            <button type="submit" class="btn justify-center sm:justify-self-start">Update password</button>
+            <button type="submit" class="btn btn-primary justify-center sm:justify-self-start">Update password</button>
           </form>
         </section>
       </div>

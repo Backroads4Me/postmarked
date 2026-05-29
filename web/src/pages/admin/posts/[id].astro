@@ -47,7 +47,10 @@ function stopOptionLabel(stop) {
 <AdminLayout title={`Edit: ${post.title}`}>
   <div class="w-full">
     <div class="mb-8">
-      <a href="/admin/posts" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">← Back</a>
+      <a href="/admin/posts" class="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-widest text-dim hover:text-ember transition-colors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+        Back
+      </a>
     </div>
 
     <form id="post-edit-form" class="flex flex-col gap-6">
@@ -57,13 +60,13 @@ function stopOptionLabel(stop) {
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="title">Title</label>
           <input id="title" type="text" name="title" value={post.title} required maxlength="200"
-            class="bg-surface-2 border border-line p-3 focus:border-ember" />
+            class="form-input" />
         </div>
 
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="posted_at">Post date</label>
           <input id="posted_at" type="date" name="posted_at" value={toDateInput(post.posted_at)}
-            class="bg-surface-2 border border-line p-3 focus:border-ember" />
+            class="form-input" />
         </div>
       </div>
 
@@ -71,14 +74,14 @@ function stopOptionLabel(stop) {
         <label class="text-sm font-bold" for="summary">Summary</label>
         <textarea id="summary" name="summary" rows="2" maxlength="500"
           placeholder="A sentence or two that appears before the photos."
-          class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.summary ?? ''}</textarea>
+          class="form-input font-sans">{post.summary ?? ''}</textarea>
       </div>
 
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold" for="body">Body (markdown)</label>
         <textarea id="body" name="body" rows="8"
           placeholder="The full post text — appears after the photos."
-          class="bg-surface-2 border border-line p-3 font-sans focus:border-ember">{post.body ?? ''}</textarea>
+          class="form-input font-sans">{post.body ?? ''}</textarea>
       </div>
 
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_14rem_18rem] gap-4">
@@ -123,7 +126,7 @@ function stopOptionLabel(stop) {
           </div>
         </div>
         <div id="media-attach-status" class="text-xs text-dim min-h-[1rem]"></div>
-        <div id="media-picker-panel" class="hidden bg-surface-2 border border-line-soft rounded p-3">
+        <div id="media-picker-panel" class="hidden admin-list p-3">
           <div class="flex items-center justify-between gap-3 mb-3">
             <div class="label">Media library</div>
             <button type="button" id="close-media-picker-btn" class="btn btn-sm btn-ghost">Close</button>
@@ -135,7 +138,7 @@ function stopOptionLabel(stop) {
           </div>
         </div>
         {attachedMedia.length > 0 ? (
-          <div id="media-list" class="bg-surface-2 border border-line-soft rounded divide-y divide-line-soft">
+          <div id="media-list" class="admin-list divide-y divide-line-soft">
             {attachedMedia.map((m) => (
               <div
                 class="flex items-center gap-3 p-2 media-card"
@@ -176,7 +179,7 @@ function stopOptionLabel(stop) {
                     id={`media-caption-${m.id}`}
                     rows="2"
                     aria-label="Photo description"
-                    class="media-caption-input block w-full h-12 bg-bg border border-line-soft rounded p-2 text-xs text-paper focus:border-ember resize-none"
+                    class="media-caption-input admin-input w-full h-12 resize-none"
                     data-media-caption-input
                     data-media-id={m.id}
                     placeholder="Add a description"
@@ -185,8 +188,7 @@ function stopOptionLabel(stop) {
                 </div>
                 <button
                   type="button"
-                  class="btn btn-sm shrink-0"
-                  style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+                  class="btn btn-sm btn-primary shrink-0"
                   data-delete-media-id={m.id}
                   data-delete-media-kind={m.kind}
                   aria-label={`Delete ${m.kind}`}
@@ -197,7 +199,7 @@ function stopOptionLabel(stop) {
             ))}
           </div>
         ) : (
-          <div class="bg-surface-2 border border-line-soft rounded p-3 text-sm text-muted">
+          <div class="admin-list p-3 text-sm text-muted">
             No media is attached to this post.
           </div>
         )}
@@ -223,13 +225,12 @@ function stopOptionLabel(stop) {
         </article>
       </section>
 
-      <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
-      <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface-2">Saved!</div>
+      <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface rounded"></div>
+      <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface rounded">Saved!</div>
 
       <div class="flex flex-wrap gap-3 items-center mt-2">
-        <button type="submit" class="btn">Save</button>
-        <button type="button" id="delete-btn" class="btn btn-sm"
-          style="border-color: rgba(212,107,92,.55); color: var(--sunset);">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <button type="button" id="delete-btn" class="btn btn-sm btn-primary">
           Delete
         </button>
       </div>

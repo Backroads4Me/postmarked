@@ -13,30 +13,33 @@ try {
 <AdminLayout title="New Trip">
   <div class="max-w-2xl">
     <div class="mb-8">
-      <a href="/admin/trips" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">← Back</a>
+      <a href="/admin/trips" class="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-widest text-dim hover:text-ember transition-colors">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+        Back
+      </a>
     </div>
     
     <form id="trip-form" class="flex flex-col gap-6">
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold">Title</label>
-        <input type="text" name="title" required class="bg-surface-2 border border-line p-3 focus:outline-none focus:border-ember" placeholder="Summer Rockies Loop">
+        <input type="text" name="title" required class="form-input" placeholder="Summer Rockies Loop">
       </div>
       
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold">Slug</label>
-        <input type="text" name="slug" required class="bg-surface-2 border border-line p-3" placeholder="summer-rockies-loop">
+        <input type="text" name="slug" required class="form-input" placeholder="summer-rockies-loop">
         <span class="text-xs text-dim">URL identifier. Must be unique.</span>
       </div>
       
       <div class="flex flex-col gap-2">
         <label class="text-sm font-bold">Summary</label>
-        <textarea name="summary" rows="3" class="bg-surface-2 border border-line p-3 focus:outline-none focus:border-ember"></textarea>
+        <textarea name="summary" rows="3" class="form-input"></textarea>
       </div>
 
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold">Status</label>
-          <select name="status" class="bg-surface-2 border border-line p-3">
+          <select name="status" class="form-input">
             <option value="draft" selected>Draft</option>
             <option value="published">Published</option>
             <option value="unpublished">Unpublished</option>
@@ -47,16 +50,16 @@ try {
         
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold">Visibility</label>
-          <select name="visibility" class="bg-surface-2 border border-line p-3">
+          <select name="visibility" class="form-input">
             <option value="private" selected>Private — logged-in users</option>
             <option value="public">Public — anyone</option>
           </select>
         </div>
       </div>
       
-      <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface-2"></div>
-      
-      <button type="submit" class="btn mt-4">Save Trip</button>
+      <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface rounded"></div>
+
+      <button type="submit" class="btn btn-primary mt-4">Save Trip</button>
     </form>
   </div>
 

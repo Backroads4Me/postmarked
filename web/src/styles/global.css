@@ -169,6 +169,10 @@
 @layer base {
   * { box-sizing: border-box; }
 
+  :focus-visible {
+    outline-color: var(--ember-border);
+  }
+
   body {
     background: var(--bg);
     color: var(--paper);
@@ -324,6 +328,30 @@
   }
 
   /* ── Buttons ────────────────────────────────────────────────── */
+  /* ── Form inputs ────────────────────────────────────────────── */
+  .form-input {
+    width: 100%;
+    background: var(--input-bg, var(--surface-2));
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    padding: 0.75rem;
+    font-size: 0.875rem;
+    color: var(--paper);
+    transition: border-color 0.2s;
+  }
+  .form-input::placeholder {
+    color: var(--muted);
+  }
+  .form-input:focus {
+    outline: none;
+    border-color: var(--ember-border);
+  }
+
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--ember);
+  }
+
   .btn {
     display: inline-flex;
     align-items: center;
@@ -345,13 +373,14 @@
     border-color: var(--muted);
   }
   .btn-primary {
-    background: linear-gradient(135deg, var(--ember) 0%, var(--sunset) 100%);
-    border-color: transparent;
+    background: var(--ember);
+    border-color: var(--ember-border);
     color: white;
-    box-shadow: 0 4px 16px -4px rgba(232,137,63,.3);
+    box-shadow: 0 4px 16px -4px color-mix(in srgb, var(--ember) 45%, transparent);
   }
   .btn-primary:hover {
-    box-shadow: 0 6px 24px -4px rgba(232,137,63,.4);
+    background: color-mix(in srgb, var(--ember) 88%, black);
+    box-shadow: 0 6px 24px -4px color-mix(in srgb, var(--ember) 60%, transparent);
     transform: translateY(-1px);
   }
   .btn-sm {
@@ -374,7 +403,7 @@
   }
   .btn-ghost-ember {
     background: transparent;
-    border-color: var(--ember);
+    border-color: var(--ember-border);
     color: var(--ember);
   }
   .btn-ghost-ember:hover {

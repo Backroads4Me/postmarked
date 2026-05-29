@@ -41,17 +41,17 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
         <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); register(this);">
           <div class="flex flex-col gap-1">
             <label class="label" for="display_name">Display name</label>
-            <input type="text" id="display_name" name="display_name" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" placeholder="How you'll appear to others" required>
+            <input type="text" id="display_name" name="display_name" class="form-input" placeholder="How you'll appear to others" required>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="label" for="email">Email address</label>
-            <input type="email" id="email" name="email" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required>
+            <input type="email" id="email" name="email" class="form-input" required>
           </div>
 
           <div class="flex flex-col gap-1">
             <label class="label" for="password">Password</label>
-            <input type="password" id="password" name="password" class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors" required minlength="8">
+            <input type="password" id="password" name="password" class="form-input" required minlength="8">
           </div>
 
           {(email_enabled || sms_enabled) && (
@@ -73,7 +73,7 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
                     <div class="flex flex-col gap-1">
                       <label class="label" for="phone_number">Phone number <span class="text-muted font-normal">(optional)</span></label>
                       <input type="tel" id="phone_number" name="phone_number"
-                        class="bg-surface-2 border border-line-soft rounded p-3 text-sm focus:border-ember focus:outline-none transition-colors"
+                        class="form-input"
                         placeholder="5551234567"
                         oninput="onPhoneInput(this)"
                         onblur="normalizePhone(this)" />
@@ -107,7 +107,7 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
             </fieldset>
           )}
 
-          <button type="submit" id="submit-btn" class="btn justify-center mt-4">Create account</button>
+          <button type="submit" id="submit-btn" class="btn btn-primary justify-center mt-4">Create account</button>
         </form>
 
       </div>

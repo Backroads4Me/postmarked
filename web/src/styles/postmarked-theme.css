@@ -63,9 +63,10 @@
   --muted: var(--dark-muted);
   --dim: #7B858E;
   --faint: #56616C;
-  --ember: #E55343;
-  --ember-2: #FF7060;
-  --ember-glow: rgba(229, 83, 67, 0.2);
+  --ember: #BD3325;
+  --ember-2: #D85643;
+  --ember-glow: rgba(189, 51, 37, 0.16);
+  --ember-border: #8f3027;
   --sky: #7AB8D6;
   --forest: #6FA694;
   --sunset: #EC8068;
@@ -102,15 +103,17 @@
   --ink-4: #B9A98A;
   --line: #9A8A72;
   --line-soft: #C0AE96;
-  --paper: #16213A;
-  --paper-2: #3B4B68;
+  --paper: #111827;
+  --paper-2: #2E2B28;
   --paper-muted: var(--paper-2);
+  --input-bg: #f7efd8;
   --muted: #484340;
   --dim: #5B5652;
   --faint: #B9A98A;
   --ember: #BD3325;
   --ember-2: #D85643;
   --ember-glow: rgba(189, 51, 37, 0.16);
+  --ember-border: #8f3027;
   --sky: #2C6F9D;
   --forest: #3D7A6B;
   --sunset: #D85643;
@@ -171,7 +174,7 @@
 .badge-ember {
   background: var(--ember-glow);
   color: var(--ember);
-  border-color: rgba(189, 51, 37, 0.32);
+  border-color: var(--ember-border);
 }
 
 .eyebrow .dot {

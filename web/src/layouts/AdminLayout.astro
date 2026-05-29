@@ -115,9 +115,9 @@ function isActive(href: string) {
   }
   .admin-separator {
     color: var(--dim);
-    font-size: 10px;
+    font-size: 13px;
     font-weight: 500;
-    letter-spacing: 0.14em;
+    letter-spacing: 0.12em;
   }
   .admin-links {
     display: flex;
@@ -132,6 +132,29 @@ function isActive(href: string) {
     flex-shrink: 0;
     margin-left: auto;
   }
+  /* ── Shared admin data surfaces ─────────────────────────────── */
+  :global(.admin-list) {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    box-shadow: var(--shadow-card);
+  }
+
+  :global(.admin-input) {
+    background: var(--input-bg, var(--surface));
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    color: var(--paper);
+    font-size: 0.8125rem;
+    padding: 0.4rem 0.6rem;
+    transition: border-color 0.2s;
+  }
+
+  :global(.admin-input:focus) {
+    outline: none;
+    border-color: var(--ember-border);
+  }
+
   .admin-link {
     font-family: var(--mono);
     text-transform: uppercase;

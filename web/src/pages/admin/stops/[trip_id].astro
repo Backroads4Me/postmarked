@@ -40,7 +40,10 @@ const tripIsPrivate = trip.visibility === 'private';
 
 <AdminLayout title={`Stops — ${trip.title}`}>
   <div class="mb-8 flex flex-col sm:flex-row gap-4 sm:justify-between sm:items-center">
-    <a href="/admin/stops" class="text-xs font-mono uppercase tracking-widest text-dim hover:text-ember inline-block">← All Trips</a>
+    <a href="/admin/stops" class="inline-flex items-center gap-1.5 text-xs font-mono uppercase tracking-widest text-dim hover:text-ember transition-colors">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+      All Trips
+    </a>
     <div class="flex flex-wrap gap-2">
       <button type="button" id="show-bulk-controls" class="btn btn-sm btn-ghost">Select Stops</button>
       <button type="button" id="show-add-form" class="btn btn-sm">+ Add Stop</button>
@@ -56,48 +59,48 @@ const tripIsPrivate = trip.visibility === 'private';
       <div class="flex flex-col gap-1 md:col-span-2">
         <label class="text-xs font-bold">Title *</label>
         <input type="text" name="title" required maxlength="200"
-          class="bg-surface-2 border border-line p-2 text-sm focus:border-ember" />
+          class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Slug *</label>
         <input type="text" name="slug" required
-          class="bg-surface-2 border border-line p-2 text-sm" placeholder="auto-filled from title" />
+          class="admin-input w-full" placeholder="auto-filled from title" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Place Name</label>
         <input type="text" name="place_name"
-          class="bg-surface-2 border border-line p-2 text-sm" />
+          class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Latitude *</label>
         <input type="number" name="latitude" step="any" required min="-90" max="90"
-          class="bg-surface-2 border border-line p-2 text-sm" />
+          class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Longitude *</label>
         <input type="number" name="longitude" step="any" required min="-180" max="180"
-          class="bg-surface-2 border border-line p-2 text-sm" />
+          class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Start Date *</label>
         <input type="datetime-local" name="start_date" required
-          class="bg-surface-2 border border-line p-2 text-sm" />
+          class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">End Date</label>
         <input type="datetime-local" name="end_date"
-          class="bg-surface-2 border border-line p-2 text-sm" />
+          class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Status</label>
-        <select name="status" class="bg-surface-2 border border-line p-2 text-sm">
+        <select name="status" class="admin-input w-full">
           <option value="draft" selected>Draft</option>
           <option value="published">Published</option>
           <option value="unpublished">Unpublished</option>
@@ -108,7 +111,7 @@ const tripIsPrivate = trip.visibility === 'private';
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Visibility</label>
-        <select name="visibility" class="bg-surface-2 border border-line p-2 text-sm" disabled={tripIsPrivate}>
+        <select name="visibility" class="admin-input w-full" disabled={tripIsPrivate}>
           <option value="public" selected={!tripIsPrivate}>Public</option>
           <option value="private" selected={tripIsPrivate}>Private</option>
         </select>
@@ -162,8 +165,7 @@ const tripIsPrivate = trip.visibility === 'private';
               <button
                 type="button"
                 id="bulk-delete"
-                class="btn btn-sm"
-                style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
+                class="btn btn-sm btn-primary"
               >
                 Delete
               </button>
@@ -221,13 +223,12 @@ const tripIsPrivate = trip.visibility === 'private';
               </td>
               <td style="padding: 10px 12px; text-align: center;">
                 <div class="flex gap-2 justify-center">
-                  <a href={`/admin/stops/${trip.id}/${stop.id}`} class="btn btn-sm btn-ghost text-[10px]">Edit</a>
+                  <a href={`/admin/stops/${trip.id}/${stop.id}`} class="btn btn-ghost btn-sm">Edit</a>
                   <button
                     type="button"
-                    class="btn btn-sm js-delete-stop text-[10px]"
+                    class="btn btn-sm btn-primary js-delete-stop text-[10px]"
                     data-stop-id={stop.id}
                     data-stop-title={stop.title}
-                    style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
                   >
                     Delete
                   </button>

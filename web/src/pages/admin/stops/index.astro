@@ -31,11 +31,11 @@ function statusBadge(status) {
 <AdminLayout title="Stops">
 
   {trips.length > 0 ? (
-    <div class="bg-surface-2 border border-line rounded divide-y divide-line">
+    <div class="admin-list divide-y divide-line">
       {trips.map(trip => (
         <a
           href={`/admin/stops/${trip.id}`}
-          class="p-4 flex items-center justify-between hover:bg-surface-1 transition-colors group"
+          class="p-4 flex items-center justify-between hover:bg-hover-soft transition-colors group"
         >
           <div>
             <div class="flex items-center gap-2">

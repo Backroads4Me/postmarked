@@ -61,7 +61,7 @@ function hasField(section, field) {
   <div id="site-text-list" class="grid gap-5">
     {sections.map(section => (
       <form
-        class="bg-surface-2 border border-line rounded p-4 grid gap-4 site-text-form"
+        class="admin-list p-4 grid gap-4 site-text-form"
         data-page-key={section.page_key}
         data-section-key={section.section_key}
       >
@@ -84,13 +84,13 @@ function hasField(section, field) {
             {hasField(section, 'label') && (
               <label class="grid gap-2 text-sm font-bold">
                 Label
-                <input name="label" value={section.label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+                <input name="label" value={section.label || ''} class="admin-input w-full font-normal" />
               </label>
             )}
             {hasField(section, 'heading') && (
               <label class="grid gap-2 text-sm font-bold">
                 Heading
-                <input name="heading" value={section.heading || ''} required class="bg-surface-1 border border-line p-3 font-normal" />
+                <input name="heading" value={section.heading || ''} required class="admin-input w-full font-normal" />
                 {fieldHints[sectionKey(section)]?.heading && (
                   <span class="text-xs text-muted font-normal">{fieldHints[sectionKey(section)]?.heading}</span>
                 )}
@@ -102,7 +102,7 @@ function hasField(section, field) {
         {hasField(section, 'body') && (
           <label class="grid gap-2 text-sm font-bold">
             Body
-            <textarea name="body" rows="1" class="bg-surface-1 border border-line p-3 font-normal resize-none overflow-auto">{section.body || ''}</textarea>
+            <textarea name="body" rows="1" class="admin-input w-full font-normal resize-none overflow-auto">{section.body || ''}</textarea>
             {fieldHints[sectionKey(section)]?.body && (
               <span class="text-xs text-muted font-normal">{fieldHints[sectionKey(section)]?.body}</span>
             )}
@@ -113,11 +113,11 @@ function hasField(section, field) {
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label class="grid gap-2 text-sm font-bold">
               Button Label
-              <input name="cta_label" value={section.cta_label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+              <input name="cta_label" value={section.cta_label || ''} class="admin-input w-full font-normal" />
             </label>
             <label class="grid gap-2 text-sm font-bold">
               Button Link
-              <input name="cta_href" value={section.cta_href || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+              <input name="cta_href" value={section.cta_href || ''} class="admin-input w-full font-normal" />
             </label>
           </div>
         )}
@@ -125,7 +125,7 @@ function hasField(section, field) {
         {!buttonSections.has(`${section.page_key}.${section.section_key}`) && hasField(section, 'cta_label') && (
           <label class="grid gap-2 text-sm font-bold">
             Link Text
-            <input name="cta_label" value={section.cta_label || ''} class="bg-surface-1 border border-line p-3 font-normal" />
+            <input name="cta_label" value={section.cta_label || ''} class="admin-input w-full font-normal" />
           </label>
         )}
 

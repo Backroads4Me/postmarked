@@ -51,10 +51,10 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
 
   <div class="grid gap-5 mb-10">
     <!-- Approval requirement toggle -->
-    <div class="bg-surface-2 border border-line rounded p-4 flex items-center justify-between gap-4">
+    <div class="admin-list p-4 flex items-center justify-between gap-4">
       <div>
-        <div class="text-sm font-bold">Require admin approval for new users</div>
-        <div class="text-xs text-muted mt-1">When on, new registrations stay pending until you approve them. Pre-approved emails bypass this.</div>
+        <div class="font-bold">Require admin approval for new users</div>
+        <div class="text-sm text-muted mt-1">When on, new registrations stay pending until you approve them. Pre-approved emails bypass this.</div>
       </div>
       <button
         id="approval-toggle"
@@ -67,10 +67,10 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
     </div>
 
     <!-- SMS toggle -->
-    <div class="bg-surface-2 border border-line rounded p-4 flex items-center justify-between gap-4">
+    <div class="admin-list p-4 flex items-center justify-between gap-4">
       <div>
-        <div class="text-sm font-bold">Enable SMS notifications</div>
-        <div class="text-xs text-muted mt-1">Show the phone number and SMS consent fields on registration and account pages. Requires Twilio credentials to be configured.</div>
+        <div class="font-bold">Enable SMS notifications</div>
+        <div class="text-sm text-muted mt-1">Show the phone number and SMS consent fields on registration and account pages. Requires Twilio credentials to be configured.</div>
       </div>
       <button
         id="sms-toggle"
@@ -83,10 +83,10 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
     </div>
 
     <!-- Pre-approved emails -->
-    <div class="bg-surface-2 border border-line rounded p-4 grid gap-4">
+    <div class="admin-list p-4 grid gap-4">
       <div>
-        <div class="text-sm font-bold">Pre-approved emails</div>
-        <div class="text-xs text-muted mt-1">Anyone who registers with one of these addresses is automatically approved, even if approval is required.</div>
+        <div class="font-bold">Pre-approved emails</div>
+        <div class="text-sm text-muted mt-1">Anyone who registers with one of these addresses is automatically approved, even if approval is required.</div>
       </div>
 
       {preApprovedEmails.length > 0 && (
@@ -109,7 +109,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           name="emails"
           rows="3"
           placeholder="One email address per line"
-          class="bg-surface-1 border border-line p-3 text-sm font-mono font-normal w-full"
+          class="admin-input w-full text-sm font-mono"
         ></textarea>
         <div>
           <button type="submit" class="btn btn-sm">Add</button>
@@ -126,16 +126,16 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           <div class="card-flat grid gap-3">
             <div class="grid grid-cols-2 gap-2">
               <div class="grid gap-1">
-                <label class="label text-[10px]">Display name</label>
-                <input type="text" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <label class="label">Display name</label>
+                <input type="text" class="admin-input"
                   value={u.display_name || ''}
                   placeholder="(no name)"
                   data-user-id={u.id}
                   onblur={`updateUserProfile('${u.id}', this, 'name')`} />
               </div>
               <div class="grid gap-1">
-                <label class="label text-[10px]">Email</label>
-                <input type="email" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <label class="label">Email</label>
+                <input type="email" class="admin-input"
                   value={u.email}
                   data-user-id={u.id}
                   onblur={`updateUserProfile('${u.id}', this, 'email')`} />
@@ -143,14 +143,14 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               {u.role !== 'admin' && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
                   <option value="user" selected={u.role !== 'admin'}>User</option>
                   <option value="admin">Admin</option>
                 </select>
               )}
               {email_enabled && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-email-select={u.id}
                   onchange={`updateUserEmailOptIn('${u.id}', this)`}>
                   <option value="false" selected={!u.email_opted_in}>Email off</option>
@@ -158,19 +158,19 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               {sms_enabled && (
-                <input type="tel" class="bg-surface-2 border border-line-soft rounded p-2 text-xs w-28"
+                <input type="tel" class="admin-input w-28"
                   placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
                   onblur={`updateUserSms('${u.id}', this)`} />
               )}
               {sms_enabled && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
                   <option value="false" selected={!u.sms_opted_in}>SMS off</option>
                   <option value="true" selected={u.sms_opted_in}>SMS on</option>
                 </select>
               )}
               {(email_enabled || sms_enabled) && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-freq-select={u.id}
                   onchange={`updateUserFrequency('${u.id}', this)`}>
                   <option value="all_updates" selected={u.notification_frequency !== 'weekly_digest'}>Immediate</option>
@@ -178,9 +178,9 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               <div class="flex-1"></div>
-              <button class="btn" style="min-height:32px; font-size:13px;"
+              <button class="btn btn-sm"
                 onclick={`approveUser('${u.id}', this)`}>Approve</button>
-              <button class="btn" style="min-height:32px; font-size:13px; color:var(--sunset);"
+              <button class="btn btn-sm btn-primary"
                 onclick={`rejectUser('${u.id}', this)`}>Reject</button>
             </div>
           </div>
@@ -201,16 +201,16 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           <div class="card-flat grid gap-3">
             <div class="grid grid-cols-2 gap-2">
               <div class="grid gap-1">
-                <label class="label text-[10px]">Display name</label>
-                <input type="text" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <label class="label">Display name</label>
+                <input type="text" class="admin-input"
                   value={u.display_name || ''}
                   placeholder="(no name)"
                   data-user-id={u.id}
                   onblur={`updateUserProfile('${u.id}', this, 'name')`} />
               </div>
               <div class="grid gap-1">
-                <label class="label text-[10px]">Email</label>
-                <input type="email" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <label class="label">Email</label>
+                <input type="email" class="admin-input"
                   value={u.email}
                   data-user-id={u.id}
                   onblur={`updateUserProfile('${u.id}', this, 'email')`} />
@@ -218,14 +218,14 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               {u.role !== 'admin' && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
                   <option value="user" selected={u.role !== 'admin'}>User</option>
                   <option value="admin">Admin</option>
                 </select>
               )}
               {email_enabled && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-email-select={u.id}
                   onchange={`updateUserEmailOptIn('${u.id}', this)`}>
                   <option value="false" selected={!u.email_opted_in}>Email off</option>
@@ -233,19 +233,19 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               {sms_enabled && (
-                <input type="tel" class="bg-surface-2 border border-line-soft rounded p-2 text-xs w-28"
+                <input type="tel" class="admin-input w-28"
                   placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
                   onblur={`updateUserSms('${u.id}', this)`} />
               )}
               {sms_enabled && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
                   <option value="false" selected={!u.sms_opted_in}>SMS off</option>
                   <option value="true" selected={u.sms_opted_in}>SMS on</option>
                 </select>
               )}
               {(email_enabled || sms_enabled) && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-freq-select={u.id}
                   onchange={`updateUserFrequency('${u.id}', this)`}>
                   <option value="all_updates" selected={u.notification_frequency !== 'weekly_digest'}>Immediate</option>
@@ -269,16 +269,16 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
           <div class="card-flat grid gap-3" style="opacity:0.7;">
             <div class="grid grid-cols-2 gap-2">
               <div class="grid gap-1">
-                <label class="label text-[10px]">Display name</label>
-                <input type="text" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <label class="label">Display name</label>
+                <input type="text" class="admin-input"
                   value={u.display_name || ''}
                   placeholder="(no name)"
                   data-user-id={u.id}
                   onblur={`updateUserProfile('${u.id}', this, 'name')`} />
               </div>
               <div class="grid gap-1">
-                <label class="label text-[10px]">Email</label>
-                <input type="email" class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <label class="label">Email</label>
+                <input type="email" class="admin-input"
                   value={u.email}
                   data-user-id={u.id}
                   onblur={`updateUserProfile('${u.id}', this, 'email')`} />
@@ -286,14 +286,14 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
             </div>
             <div class="flex items-center gap-2 flex-wrap">
               {u.role !== 'admin' && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
                   <option value="user" selected={u.role !== 'admin'}>User</option>
                   <option value="admin">Admin</option>
                 </select>
               )}
               {email_enabled && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-email-select={u.id}
                   onchange={`updateUserEmailOptIn('${u.id}', this)`}>
                   <option value="false" selected={!u.email_opted_in}>Email off</option>
@@ -301,19 +301,19 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               {sms_enabled && (
-                <input type="tel" class="bg-surface-2 border border-line-soft rounded p-2 text-xs w-28"
+                <input type="tel" class="admin-input w-28"
                   placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
                   onblur={`updateUserSms('${u.id}', this)`} />
               )}
               {sms_enabled && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
                   <option value="false" selected={!u.sms_opted_in}>SMS off</option>
                   <option value="true" selected={u.sms_opted_in}>SMS on</option>
                 </select>
               )}
               {(email_enabled || sms_enabled) && (
-                <select class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                <select class="admin-input"
                   data-freq-select={u.id}
                   onchange={`updateUserFrequency('${u.id}', this)`}>
                   <option value="all_updates" selected={u.notification_frequency !== 'weekly_digest'}>Immediate</option>
@@ -325,7 +325,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 onclick={`approveUser('${u.id}', this)`}>Re-approve</button>
               {u.role !== 'admin' && (
                 <select
-                  class="bg-surface-2 border border-line-soft rounded p-2 text-xs"
+                  class="admin-input"
                   data-original={u.role}
                   onchange={`updateUserRole('${u.id}', this)`}
                 >

@@ -3,9 +3,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 ---
 
 <AdminLayout title="Backup & Restore">
-  <div class="max-w-2xl space-y-10">
+  <div class="max-w-2xl mx-auto space-y-6">
 
-    <section>
+    <section class="admin-list p-6">
       <h2 class="display text-xl mb-2">Export Backup</h2>
       <p class="text-sm text-dim mb-4">
         Download a ZIP archive containing all trips, stops, posts, media metadata,
@@ -15,20 +15,18 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       <a
         href="/api/admin/backup/export"
         id="export-btn"
-        class="btn inline-block"
+        class="btn btn-primary inline-block"
         download
       >
         Download Backup
       </a>
     </section>
 
-    <hr class="border-surface-2" />
-
-    <section>
+    <section class="admin-list p-6">
       <h2 class="display text-xl mb-2">Import Backup</h2>
       <p class="text-sm text-dim mb-4">
         Upload a previously exported ZIP to fully restore this instance.
-        <strong class="text-warning">This will permanently erase all existing data</strong>
+        <strong style="color: var(--sunset);">This will permanently erase all existing data</strong>
         before applying the backup.
       </p>
 
@@ -53,7 +51,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
             Select a Postmarked backup export. The restore button will unlock after a ZIP is selected.
           </p>
         </div>
-        <button type="submit" id="import-btn" class="btn" style="border-color: rgba(212,107,92,.45); color: var(--sunset);" disabled>
+        <button type="submit" id="import-btn" class="btn btn-primary" disabled>
           Restore from Backup
         </button>
       </form>
@@ -74,7 +72,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     padding: 18px;
     border: 1px dashed var(--line);
     border-radius: 8px;
-    background: var(--surface-2);
+    background: var(--surface);
     color: var(--paper);
     cursor: pointer;
     transition: border-color 160ms ease, background 160ms ease, color 160ms ease;
@@ -82,8 +80,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   .backup-upload-target:hover,
   .backup-upload-target:focus-within {
-    border-color: var(--ember);
-    background: var(--ink-3);
+    border-color: var(--ember-border);
+    background: var(--surface-2);
   }
 
   .backup-upload-icon {
@@ -94,9 +92,9 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     height: 44px;
     flex: 0 0 auto;
     border-radius: 8px;
-    border: 1px solid rgba(232, 137, 63, 0.35);
-    background: rgba(232, 137, 63, 0.12);
-    color: var(--ember-2);
+    border: 1px solid var(--ember-border);
+    background: var(--ember-glow);
+    color: var(--ember);
     font-family: var(--mono);
     font-size: 11px;
     letter-spacing: 0.08em;
@@ -119,7 +117,7 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 
   .backup-upload-target.has-file {
     border-style: solid;
-    border-color: rgba(232, 137, 63, 0.45);
+    border-color: var(--ember-border);
   }
 
   .backup-upload-target.has-file .backup-upload-status {

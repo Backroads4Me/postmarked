@@ -157,7 +157,10 @@ function stopSiblingLabel(stop) {
       <div>
         {detail.prev && (
           <a href={`/trips/${detail.trip_slug}/stops/${detail.prev.slug}`} class="card-flat block">
-            <div class="label mb-1">← Previous</div>
+            <div class="stop-nav-label label mb-1">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg>
+              <span>Previous stop</span>
+            </div>
             <div style="color: var(--paper);">{stopSiblingLabel(detail.prev)}</div>
           </a>
         )}
@@ -165,7 +168,10 @@ function stopSiblingLabel(stop) {
       <div style="text-align: right;">
         {detail.next && (
           <a href={`/trips/${detail.trip_slug}/stops/${detail.next.slug}`} class="card-flat block">
-            <div class="label mb-1">Next →</div>
+            <div class="stop-nav-label stop-nav-label-next label mb-1">
+              <span>Next stop</span>
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg>
+            </div>
             <div style="color: var(--paper);">{stopSiblingLabel(detail.next)}</div>
           </a>
         )}
@@ -175,6 +181,28 @@ function stopSiblingLabel(stop) {
 </Layout>
 
 <style>
+  .stop-nav-label {
+    align-items: center;
+    color: var(--paper);
+    display: inline-flex;
+    gap: 0.35rem;
+  }
+
+  .stop-nav-label-next {
+    justify-content: flex-end;
+    width: 100%;
+  }
+
+  .stop-nav-label svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.4;
+    width: 1rem;
+  }
+
   .stop-posts-list {
     display: flex;
     flex-direction: column;

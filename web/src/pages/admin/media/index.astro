@@ -27,7 +27,7 @@ try {
     <a href="/admin/intake" class="btn">Upload More</a>
   </div>
 
-  <div class="bg-surface-2 border border-line rounded">
+  <div class="admin-list">
     {mediaAssets.length > 0 ? (
       <div class="divide-y divide-line">
         {mediaAssets.map(asset => (
@@ -75,9 +75,8 @@ try {
               ) : null}
               <button
                 type="button"
-                class="btn btn-sm js-delete-asset"
+                class="btn btn-sm btn-primary js-delete-asset"
                 data-asset-id={asset.id}
-                style="border-color: rgba(212,107,92,.45); color: var(--sunset);"
               >
                 Delete
               </button>

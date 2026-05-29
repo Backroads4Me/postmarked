@@ -272,7 +272,7 @@ export default function QuickPostIsland() {
             maxLength={200}
             placeholder="Postcard from the road"
             autoComplete="off"
-            className="bg-surface-2 border border-line p-3 focus:border-ember"
+            className="form-input"
           />
         </div>
 
@@ -283,7 +283,7 @@ export default function QuickPostIsland() {
             type="date"
             value={postedAt}
             onChange={(e) => setPostedAt(e.target.value)}
-            className="bg-surface-2 border border-line p-3 focus:border-ember"
+            className="form-input"
           />
         </div>
       </div>
@@ -297,7 +297,7 @@ export default function QuickPostIsland() {
           rows={2}
           maxLength={500}
           placeholder="A sentence or two that appears before the photos."
-          className="bg-surface-2 border border-line p-3 font-sans focus:border-ember"
+          className="form-input font-sans"
         />
       </div>
 
@@ -310,7 +310,7 @@ export default function QuickPostIsland() {
           rows={8}
           maxLength={10000}
           placeholder="The full post text — appears after the photos."
-          className="bg-surface-2 border border-line p-3 font-sans focus:border-ember"
+          className="form-input font-sans"
         />
       </div>
 
@@ -353,7 +353,7 @@ export default function QuickPostIsland() {
             accept="image/*,video/*"
             multiple
             onChange={onFilesSelected}
-            className="bg-surface-2 border border-dashed border-line p-3 text-sm text-muted"
+            className="form-input"
           />
           {photos.length > 0 && (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
