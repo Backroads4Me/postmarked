@@ -52,8 +52,7 @@ export default function SearchIsland() {
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="nav-link hidden md:inline-flex"
-        style={{ flexDirection: 'row', gap: '6px', fontSize: '12px', fontFamily: 'var(--mono)', letterSpacing: '0.04em', textTransform: 'uppercase' }}
+        className="nav-link hidden md:inline-flex flex-row gap-1.5 text-xs"
       >
         <span className="nav-symbol">
           <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -98,7 +97,7 @@ export default function SearchIsland() {
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] uppercase font-mono tracking-widest text-dim border border-line px-2 rounded-full">{r.entity_type}</span>
+                      <span className="badge badge-sm">{r.entity_type}</span>
                     </div>
                     {r.summary && <div className="text-sm text-muted clamp-2">{r.summary}</div>}
                   </a>

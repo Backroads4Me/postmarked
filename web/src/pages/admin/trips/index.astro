@@ -52,8 +52,8 @@ function statusBadge(status) {
               <div>
                 <div class="flex items-center gap-2 mb-1">
                   <span class="font-bold text-lg">{trip.title}</span>
-                  <span class="badge badge-draft text-[9px]">draft</span>
-                  <span class={`badge text-[9px] ${trip.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
+                  <span class="badge badge-draft badge-sm">draft</span>
+                  <span class={`badge badge-sm ${trip.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
                     {trip.visibility}
                   </span>
                 </div>
@@ -89,7 +89,7 @@ function statusBadge(status) {
             <div>
               <div class="flex items-center gap-2 mb-1">
                 <span class="font-bold text-lg">{trip.title}</span>
-                <span class={`badge text-[9px] ${statusBadge(trip.status)}`}>
+                <span class={`badge badge-sm ${statusBadge(trip.status)}`}>
                   {trip.status}
                 </span>
               </div>

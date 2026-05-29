@@ -77,13 +77,13 @@ export default function ImportPreviewIsland() {
 
   function statusColor(status) {
     const map = {
-      added: '#4a9f6e',
-      unchanged: '#9a9a9f',
-      changed: '#e8893f',
-      removed: '#d46b5c',
-      needs_review: '#f4a663',
+      added: 'var(--forest)',
+      unchanged: 'var(--muted)',
+      changed: 'var(--ember)',
+      removed: 'var(--sunset)',
+      needs_review: 'var(--postcard-yellow)',
     };
-    return map[status] || '#9a9a9f';
+    return map[status] || 'var(--muted)';
   }
 
   function statusIcon(status) {
@@ -98,7 +98,7 @@ export default function ImportPreviewIsland() {
   }
 
   return (
-    <div style={{ fontFamily: 'var(--sans)' }}>
+    <div>
 
       {/* File Upload */}
       <div className="card-flat" style={{ marginBottom: '24px' }}>
@@ -163,16 +163,16 @@ export default function ImportPreviewIsland() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <span className="badge" style={{ background: 'rgba(74,159,110,.15)', color: '#4a9f6e', borderColor: 'rgba(74,159,110,.3)' }}>
+              <span className="badge badge-active">
                 {preview.summary?.added || 0} New
               </span>
               <span className="badge">
                 {preview.summary?.unchanged || 0} Unchanged
               </span>
-              <span className="badge" style={{ background: 'var(--ember-glow)', color: 'var(--ember)', borderColor: 'rgba(232,137,63,.3)' }}>
+              <span className="badge badge-ember">
                 {preview.summary?.changed || 0} Changed
               </span>
-              <span className="badge" style={{ background: 'rgba(212,107,92,.15)', color: '#d46b5c', borderColor: 'rgba(212,107,92,.3)' }}>
+              <span className="badge badge-private">
                 {preview.summary?.removed || 0} Removed
               </span>
             </div>
@@ -190,15 +190,15 @@ export default function ImportPreviewIsland() {
           <div className="card-flat" style={{ padding: 0, overflowX: 'auto' }}>
             <table style={{ width: '100%', minWidth: '760px', borderCollapse: 'collapse', fontSize: '13px' }}>
               <thead>
-                <tr style={{ borderBottom: '1px solid var(--line)' }}>
-                  <th style={thStyle}>#</th>
-                  <th style={thStyle}>Status</th>
-                  <th style={{ ...thStyle, textAlign: 'left' }}>Stop Name</th>
-                  <th style={thStyle}>Arrival</th>
-                  <th style={thStyle}>Departure</th>
-                  <th style={thStyle}>Nights</th>
-                  <th style={thStyle}>Miles</th>
-                  <th style={{ ...thStyle, textAlign: 'left' }}>Changes</th>
+                <tr>
+                  <th className="table-header text-center">#</th>
+                  <th className="table-header text-center">Status</th>
+                  <th className="table-header">Stop Name</th>
+                  <th className="table-header text-center">Arrival</th>
+                  <th className="table-header text-center">Departure</th>
+                  <th className="table-header text-center">Nights</th>
+                  <th className="table-header text-center">Miles</th>
+                  <th className="table-header">Changes</th>
                 </tr>
               </thead>
               <tbody>
@@ -207,11 +207,11 @@ export default function ImportPreviewIsland() {
                     key={idx}
                     style={{
                       borderBottom: '1px solid var(--line-soft)',
-                      background: item.is_dangerous ? 'rgba(212,107,92,.08)' : 'transparent',
+                      background: item.is_dangerous ? 'color-mix(in srgb, var(--sunset) 8%, transparent)' : 'transparent',
                     }}
                   >
-                    <td style={tdStyle}>{item.sequence}</td>
-                    <td style={tdStyle}>
+                    <td className="table-cell text-center">{item.sequence}</td>
+                    <td className="table-cell text-center">
                       <span
                         style={{
                           color: statusColor(item.status),
@@ -223,19 +223,19 @@ export default function ImportPreviewIsland() {
                         {statusIcon(item.status)} {item.status}
                       </span>
                     </td>
-                    <td style={{ ...tdStyle, textAlign: 'left', color: 'var(--paper)' }}>
+                    <td className="table-cell" style={{ color: 'var(--paper)' }}>
                       {item.name}
                       {item.is_dangerous && (
-                        <span style={{ color: 'var(--sunset)', fontSize: '10px', marginLeft: '4px' }}>
+                        <span className="badge badge-sm badge-private" style={{ marginLeft: '4px' }}>
                           ⚠ linked
                         </span>
                       )}
                     </td>
-                    <td style={tdStyle}>{item.arrival_date || '—'}</td>
-                    <td style={tdStyle}>{item.departure_date || '—'}</td>
-                    <td style={tdStyle}>{item.nights ?? '—'}</td>
-                    <td style={tdStyle}>{item.miles?.toFixed(1) || '—'}</td>
-                    <td style={{ ...tdStyle, textAlign: 'left', fontSize: '11px' }}>
+                    <td className="table-cell text-center">{item.arrival_date || '—'}</td>
+                    <td className="table-cell text-center">{item.departure_date || '—'}</td>
+                    <td className="table-cell text-center">{item.nights ?? '—'}</td>
+                    <td className="table-cell text-center">{item.miles?.toFixed(1) || '—'}</td>
+                    <td className="table-cell text-xs">
                       {item.changes?.length > 0
                         ? item.changes.join(', ')
                         : '—'}
@@ -267,7 +267,7 @@ export default function ImportPreviewIsland() {
 
           {/* Applied confirmation */}
           {applied && preview.appliedResult && (
-            <div className="card" style={{ marginTop: '16px', borderColor: 'rgba(74,159,110,.3)' }}>
+            <div className="card" style={{ marginTop: '16px', borderColor: 'color-mix(in srgb, var(--forest) 32%, transparent)' }}>
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-xl">✅</span>
                 <span style={{ color: 'var(--forest)', fontWeight: 600 }}>Import Applied Successfully</span>
@@ -284,20 +284,3 @@ export default function ImportPreviewIsland() {
     </div>
   );
 }
-
-const thStyle = {
-  padding: '10px 12px',
-  textAlign: 'center',
-  fontFamily: 'var(--mono)',
-  fontSize: '10px',
-  letterSpacing: '0.1em',
-  textTransform: 'uppercase',
-  color: 'var(--dim)',
-  fontWeight: 500,
-};
-
-const tdStyle = {
-  padding: '8px 12px',
-  textAlign: 'center',
-  color: 'var(--muted)',
-};

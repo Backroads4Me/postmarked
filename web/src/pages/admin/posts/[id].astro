@@ -87,7 +87,7 @@ function stopOptionLabel(stop) {
       <div class="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_14rem_18rem] gap-4">
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="stop_id">Stop</label>
-          <select id="stop_id" name="stop_id" class="bg-surface-2 border border-line p-3">
+          <select id="stop_id" name="stop_id" class="form-input">
             <option value="">No stop</option>
             {stops.map(s => (
               <option value={s.id} selected={s.id === post.stop_id}>{stopOptionLabel(s)}</option>
@@ -97,7 +97,7 @@ function stopOptionLabel(stop) {
 
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="status">Status</label>
-          <select id="status" name="status" class="bg-surface-2 border border-line p-3">
+          <select id="status" name="status" class="form-input">
             {['draft','published','unpublished','archived'].map(status => (
               <option value={status} selected={post.status === status}>{status.charAt(0).toUpperCase() + status.slice(1)}</option>
             ))}
@@ -106,7 +106,7 @@ function stopOptionLabel(stop) {
 
         <div class="flex flex-col gap-2">
           <label class="text-sm font-bold" for="visibility">Visibility</label>
-          <select id="visibility" name="visibility" class="bg-surface-2 border border-line p-3">
+          <select id="visibility" name="visibility" class="form-input">
             <option value="private" selected={post.visibility === 'private'}>Private — logged-in users</option>
             <option value="public" selected={post.visibility === 'public'}>Public — anyone</option>
           </select>

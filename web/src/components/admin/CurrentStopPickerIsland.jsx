@@ -141,23 +141,13 @@ export default function CurrentStopPickerIsland() {
                   type="button"
                   onClick={() => !isCurrent && setCurrentStop(s.id)}
                   disabled={isCurrent || saving !== null}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "12px 14px",
-                    background: isCurrent ? "var(--ember-glow)" : "transparent",
-                    borderBottom: "1px solid var(--line-soft)",
-                    color: "var(--paper)",
-                    cursor: isCurrent ? "default" : "pointer",
-                    minHeight: 44,
-                  }}
+                  className={`stop-picker-btn ${isCurrent ? "is-current" : ""}`}
                 >
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
                     <span style={{ fontWeight: 500 }}>
                       {s.title}
                       {isCurrent && (
-                        <span className="badge badge-active" style={{ marginLeft: 8, fontSize: 10 }}>
+                        <span className="badge badge-sm badge-active" style={{ marginLeft: 8 }}>
                           current
                         </span>
                       )}

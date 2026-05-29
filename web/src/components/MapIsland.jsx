@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { MAP_COLORS } from '../lib/mapColors.js';
 import { getRuntimeConfig } from '../lib/runtimeConfig.js';
 
 let googleMapsPromise = null;
@@ -59,7 +60,7 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
-          backgroundColor: '#101419',
+          backgroundColor: MAP_COLORS.background,
         });
 
         mapRef.current = map;
@@ -133,7 +134,7 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
           transform: translate(-50%, -50%);
           border: 2px solid rgba(255,255,255,.78);
           border-radius: 999px;
-          background: #6fa3c4;
+          background: ${MAP_COLORS.trailhead};
           color: #0b1016;
           display: inline-flex;
           align-items: center;
@@ -147,13 +148,13 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
           pointer-events: auto;
         }
         .fallback-marker.is-active {
-          background: #e8893f;
-          color: #17110b;
+          background: ${MAP_COLORS.active};
+          color: #fff;
         }
         .fallback-marker.is-current {
           width: 34px;
           height: 34px;
-          background: #e05252;
+          background: ${MAP_COLORS.current};
           color: #17080a;
           border-color: #fff;
         }
@@ -161,7 +162,7 @@ export default function MapIsland({ stops, activeStopId, onStopClick }) {
           content: "";
           position: absolute;
           inset: -8px;
-          border: 2px solid rgba(224,82,82,.72);
+          border: 2px solid color-mix(in srgb, ${MAP_COLORS.current} 72%, transparent);
           border-radius: inherit;
           animation: pulse-ring 2s ease-out infinite;
         }
@@ -178,7 +179,7 @@ function FallbackRoute({ stopPoints, activeStopId, onStopClick }) {
           <polyline
             points={stopPoints.map(point => `${point.x},${point.y}`).join(' ')}
             fill="none"
-            stroke="#e8893f"
+            stroke={MAP_COLORS.route}
             strokeWidth="1.4"
             strokeDasharray="3 2"
             strokeLinecap="round"
@@ -261,7 +262,7 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
       map,
       path: route,
       geodesic: true,
-      strokeColor: '#e8893f',
+      strokeColor: MAP_COLORS.route,
       strokeOpacity: 0.75,
       strokeWeight: 3,
     });
@@ -289,7 +290,7 @@ function addGoogleStops(map, stops, activeStopId, onStopClick, markersRef, route
 function createDotMarkerElement({ isActive, isCurrent }) {
   const el = document.createElement('button');
   const size = isCurrent ? 16 : isActive ? 14 : 10;
-  const color = isCurrent ? '#e05252' : isActive ? '#e8893f' : '#4a9f6e';
+  const color = isCurrent ? MAP_COLORS.current : isActive ? MAP_COLORS.active : MAP_COLORS.campground;
   el.type = 'button';
   el.className = 'gp-dot-marker';
   el.style.cssText = `

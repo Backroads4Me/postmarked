@@ -144,7 +144,7 @@ const tripIsPrivate = trip.visibility === 'private';
           <div class="flex flex-col sm:flex-row gap-2">
             <label class="flex flex-col gap-1">
               <span class="label">Status</span>
-              <select id="bulk-status" class="bg-surface-2 border border-line p-2 text-sm min-w-36">
+              <select id="bulk-status" class="admin-input min-w-36">
                 <option value="">No change</option>
                 <option value="draft">Draft</option>
                 <option value="published">Published</option>
@@ -154,7 +154,7 @@ const tripIsPrivate = trip.visibility === 'private';
             </label>
             <label class="flex flex-col gap-1">
               <span class="label">Visibility</span>
-              <select id="bulk-visibility" class="bg-surface-2 border border-line p-2 text-sm min-w-36" disabled={tripIsPrivate}>
+              <select id="bulk-visibility" class="admin-input min-w-36" disabled={tripIsPrivate}>
                 <option value="">No change</option>
                 <option value="public">Public</option>
                 <option value="private">Private</option>
@@ -209,12 +209,12 @@ const tripIsPrivate = trip.visibility === 'private';
                 <span class="coord block mt-0.5">{stop.title}</span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.visibility === 'public' ? 'badge-public' : 'badge-draft'}`}>
+                <span class={`badge badge-sm ${stop.visibility === 'public' ? 'badge-public' : 'badge-draft'}`}>
                   {stop.visibility}
                 </span>
               </td>
               <td style="padding: 10px 12px; text-align: center;">
-                <span class={`badge text-[9px] ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'published' ? 'badge-published' : stop.status === 'unpublished' ? 'badge-unpublished' : stop.status === 'archived' ? 'badge-private' : 'badge-draft'}`}>
+                <span class={`badge badge-sm ${stop.status === 'draft' ? 'badge-draft' : stop.status === 'published' ? 'badge-published' : stop.status === 'unpublished' ? 'badge-unpublished' : stop.status === 'archived' ? 'badge-private' : 'badge-draft'}`}>
                   {stop.status}
                 </span>
               </td>

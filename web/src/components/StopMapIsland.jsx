@@ -1,16 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { MAP_COLORS, mapPoiColor } from "../lib/mapColors.js";
 import { getRuntimeConfig } from "../lib/runtimeConfig.js";
 
 let googleMapsPromise = null;
-
-const POI_COLORS = {
-  campground: "#4a9f6e",
-  trailhead: "#6fa3c4",
-  fuel: "#e8893f",
-  restaurant: "#c46f9f",
-  attraction: "#9f6fc4",
-  other: "#888",
-};
 
 export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps = [] }) {
   const containerRef = useRef(null);
@@ -42,7 +34,7 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
           mapTypeControl: false,
           streetViewControl: false,
           fullscreenControl: false,
-          backgroundColor: "#101419",
+          backgroundColor: MAP_COLORS.background,
         });
         mapRef.current = map;
 
@@ -58,7 +50,7 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
           map,
           position: { lat: Number(latitude), lng: Number(longitude) },
           title: "Stop",
-          color: POI_COLORS.campground,
+          color: MAP_COLORS.campground,
           scale: 1.1,
           markers: googleMarkers,
         });
@@ -79,7 +71,7 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
             map,
             position: { lat, lng },
             title: poi.label,
-            color: POI_COLORS[poi.poi_type] ?? POI_COLORS.other,
+            color: mapPoiColor(poi.poi_type),
             scale: 0.8,
             content: `<strong>${title}</strong><br><span style="font-size:11px;opacity:.7">${type}</span>${mapsLink}`,
             markers: googleMarkers,
@@ -96,7 +88,7 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
             map,
             position: { lat, lng },
             title: "Photo",
-            color: "#e8c44a",
+            color: MAP_COLORS.photo,
             scale: 0.6,
             markers: googleMarkers,
           });
@@ -146,9 +138,9 @@ export default function StopMapIsland({ latitude, longitude, pois = [], mediaGps
           flexDirection: "column",
           alignItems: "center",
           justifyContent: "center",
-          background: "#101419",
+          background: MAP_COLORS.background,
           color: "var(--dim)",
-          fontFamily: "var(--sans)",
+          fontFamily: "var(--body)",
           fontSize: "13px",
           textAlign: "center",
           padding: "16px",
@@ -188,8 +180,8 @@ function addGoogleMarker({ google, map, position, title, color, scale, content, 
   const pin = new google.maps.marker.PinElement({
     scale,
     background: color,
-    borderColor: "#ffffff",
-    glyphColor: "#101419",
+    borderColor: MAP_COLORS.markerBorder,
+    glyphColor: MAP_COLORS.markerGlyph,
   });
 
   const marker = new google.maps.marker.AdvancedMarkerElement({

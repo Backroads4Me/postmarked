@@ -38,10 +38,10 @@ function statusBadge(status) {
           <div class="flex items-center justify-between mb-2">
             <div class="flex items-center gap-2">
               <span class="text-lg" aria-hidden="true">✏️</span>
-              <span class={`badge text-[9px] ${statusBadge(post.status)}`}>
+              <span class={`badge badge-sm ${statusBadge(post.status)}`}>
                 {post.status}
               </span>
-              <span class={`badge text-[9px] ${post.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
+              <span class={`badge badge-sm ${post.visibility === 'public' ? 'badge-public' : 'badge-private'}`}>
                 {post.visibility}
               </span>
             </div>
