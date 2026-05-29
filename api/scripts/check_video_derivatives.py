@@ -7,6 +7,7 @@ Run from the api container:
 """
 
 import os
+import subprocess
 
 from sqlalchemy import create_engine, select
 from sqlalchemy.orm import sessionmaker
@@ -22,6 +23,30 @@ DATABASE_URL = os.getenv(
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/derivatives")
 
 
+def is_valid_mp4(path: str) -> bool:
+    try:
+        subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-select_streams",
+                "v:0",
+                "-show_entries",
+                "stream=codec_name",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                path,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        return True
+    except subprocess.CalledProcessError:
+        return False
+
+
 def main() -> None:
     engine = create_engine(DATABASE_URL)
     Session = sessionmaker(bind=engine)
@@ -34,22 +59,27 @@ def main() -> None:
         print(f"Found {len(assets)} video asset(s).")
         missing_file = 0
         missing_metadata = 0
+        invalid_file = 0
 
         for asset in assets:
             mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
             has_file = os.path.exists(mp4_path)
+            valid_file = has_file and is_valid_mp4(mp4_path)
             has_metadata = bool((asset.derivative_paths or {}).get("mp4"))
-            if has_file and has_metadata:
+            if has_file and valid_file and has_metadata:
                 continue
 
             if not has_file:
                 missing_file += 1
+            elif not valid_file:
+                invalid_file += 1
             if not has_metadata:
                 missing_metadata += 1
 
             print(
                 f"{asset.id} state={asset.processing_state.value} "
                 f"file={'yes' if has_file else 'no'} "
+                f"valid={'yes' if valid_file else 'no'} "
                 f"metadata={'yes' if has_metadata else 'no'} "
                 f"mime={asset.mime_type} original={asset.original_filename}"
             )
@@ -58,6 +88,7 @@ def main() -> None:
 
         print(
             f"Missing files: {missing_file}. "
+            f"Invalid files: {invalid_file}. "
             f"Missing derivative_paths.mp4 metadata: {missing_metadata}."
         )
     finally:

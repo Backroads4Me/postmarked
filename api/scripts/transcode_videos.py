@@ -43,6 +43,14 @@ def probe_dimensions(path: str) -> tuple[int, int]:
     raise ValueError("No valid video stream found")
 
 
+def is_valid_mp4(path: str) -> bool:
+    try:
+        probe_dimensions(path)
+        return True
+    except Exception:
+        return False
+
+
 def transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
     subprocess.run([
         "ffmpeg", "-y", "-i", file_path,
@@ -95,7 +103,7 @@ def main():
     for i, asset in enumerate(assets, 1):
         mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
 
-        if not args.force and os.path.exists(mp4_path):
+        if not args.force and os.path.exists(mp4_path) and is_valid_mp4(mp4_path):
             paths = dict(asset.derivative_paths or {})
             changed = False
             if paths.get("mp4") != f"/media/{asset.id}/mp4":

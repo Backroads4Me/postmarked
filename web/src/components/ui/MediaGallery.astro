@@ -42,6 +42,8 @@ const allMediaData = JSON.stringify(allMedia.map((m: MediaSummary) => ({
   kind: m.kind || 'photo',
   alt: m.alt_text || m.caption || '',
   caption: m.caption || '',
+  src: isVideo(m) ? videoSrc(m) : '/media/' + m.id + '/webp',
+  fallbackSrc: isVideo(m) ? '/media/' + m.id + '/original' : '',
 })));
 
 function isVideo(m: MediaSummary) {
@@ -53,7 +55,7 @@ function posterSrc(m: MediaSummary) {
 }
 
 function videoSrc(m: MediaSummary) {
-  return '/media/' + m.id + '/mp4';
+  return m.derivative_paths?.mp4 ? '/media/' + m.id + '/mp4' : '/media/' + m.id + '/original';
 }
 
 function avifSrc(m: MediaSummary) {
@@ -141,6 +143,7 @@ function tileClass(_m: MediaSummary) {
         data-media-index={index}
         data-media-kind="video"
         data-media-src={videoSrc(m)}
+        data-media-fallback-src={'/media/' + m.id + '/original'}
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
@@ -192,6 +195,7 @@ function tileClass(_m: MediaSummary) {
         data-media-index={index}
         data-media-kind="video"
         data-media-src={videoSrc(m)}
+        data-media-fallback-src={'/media/' + m.id + '/original'}
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
@@ -257,6 +261,7 @@ function tileClass(_m: MediaSummary) {
   interface LightboxItem {
     kind: string;
     src: string;
+    fallbackSrc: string;
     poster: string;
     alt: string;
     caption: string;
@@ -271,6 +276,8 @@ function tileClass(_m: MediaSummary) {
     kind: string;
     alt: string;
     caption: string;
+    src: string;
+    fallbackSrc: string;
   }
 
   function ensureMediaLightbox(): MediaLightboxDialog {
@@ -312,9 +319,11 @@ function tileClass(_m: MediaSummary) {
         image.hidden = true;
         video.hidden = false;
         video.src = item.src || '';
+        video.dataset.fallbackSrc = item.fallbackSrc || '';
         if (item.poster) video.poster = item.poster;
       } else {
         video.hidden = true;
+        video.dataset.fallbackSrc = '';
         image.hidden = false;
         image.src = item.src || '';
       }
@@ -341,6 +350,14 @@ function tileClass(_m: MediaSummary) {
       video.pause();
       video.removeAttribute('src');
       video.removeAttribute('poster');
+      video.dataset.fallbackSrc = '';
+      video.load();
+    });
+    video.addEventListener('error', () => {
+      const fallbackSrc = video.dataset.fallbackSrc || '';
+      if (!fallbackSrc || video.currentSrc.endsWith('/original')) return;
+      video.src = fallbackSrc;
+      video.dataset.fallbackSrc = '';
       video.load();
     });
     dialog.addEventListener('click', (event) => {
@@ -373,7 +390,8 @@ function tileClass(_m: MediaSummary) {
       const allItems: LightboxItem[] = allMediaRaw
         ? (JSON.parse(allMediaRaw) as SerializedMedia[]).map((m) => ({
             kind: m.kind || 'photo',
-            src: m.kind === 'video' ? '/media/' + m.id + '/mp4' : '/media/' + m.id + '/webp',
+            src: m.src || (m.kind === 'video' ? '/media/' + m.id + '/original' : '/media/' + m.id + '/webp'),
+            fallbackSrc: m.fallbackSrc || '',
             poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
             alt: m.alt || '',
             caption: m.caption || '',
@@ -381,6 +399,7 @@ function tileClass(_m: MediaSummary) {
         : triggers.map((item) => ({
             kind: item.dataset.mediaKind || 'photo',
             src: item.dataset.mediaSrc || '',
+            fallbackSrc: item.dataset.mediaFallbackSrc || '',
             poster: item.dataset.mediaPoster || '',
             alt: item.dataset.mediaAlt || '',
             caption: item.dataset.mediaCaption || '',

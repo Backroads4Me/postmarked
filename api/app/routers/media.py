@@ -148,6 +148,20 @@ def _range_response(path: str, mime_type: str, range_header: str, etag: str, cac
     )
 
 
+def _file_etag(path: str, variant: str) -> str:
+    stat = os.stat(path)
+    mtime_ns = getattr(stat, "st_mtime_ns", int(stat.st_mtime * 1_000_000_000))
+    return f'"file-{mtime_ns:x}-{stat.st_size:x}-{variant}"'
+
+
+def _cache_control(variant: str, is_public: bool) -> str:
+    if not is_public:
+        return "private, max-age=86400"
+    if variant in {"mp4", "original"}:
+        return "public, max-age=3600, must-revalidate, no-transform"
+    return "public, max-age=31536000, no-transform"
+
+
 @router.get("/{asset_id}/{variant}")
 async def get_media(
     asset_id: uuid.UUID,
@@ -181,14 +195,8 @@ async def get_media(
         # Asset row exists but bytes are missing (worker still pending, or lost file).
         raise HTTPException(status_code=404, detail="Not found")
 
-    # ETag = sha256 (already computed at upload). Falls back to mtime+size if missing.
-    if asset.original_sha256:
-        etag = f'"sha256-{asset.original_sha256[:16]}-{variant}"'
-    else:
-        stat = os.stat(path)
-        etag = f'"{int(stat.st_mtime)}-{stat.st_size}-{variant}"'
-
-    cache_control = "public, max-age=31536000" if eff_vis == "public" and parent_published else "private, max-age=86400"
+    etag = _file_etag(path, variant)
+    cache_control = _cache_control(variant, eff_vis == "public" and parent_published)
 
     if request.headers.get("if-none-match") == etag:
         return Response(status_code=304)
