@@ -59,7 +59,11 @@ async function proxyApiRequest(context) {
   const response = await fetch(upstream, init);
   const responseHeaders = new Headers(response.headers);
   responseHeaders.delete('content-encoding');
-  responseHeaders.delete('content-length');
+  // Preserve content-length on range responses (206) — iOS Safari requires it
+  // to buffer video. Only strip it on full responses where chunked encoding is safe.
+  if (response.status !== 206) {
+    responseHeaders.delete('content-length');
+  }
 
   return new Response(response.body, {
     status: response.status,
