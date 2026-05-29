@@ -12,11 +12,16 @@ const { pathname } = Astro.url;
 const cookie = Astro.request.headers.get('cookie') || '';
 
 let isLoggedIn = false;
+let isAdmin = false;
 try {
   const res = await fetch(apiUrl('/api/users/me'), {
     headers: cookie ? { cookie } : {},
   });
-  isLoggedIn = res.ok;
+  if (res.ok) {
+    isLoggedIn = true;
+    const user = await res.json();
+    isAdmin = user?.role === 'admin';
+  }
 } catch {}
 
 const navItems = [
@@ -41,6 +46,11 @@ const navItems = [
         label: 'Get Updates',
         icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6.5h16v11H4z"/><path d="m4 7 8 6 8-6"/></svg>',
       },
+  ...(isAdmin ? [{
+    href: '/admin',
+    label: 'Admin',
+    icon: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2 3 7v5c0 5 4 9.3 9 10 5-.7 9-5 9-10V7z"/><path d="m9 12 2 2 4-4"/></svg>',
+  }] : []),
 ];
 
 function isActive(href: string) {

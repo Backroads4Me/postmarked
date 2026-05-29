@@ -297,7 +297,7 @@ function tileClass(_m: MediaSummary) {
     const dialog = document.createElement('dialog') as MediaLightboxDialog;
     dialog.className = 'media-lightbox';
     dialog.dataset.globalMediaLightbox = 'true';
-    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button><div class="media-lightbox-footer"><p class="media-lightbox-caption" data-media-lightbox-caption></p><div class="media-lightbox-count" data-media-lightbox-count></div></div>';
+    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><div class="media-lightbox-body"><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button></div><div class="media-lightbox-footer"><p class="media-lightbox-caption" data-media-lightbox-caption></p><div class="media-lightbox-count" data-media-lightbox-count></div></div>';
     document.body.append(dialog);
 
     const image = dialog.querySelector<HTMLImageElement>('[data-media-lightbox-image]')!;
@@ -621,10 +621,12 @@ function tileClass(_m: MediaSummary) {
     border: 1px solid rgb(255 255 255 / 0.14);
     border-radius: 8px;
     color: white;
+    display: flex;
+    flex-direction: column;
     height: min(90vh, 900px);
     margin: auto;
     max-width: min(92vw, 1280px);
-    padding: 48px 64px 40px;
+    padding: 48px 64px 20px;
     width: min(92vw, 1280px);
   }
 
@@ -632,13 +634,24 @@ function tileClass(_m: MediaSummary) {
     background: rgb(0 0 0 / 0.72);
   }
 
+  :global(.media-lightbox-body) {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
   :global(.media-lightbox-image),
   :global(.media-lightbox-video) {
-    height: 100%;
-    margin: 0 auto;
-    max-height: calc(90vh - 104px);
+    max-height: 100%;
+    max-width: 100%;
     object-fit: contain;
-    width: 100%;
+    width: auto;
+    height: auto;
+    display: block;
+    margin: 0 auto;
   }
 
   :global(.media-lightbox-close),
@@ -668,36 +681,35 @@ function tileClass(_m: MediaSummary) {
     top: 50%;
     transform: translateY(-50%);
     width: 44px;
+    z-index: 1;
   }
 
   :global(.media-lightbox-prev) {
-    left: 12px;
+    left: -52px;
   }
 
   :global(.media-lightbox-next) {
-    right: 12px;
+    right: -52px;
   }
 
   :global(.media-lightbox-footer) {
-    bottom: 14px;
+    flex-shrink: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
     gap: 6px;
-    left: 50%;
-    position: absolute;
-    transform: translateX(-50%);
-    width: calc(100% - 120px);
+    padding-top: 14px;
     text-align: center;
+    width: 100%;
   }
 
   :global(.media-lightbox-caption) {
     color: rgb(255 255 255 / 0.85);
     font-family: var(--sans);
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 15px;
+    line-height: 1.45;
     margin: 0;
-    max-width: 60ch;
+    width: 100%;
   }
 
   :global(.media-lightbox-count) {
@@ -714,17 +726,25 @@ function tileClass(_m: MediaSummary) {
     }
 
     :global(.media-lightbox) {
-      height: 100vh;
-      max-height: 100vh;
+      border-radius: 0;
+      height: 100dvh;
+      max-height: 100dvh;
       max-width: 100vw;
-      padding: 56px 12px 48px;
+      padding: 56px 16px 16px;
       width: 100vw;
     }
 
     :global(.media-lightbox-nav) {
-      bottom: 10px;
-      top: auto;
-      transform: none;
+      top: 50%;
+      transform: translateY(-50%);
+    }
+
+    :global(.media-lightbox-prev) {
+      left: 4px;
+    }
+
+    :global(.media-lightbox-next) {
+      right: 4px;
     }
   }
 </style>
