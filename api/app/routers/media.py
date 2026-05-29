@@ -31,7 +31,7 @@ DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
 # Variants the worker actually produces today (api/app/tasks.py).
 # Add more here as tasks.py grows.
 PHOTO_VARIANTS = {"original", "webp", "avif", "webp_sm"}
-VIDEO_VARIANTS = {"original", "poster"}
+VIDEO_VARIANTS = {"original", "poster", "mp4"}
 
 router = APIRouter(prefix="/media", tags=["media"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
@@ -55,6 +55,10 @@ def _resolve_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
     if variant == "webp_sm":
         path = os.path.join(DERIVATIVES_PATH, f"{asset.id}_sm.webp")
         return path, "image/webp"
+
+    if variant == "mp4":
+        path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
+        return path, "video/mp4"
 
     if variant == "poster":
         path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")

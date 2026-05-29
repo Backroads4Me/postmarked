@@ -272,23 +272,40 @@ def process_media_asset(asset_id: str):
                 duration_str = subprocess.check_output(probe_cmd).decode('utf-8').strip()
                 asset.duration_seconds = float(duration_str)
 
-                # Get dimensions from the first valid video stream.
-                w, h = _probe_video_dimensions(file_path)
-                asset.width = w
-                asset.height = h
-                asset.aspect_ratio = round(w / h, 4)
-
                 # Extract poster image
                 poster_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}-poster.jpg")
                 ffmpeg_cmd = ["ffmpeg", "-y", "-i", file_path, "-vframes", "1", "-q:v", "2", poster_path]
                 subprocess.run(ffmpeg_cmd, check=True)
-                
+
+                # Transcode to H.264/AAC MP4 for universal browser compatibility.
+                # iPhone HEVC (.mov) originals won't play in Safari's <video> tag,
+                # so we always produce a web-safe derivative.
+                mp4_path = os.path.join(DERIVATIVES_PATH, f"{asset.id}.mp4")
+                subprocess.run([
+                    "ffmpeg", "-y", "-i", file_path,
+                    "-c:v", "libx264", "-preset", "fast", "-crf", "23",
+                    "-c:a", "aac", "-b:a", "128k",
+                    "-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2",
+                    "-movflags", "+faststart",
+                    mp4_path,
+                ], check=True)
+
+                # Probe dimensions from the transcoded file so rotation is
+                # already baked in and width/height match what the browser sees.
+                w, h = _probe_video_dimensions(mp4_path)
+                asset.width = w
+                asset.height = h
+                asset.aspect_ratio = round(w / h, 4)
+
                 # Blurhash the poster
                 with Image.open(poster_path) as img:
                     img.thumbnail((32, 32))
                     asset.blurhash = blurhash.encode(img, x_components=4, y_components=3)
 
-                asset.derivative_paths = {"poster": f"/media/{asset.id}/poster"}
+                asset.derivative_paths = {
+                    "poster": f"/media/{asset.id}/poster",
+                    "mp4": f"/media/{asset.id}/mp4",
+                }
                 asset.processing_state = MediaProcessingState.READY
                 asset.error_message = None
 

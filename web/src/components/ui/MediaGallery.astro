@@ -42,6 +42,7 @@ const allMediaData = JSON.stringify(allMedia.map(m => ({
   kind: m.kind || 'photo',
   alt: m.alt_text || m.caption || '',
   caption: m.caption || '',
+  hasMp4: !!(m.derivative_paths && m.derivative_paths['mp4']),
 })));
 
 function isVideo(m: MediaSummary) {
@@ -50,6 +51,10 @@ function isVideo(m: MediaSummary) {
 
 function posterSrc(m: MediaSummary) {
   return isVideo(m) ? '/media/' + m.id + '/poster' : '/media/' + m.id + '/webp';
+}
+
+function videoSrc(m: MediaSummary) {
+  return m.derivative_paths?.mp4 ? '/media/' + m.id + '/mp4' : '/media/' + m.id + '/original';
 }
 
 function avifSrc(m: MediaSummary) {
@@ -136,7 +141,7 @@ function tileClass(m: MediaSummary) {
         data-media-lightbox-trigger
         data-media-index={index}
         data-media-kind="video"
-        data-media-src={'/media/' + m.id + '/original'}
+        data-media-src={videoSrc(m)}
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
@@ -144,7 +149,7 @@ function tileClass(m: MediaSummary) {
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
         <video
-          src={'/media/' + m.id + '/original'}
+          src={videoSrc(m)}
           poster={posterSrc(m)}
           preload="metadata"
           muted
@@ -187,7 +192,7 @@ function tileClass(m: MediaSummary) {
         data-media-lightbox-trigger
         data-media-index={index}
         data-media-kind="video"
-        data-media-src={'/media/' + m.id + '/original'}
+        data-media-src={videoSrc(m)}
         data-media-poster={posterSrc(m)}
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
@@ -350,7 +355,7 @@ function tileClass(m: MediaSummary) {
       const allMediaRaw = gallery.dataset.allMedia;
       const allItems = allMediaRaw ? JSON.parse(allMediaRaw).map((m) => ({
         kind: m.kind || 'photo',
-        src: m.kind === 'video' ? '/media/' + m.id + '/original' : '/media/' + m.id + '/webp',
+        src: m.kind === 'video' ? '/media/' + m.id + (m.hasMp4 ? '/mp4' : '/original') : '/media/' + m.id + '/webp',
         poster: m.kind === 'video' ? '/media/' + m.id + '/poster' : '',
         alt: m.alt || '',
         caption: m.caption || '',
