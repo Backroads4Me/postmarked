@@ -46,8 +46,13 @@ def probe_dimensions(path: str) -> tuple[int, int]:
 
 def is_valid_mp4(path: str) -> bool:
     try:
-        probe_dimensions(path)
-        return True
+        result = subprocess.run(
+            ["ffprobe", "-v", "error", "-select_streams", "v:0",
+             "-show_entries", "stream=codec_name",
+             "-of", "default=noprint_wrappers=1:nokey=1", path],
+            check=True, capture_output=True, text=True,
+        )
+        return result.stdout.strip() == "h264"
     except Exception:
         return False
 
@@ -138,6 +143,7 @@ def main():
                 extract_poster(file_path, poster_path)
                 posters_ok += 1
         except Exception as exc:
+            errors += 1
             print(f"[{i}/{total}] ERROR {asset.id}  — poster failed: {exc}", file=sys.stderr)
 
         if not args.force and os.path.exists(mp4_path) and is_valid_mp4(mp4_path):

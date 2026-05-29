@@ -459,6 +459,8 @@ def scan_filesystem():
                     mime_type=(
                         "video/quicktime" if file_ext == ".mov"
                         else "video/mp4" if kind == MediaKind.VIDEO
+                        else "image/png" if file_ext == ".png"
+                        else "image/webp" if file_ext == ".webp"
                         else "image/jpeg"
                     ),
                     visibility=Visibility.PRIVATE, # Private until manually assigned by admin

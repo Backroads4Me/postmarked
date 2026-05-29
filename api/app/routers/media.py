@@ -159,7 +159,7 @@ def _cache_control(variant: str, is_public: bool) -> str:
         return "private, max-age=86400"
     if variant in {"mp4", "original"}:
         return "public, max-age=3600, must-revalidate, no-transform"
-    return "public, max-age=31536000, no-transform"
+    return "public, max-age=31536000, must-revalidate, no-transform"
 
 
 async def _media_response(
@@ -205,13 +205,24 @@ async def _media_response(
     if range_header:
         if head_only:
             file_size = os.path.getsize(path)
+            try:
+                units, _, ranges = range_header.partition("=")
+                if units.strip().lower() != "bytes":
+                    raise ValueError
+                start_s, _, end_s = ranges.partition("-")
+                start = int(start_s) if start_s else 0
+                end = int(end_s) if end_s else file_size - 1
+                if start > end or end >= file_size:
+                    return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
+            except (ValueError, IndexError):
+                return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
             return Response(
                 status_code=206,
                 media_type=mime_type,
                 headers={
-                    "Content-Range": f"bytes 0-{file_size - 1}/{file_size}",
+                    "Content-Range": f"bytes {start}-{end}/{file_size}",
                     "Accept-Ranges": "bytes",
-                    "Content-Length": str(file_size),
+                    "Content-Length": str(end - start + 1),
                     "Cache-Control": cache_control,
                     "ETag": etag,
                 },
