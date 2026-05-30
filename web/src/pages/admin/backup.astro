@@ -177,17 +177,17 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       const data = await res.json();
 
       if (!res.ok) {
-        resultEl.className = 'mt-4 p-3 bg-red-900/30 border border-red-700 rounded text-sm text-red-300';
+        resultEl.className = 'alert alert-danger mt-4';
         resultEl.textContent = `Error: ${data.detail ?? 'Import failed.'}`;
       } else {
         const counts = Object.entries(data.entity_counts as Record<string, number>)
           .map(([k, v]) => `${k}: ${v}`)
           .join(', ');
-        resultEl.className = 'mt-4 p-3 bg-green-900/30 border border-green-700 rounded text-sm text-green-300';
+        resultEl.className = 'alert alert-success mt-4';
         resultEl.textContent = `Restore complete. Media files: ${data.media_files_copied}. Entities: ${counts}`;
       }
     } catch (err) {
-      resultEl.className = 'mt-4 p-3 bg-red-900/30 border border-red-700 rounded text-sm text-red-300';
+      resultEl.className = 'alert alert-danger mt-4';
       resultEl.textContent = 'Network error — could not reach the API.';
     } finally {
       btn.disabled = false;

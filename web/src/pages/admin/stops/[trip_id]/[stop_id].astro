@@ -131,8 +131,8 @@ const tripIsPrivate = trip.visibility === 'private';
       </div>
 
       <div class="md:col-span-2">
-        <div id="form-error" class="text-ember text-sm hidden p-3 border border-ember bg-surface rounded mb-3"></div>
-        <div id="form-success" class="text-green-500 text-sm hidden p-3 border border-green-500 bg-surface rounded mb-3">Saved!</div>
+        <div id="form-error" class="alert alert-danger hidden mb-3"></div>
+        <div id="form-success" class="alert alert-success hidden mb-3">Saved!</div>
         <div class="flex gap-3">
           <button type="submit" class="btn btn-primary">Save</button>
           <a href={`/admin/stops/${trip_id}`} class="btn btn-ghost">Cancel</a>
@@ -140,8 +140,8 @@ const tripIsPrivate = trip.visibility === 'private';
       </div>
     </form>
 
-    <section class="card-flat mt-8" style="border-color: rgba(212,107,92,.45);">
-      <div class="label mb-2" style="color: var(--sunset);">Danger Zone</div>
+    <section class="card-flat danger-zone mt-8">
+      <div class="label mb-2 text-sunset">Danger Zone</div>
       <button type="button" id="delete-btn" class="btn btn-sm btn-primary">
         Delete Stop
       </button>

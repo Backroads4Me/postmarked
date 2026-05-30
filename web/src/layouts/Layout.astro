@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import '../styles/postmarked-theme.css';
 import NavBar from '../components/ui/NavBar.astro';
 
 interface Props {
@@ -25,7 +24,7 @@ const {
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
     <link rel="manifest" href="/manifest.json" />
-    <meta name="theme-color" content="#111820" />
+    <meta name="theme-color" content="#0D141C" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <script is:inline src="/postmarked-config.js"></script>
@@ -38,6 +37,9 @@ const {
 
         root.dataset.theme = resolvedTheme;
         root.dataset.themePreference = storedTheme || 'system';
+
+        const themeColor = document.querySelector('meta[name="theme-color"]');
+        if (themeColor) themeColor.setAttribute('content', resolvedTheme === 'dark' ? '#0D141C' : '#E1D7BE');
       })();
     </script>
     <title>{title}</title>

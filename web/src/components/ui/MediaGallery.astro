@@ -108,7 +108,7 @@ function tileClass(_m: MediaSummary) {
       <a
         href={linkHref}
         class:list={['media-gallery-item block overflow-hidden bg-line-soft', isSingle ? 'media-gallery-link-single' : '']}
-        style={isSingle ? tileStyle(m) : tileStyle(m)}
+        style={isSingle ? tileStyle(m) : undefined}
       >
         {isSingle ? (
           <picture>
@@ -209,7 +209,6 @@ function tileClass(_m: MediaSummary) {
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
         data-open-at-index={index === items.length - 1 && hiddenCount > 0 ? items.length : undefined}
-        style={tileStyle(m)}
         aria-label={m.alt_text || m.caption || 'Open video'}
       >
         <div class="media-gallery-thumb">
@@ -240,7 +239,6 @@ function tileClass(_m: MediaSummary) {
         data-media-alt={m.alt_text || ''}
         data-media-caption={m.caption || ''}
         data-open-at-index={index === items.length - 1 && hiddenCount > 0 ? items.length : undefined}
-        style={tileStyle(m)}
       >
         <div class="media-gallery-thumb">
           <picture>
@@ -476,10 +474,16 @@ function tileClass(_m: MediaSummary) {
     overflow: hidden;
     padding: 0;
     height: min(15rem, 36vw);
+    aspect-ratio: 4 / 3;
     justify-self: start;
     max-width: 100%;
     position: relative;
     text-align: inherit;
+  }
+
+  .media-gallery-single .media-gallery-item {
+    aspect-ratio: unset;
+    height: auto;
     width: auto;
   }
 
@@ -588,7 +592,7 @@ function tileClass(_m: MediaSummary) {
     bottom: 0;
     color: white;
     display: flex;
-    font-family: var(--sans);
+    font-family: var(--body);
     font-size: 1.1rem;
     font-weight: 600;
     inset: 0;
@@ -709,7 +713,7 @@ function tileClass(_m: MediaSummary) {
 
   :global(.media-lightbox-caption) {
     color: rgb(255 255 255 / 0.85);
-    font-family: var(--sans);
+    font-family: var(--body);
     font-size: 15px;
     line-height: 1.45;
     margin: 0;

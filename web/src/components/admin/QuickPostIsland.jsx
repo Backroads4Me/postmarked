@@ -4,18 +4,6 @@ import { renderMarkdown } from "../../lib/markdown.js";
 const DRAFT_KEY = "postmarked:draft:quick-post";
 const TUS_VERSION = "1.0.0";
 
-const inputStyle = {
-  width: "100%",
-  padding: "10px 12px",
-  background: "var(--surface-2)",
-  border: "1px solid var(--line)",
-  borderRadius: 6,
-  color: "var(--paper)",
-  fontSize: 14,
-  marginTop: 6,
-  minHeight: 44,
-};
-
 function toDateInput(date = new Date()) {
   return date.toISOString().slice(0, 10);
 }
@@ -256,7 +244,7 @@ export default function QuickPostIsland() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {error && (
-        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--ember)" }}>
+        <div className="alert alert-danger">
           {error}
         </div>
       )}
@@ -317,7 +305,7 @@ export default function QuickPostIsland() {
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_14rem_18rem] gap-4">
         <div className="flex flex-col gap-2">
           <label className="text-sm font-bold" htmlFor="qp-stop">Stop</label>
-          <select id="qp-stop" value={stopId} onChange={(e) => selectStop(e.target.value)} className="bg-surface-2 border border-line p-3">
+          <select id="qp-stop" value={stopId} onChange={(e) => selectStop(e.target.value)} className="form-input">
             <option value="">No stop</option>
             {stops.map((s) => (
               <option key={s.id} value={s.id}>
@@ -328,7 +316,7 @@ export default function QuickPostIsland() {
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-bold" htmlFor="qp-status">Status</label>
-          <select id="qp-status" value={status} onChange={(e) => setStatus(e.target.value)} className="bg-surface-2 border border-line p-3">
+          <select id="qp-status" value={status} onChange={(e) => setStatus(e.target.value)} className="form-input">
             <option value="draft">Draft</option>
             <option value="published">Published</option>
             <option value="unpublished">Unpublished</option>
@@ -337,7 +325,7 @@ export default function QuickPostIsland() {
         </div>
         <div className="flex flex-col gap-2">
           <label className="text-sm font-bold" htmlFor="qp-vis">Visibility</label>
-          <select id="qp-vis" value={visibility} onChange={(e) => setVisibility(e.target.value)} className="bg-surface-2 border border-line p-3">
+          <select id="qp-vis" value={visibility} onChange={(e) => setVisibility(e.target.value)} className="form-input">
             <option value="private">Private — logged-in users</option>
             <option value="public">Public — anyone</option>
           </select>
@@ -358,25 +346,14 @@ export default function QuickPostIsland() {
           {photos.length > 0 && (
             <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
               {photos.map((p) => (
-                <li
-                  key={p.localId}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 10,
-                    padding: "8px 12px",
-                    border: "1px solid var(--line-soft)",
-                    borderRadius: 4,
-                    fontSize: 13,
-                  }}
-                >
-                  <span style={{ flex: 1, color: "var(--paper)", overflow: "hidden", textOverflow: "ellipsis" }}>
+                <li key={p.localId} className="photo-item">
+                  <span className="photo-item__name" style={{ color: "var(--paper)" }}>
                     {p.name}
                   </span>
                   <span
                     className="label"
                     style={{
-                      color: p.status === "done" ? "var(--ok, #4ade80)" : p.status === "error" ? "var(--ember)" : "var(--muted)",
+                      color: p.status === "done" ? "var(--success)" : p.status === "error" ? "var(--ember)" : "var(--muted)",
                     }}
                   >
                     {p.status}{p.error ? `: ${p.error}` : ""}

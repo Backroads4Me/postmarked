@@ -64,7 +64,7 @@ const headerText = sectionText(siteText, 'trips.header', {
     <section class="mb-8">
       <h1 class="display text-3xl md:text-4xl">{headerText.heading}</h1>
       {headerText.body && (
-        <p class="lede mt-3 text-sm" style="font-family: var(--sans);">
+        <p class="lede lede-body mt-3 text-sm">
           {headerText.body}
         </p>
       )}
@@ -89,7 +89,7 @@ const headerText = sectionText(siteText, 'trips.header', {
               />
               {trip.stops_total > 0 && (
                 <div class="absolute bottom-2 right-2">
-                  <span class="badge text-[9px]">{trip.stops_completed}/{trip.stops_total} stops</span>
+                  <span class="badge badge-sm">{trip.stops_completed}/{trip.stops_total} stops</span>
                 </div>
               )}
             </div>

@@ -38,8 +38,7 @@ try {
                   <img src={asset.derivative_paths.webp || asset.derivative_paths.poster} class="w-full h-full object-cover" alt="" />
                 </div>
               ) : (
-                <div class="w-16 h-16 bg-surface-1 rounded border border-line flex items-center justify-center text-xs text-dim flex-shrink-0"
-                  style={asset.processing_state === 'failed' ? 'border-color: rgba(212,107,92,.45);' : ''}>
+                <div class:list={["w-16 h-16 bg-surface-1 rounded border border-line flex items-center justify-center text-xs text-dim flex-shrink-0", { 'danger-zone': asset.processing_state === 'failed' }]}>
                   {asset.processing_state}
                 </div>
               )}

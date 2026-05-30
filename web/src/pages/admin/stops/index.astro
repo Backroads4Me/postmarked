@@ -40,7 +40,7 @@ function statusBadge(status) {
           <div>
             <div class="flex items-center gap-2">
               <span class="font-medium" style="color: var(--paper);">{trip.title}</span>
-              <span class={`badge text-[9px] ${statusBadge(trip.status)}`}>
+              <span class={`badge badge-sm ${statusBadge(trip.status)}`}>
                 {trip.status}
               </span>
             </div>

@@ -143,7 +143,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
 
       {loading && <div className="label">Loading…</div>}
       {error && (
-        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--ember)" }}>
+        <div className="alert alert-danger">
           {error}
         </div>
       )}
@@ -198,17 +198,8 @@ export default function CommentsIsland({ targetKind, targetId }) {
             rows={2}
             maxLength={2000}
             placeholder="Share a note…"
-            style={{
-              width: "100%",
-              padding: "10px 12px",
-              background: "var(--surface)",
-              border: "1px solid var(--line)",
-              borderRadius: 6,
-              color: "var(--paper)",
-              fontSize: 14,
-              fontFamily: "var(--sans)",
-              resize: "vertical",
-            }}
+            className="form-input"
+            style={{ fontFamily: "var(--sans)", resize: "vertical" }}
           />
           {postError && (
             <div style={{ fontSize: 12, color: "var(--ember)" }}>{postError}</div>

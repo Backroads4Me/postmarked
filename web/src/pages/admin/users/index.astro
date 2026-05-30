@@ -9,13 +9,15 @@ let loadError = null;
 let email_enabled = false;
 let siteConfig = { require_user_approval: true, sms_enabled: false };
 let preApprovedEmails = [];
+let currentUserId: string | null = null;
 
 try {
-  const [res, configRes, siteConfigRes, preApprovedRes] = await Promise.all([
+  const [res, configRes, siteConfigRes, preApprovedRes, meRes] = await Promise.all([
     fetch(apiUrl('/api/admin/users'), { headers: authHeaders }),
     fetch(apiUrl('/api/config')),
     fetch(apiUrl('/api/admin/site-config'), { headers: authHeaders }),
     fetch(apiUrl('/api/admin/pre-approved-emails'), { headers: authHeaders }),
+    fetch(apiUrl('/api/users/me'), { headers: authHeaders }),
   ]);
   if (res.status === 401 || res.status === 403) {
     return Astro.redirect('/auth/login');
@@ -33,6 +35,10 @@ try {
   }
   if (preApprovedRes.ok) {
     preApprovedEmails = await preApprovedRes.json();
+  }
+  if (meRes.ok) {
+    const me = await meRes.json();
+    currentUserId = me.id ?? null;
   }
 } catch (e) {
   loadError = e?.message || 'Failed to connect';
@@ -142,13 +148,11 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
               </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-              {u.role !== 'admin' && (
-                <select class="admin-input"
-                  data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
-                  <option value="user" selected={u.role !== 'admin'}>User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              )}
+              <select class="admin-input"
+                data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
+                <option value="user" selected={u.role === 'user'}>User</option>
+                <option value="admin" selected={u.role === 'admin'}>Admin</option>
+              </select>
               {email_enabled && (
                 <select class="admin-input"
                   data-email-select={u.id}
@@ -182,6 +186,10 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 onclick={`approveUser('${u.id}', this)`}>Approve</button>
               <button class="btn btn-sm btn-primary"
                 onclick={`rejectUser('${u.id}', this)`}>Reject</button>
+              {u.id !== currentUserId && (
+                <button class="btn btn-sm text-ember"
+                  onclick={`deleteUser('${u.id}', this)`}>Delete</button>
+              )}
             </div>
           </div>
         ))}
@@ -217,13 +225,11 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
               </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-              {u.role !== 'admin' && (
-                <select class="admin-input"
-                  data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
-                  <option value="user" selected={u.role !== 'admin'}>User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              )}
+              <select class="admin-input"
+                data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
+                <option value="user" selected={u.role === 'user'}>User</option>
+                <option value="admin" selected={u.role === 'admin'}>Admin</option>
+              </select>
               {email_enabled && (
                 <select class="admin-input"
                   data-email-select={u.id}
@@ -253,7 +259,11 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               <div class="flex-1"></div>
-              <span class="badge badge-active text-[10px]">approved</span>
+              <span class="badge badge-active badge-sm">approved</span>
+              {u.id !== currentUserId && (
+                <button class="btn btn-sm text-ember"
+                  onclick={`deleteUser('${u.id}', this)`}>Delete</button>
+              )}
             </div>
           </div>
         ))}
@@ -285,13 +295,11 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
               </div>
             </div>
             <div class="flex items-center gap-2 flex-wrap">
-              {u.role !== 'admin' && (
-                <select class="admin-input"
-                  data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
-                  <option value="user" selected={u.role !== 'admin'}>User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              )}
+              <select class="admin-input"
+                data-original={u.role} onchange={`updateUserRole('${u.id}', this)`}>
+                <option value="user" selected={u.role === 'user'}>User</option>
+                <option value="admin" selected={u.role === 'admin'}>Admin</option>
+              </select>
               {email_enabled && (
                 <select class="admin-input"
                   data-email-select={u.id}
@@ -321,17 +329,11 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               <div class="flex-1"></div>
-              <button class="btn" style="min-height:32px; font-size:13px;"
+              <button class="btn btn-sm"
                 onclick={`approveUser('${u.id}', this)`}>Re-approve</button>
-              {u.role !== 'admin' && (
-                <select
-                  class="admin-input"
-                  data-original={u.role}
-                  onchange={`updateUserRole('${u.id}', this)`}
-                >
-                  <option value="user" selected={u.role !== 'admin'}>User</option>
-                  <option value="admin">Admin</option>
-                </select>
+              {u.id !== currentUserId && (
+                <button class="btn btn-sm text-ember"
+                  onclick={`deleteUser('${u.id}', this)`}>Delete</button>
               )}
             </div>
           </div>
@@ -623,13 +625,12 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
   async function updateUserRole(userId, select) {
     const original = select.dataset.original || select.value;
     if (select.value === original) return;
-    if (select.value !== 'admin') {
-      select.value = original;
-      return;
-    }
+    const endpoint = select.value === 'admin'
+      ? `/api/admin/users/${userId}/promote`
+      : `/api/admin/users/${userId}/demote`;
     select.disabled = true;
     try {
-      const res = await fetch(`/api/admin/users/${userId}/promote`, {
+      const res = await fetch(endpoint, {
         method: 'POST',
         credentials: 'include',
       });
@@ -644,6 +645,27 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
       select.value = original;
     } finally {
       select.disabled = false;
+    }
+  }
+
+  async function deleteUser(userId, btn) {
+    if (!confirm('Delete this user? This cannot be undone.')) return;
+    btn.disabled = true;
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+      if (res.ok) {
+        btn.closest('.card-flat')?.remove();
+      } else {
+        const d = await res.json().catch(() => ({}));
+        btn.disabled = false;
+        alert(d.detail || 'Failed to delete user');
+      }
+    } catch (e) {
+      btn.disabled = false;
+      alert('Could not reach server');
     }
   }
 </script>

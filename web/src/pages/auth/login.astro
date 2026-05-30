@@ -10,7 +10,7 @@ import Layout from '../../layouts/Layout.astro';
         <p class="text-sm text-muted">Sign in to your account</p>
       </div>
 
-      <div id="error-banner" class="hidden mb-4 p-3 rounded border text-sm" style="color: var(--ember); border-color: var(--ember); background: var(--ember-glow);"></div>
+      <div id="error-banner" class="alert alert-danger hidden mb-4"></div>
 
       <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); login(this);">
         <div class="flex flex-col gap-1">

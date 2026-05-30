@@ -73,10 +73,10 @@ function stopSiblingLabel(stop) {
 
 <Layout title={`${detail.title} — ${detail.trip_title}`}>
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
-    {loadError && <div class="card-flat mb-4 text-sm text-ember" style="max-width: 1100px; margin: 0 auto;">{loadError}</div>}
+    {loadError && <div class="card-flat frame-narrow mb-4 text-sm text-ember">{loadError}</div>}
 
     {/* ── Breadcrumb ───────────────────────────────────────── */}
-    <div style="max-width: 1100px; margin: 0 auto;">
+    <div class="frame-narrow">
       <Breadcrumb items={[
         { label: 'Home', href: '/' },
         { label: detail.trip_title, href: `/trips/${detail.trip_slug}` },
@@ -85,9 +85,9 @@ function stopSiblingLabel(stop) {
     </div>
 
     {/* ── Hero ─────────────────────────────────────────────── */}
-    <section class="mb-12" style="max-width: 1100px; margin: 0 auto;">
+    <section class="mb-12 frame-narrow">
       <div class="flex items-center gap-2 mb-3 flex-wrap">
-        {detail.is_current && <span class="badge badge-active text-[10px]">currently here</span>}
+        {detail.is_current && <span class="badge badge-active badge-sm">currently here</span>}
         {detail.start_date && <span class="label">{fmtRange(detail.start_date, detail.end_date)}</span>}
         {detail.nights && <span class="label">{detail.nights} night{detail.nights !== 1 ? 's' : ''}</span>}
       </div>
@@ -96,28 +96,28 @@ function stopSiblingLabel(stop) {
 
     {/* ── Gallery ──────────────────────────────────────────── */}
     {gallery.length > 0 && (
-      <section class="mb-16" style="max-width: 1100px; margin: 0 auto;">
+      <section class="mb-16 frame-narrow">
         <MediaGallery media={gallery} limit={gallery.length} />
       </section>
     )}
 
     {/* ── Body ─────────────────────────────────────────────── */}
     {detail.body && (
-      <section class="mb-10" style="max-width: 1100px; margin: 0 auto;">
-        <p style="font-family: var(--sans); white-space: pre-wrap; line-height: 1.8;">{detail.body}</p>
+      <section class="mb-10 frame-narrow">
+        <p class="prose-body">{detail.body}</p>
       </section>
     )}
 
     {detail.public_note && (
-      <section class="mb-10" style="max-width: 1100px; margin: 0 auto;">
+      <section class="mb-10 frame-narrow">
         <div class="label mb-3">Note from the road</div>
-        <blockquote style="border-left: 2px solid var(--ember); padding-left: 1.25rem; margin: 0; font-family: var(--sans); font-style: italic; color: var(--paper-2); line-height: 1.7;">{detail.public_note}</blockquote>
+        <blockquote class="quote-block">{detail.public_note}</blockquote>
       </section>
     )}
 
     {/* ── Map (stop + POIs + photo GPS dots) ──────────────── */}
     {detail.latitude != null && detail.longitude != null && (
-      <section class="mb-16" style="max-width: 1100px; margin: 0 auto;">
+      <section class="mb-16 frame-narrow">
         <StopMapIsland
           client:load
           latitude={detail.latitude}
@@ -130,7 +130,7 @@ function stopSiblingLabel(stop) {
 
     {/* ── Updates ──────────────────────────────────────────── */}
     {updates.length > 0 && (
-      <section style="max-width: 1100px; margin: 0 auto;">
+      <section class="frame-narrow">
         <div class="stop-posts-list">
           {updates.map(p => (
             <PostCard
@@ -148,12 +148,12 @@ function stopSiblingLabel(stop) {
     )}
 
     {/* ── Comments ────────────────────────────────────────── */}
-    <section class="my-6" style="max-width: 1100px; margin-left: auto; margin-right: auto;">
+    <section class="my-6 frame-narrow">
       <CommentsIsland client:load targetKind="stop" targetId={detail.id} />
     </section>
 
     {/* ── Prev / Next ─────────────────────────────────────── */}
-    <nav class="grid grid-cols-2 gap-3 mt-12 pt-6 border-t border-line-soft" style="max-width: 1100px; margin: 0 auto;">
+    <nav class="frame-narrow grid grid-cols-2 gap-3 mt-12 pt-6 border-t border-line-soft">
       <div>
         {detail.prev && (
           <a href={`/trips/${detail.trip_slug}/stops/${detail.prev.slug}`} class="card-flat block">

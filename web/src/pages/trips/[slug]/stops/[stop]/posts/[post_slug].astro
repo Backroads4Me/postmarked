@@ -47,7 +47,7 @@ function fmtTime(d, timezoneId) {
 
 <Layout title={`${post.title} — ${post.trip_title}`}>
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
-    {loadError && <div class="card-flat mb-4 text-sm text-ember" style="max-width: 720px; margin: 0 auto;">{loadError}</div>}
+    {loadError && <div class="card-flat frame-prose mb-4 text-sm text-ember">{loadError}</div>}
 
     {/* ── Post article card ────────────────────────────────── */}
     <div class="post-article-card">
@@ -74,7 +74,7 @@ function fmtTime(d, timezoneId) {
         </div>
         <h1 class="display text-3xl md:text-5xl">{post.title}</h1>
         {post.summary && (
-          <p class="lede mt-4 text-base" style="font-family: var(--sans);">{post.summary}</p>
+          <p class="lede lede-body mt-4 text-base">{post.summary}</p>
         )}
       </section>
 
@@ -191,7 +191,7 @@ function fmtTime(d, timezoneId) {
   }
 
   .post-body {
-    font-family: var(--sans);
+    font-family: var(--body);
     line-height: 1.8;
     color: var(--paper-2);
   }

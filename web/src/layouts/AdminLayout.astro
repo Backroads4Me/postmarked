@@ -1,6 +1,5 @@
 ---
 import '../styles/global.css';
-import '../styles/postmarked-theme.css';
 import ThemeToggle from '../components/ui/ThemeToggle.astro';
 
 interface Props {
@@ -34,7 +33,7 @@ function isActive(href: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{title} — Postmarked Admin</title>
   <link rel="manifest" href="/manifest.json" />
-  <meta name="theme-color" content="#111820" />
+  <meta name="theme-color" content="#0D141C" />
   <meta name="robots" content="noindex, nofollow" />
   <script is:inline src="/postmarked-config.js"></script>
   <script is:inline>
@@ -46,6 +45,9 @@ function isActive(href: string) {
 
       root.dataset.theme = resolvedTheme;
       root.dataset.themePreference = storedTheme || 'system';
+
+      const themeColor = document.querySelector('meta[name="theme-color"]');
+      if (themeColor) themeColor.setAttribute('content', resolvedTheme === 'dark' ? '#0D141C' : '#E1D7BE');
     })();
   </script>
 </head>
@@ -132,29 +134,7 @@ function isActive(href: string) {
     flex-shrink: 0;
     margin-left: auto;
   }
-  /* ── Shared admin data surfaces ─────────────────────────────── */
-  :global(.admin-list) {
-    background: var(--surface);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    box-shadow: var(--shadow-card);
-  }
-
-  :global(.admin-input) {
-    background: var(--input-bg, var(--surface));
-    border: 1px solid var(--line-soft);
-    border-radius: 6px;
-    color: var(--paper);
-    font-size: 0.8125rem;
-    padding: 0.4rem 0.6rem;
-    transition: border-color 0.2s;
-  }
-
-  :global(.admin-input:focus) {
-    outline: none;
-    border-color: var(--ember-border);
-  }
-
+  /* .admin-list / .admin-input live in global.css (single source of truth) */
   .admin-link {
     font-family: var(--mono);
     text-transform: uppercase;
