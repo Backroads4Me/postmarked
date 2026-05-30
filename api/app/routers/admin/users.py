@@ -160,6 +160,41 @@ async def promote_user(
     return summary
 
 
+@router.post("/{user_id}/demote", response_model=UserSummary)
+async def demote_user(
+    user_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    admin=Depends(current_admin_user),
+):
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot demote yourself")
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = UserRole.USER
+    await session.commit()
+    await session.refresh(user)
+    summary = await _summary(session, user)
+    await session.commit()
+    return summary
+
+
+@router.delete("/{user_id}")
+async def delete_user(
+    user_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    admin=Depends(current_admin_user),
+):
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot delete yourself")
+    user = await session.get(User, user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    await session.delete(user)
+    await session.commit()
+    return {"ok": True}
+
+
 @router.patch("/{user_id}/profile", response_model=UserSummary)
 async def update_user_profile(
     user_id: uuid.UUID,

@@ -304,11 +304,18 @@ async def import_backup(
         )
 
     # Wipe existing media directories before restoring.
+    # Use rmtree on contents only — the dirs are Docker volume mount points
+    # that the process can't remove, only write into.
     import shutil
     for media_dir in (ORIGINALS_PATH, DERIVATIVES_PATH):
         if os.path.exists(media_dir):
-            shutil.rmtree(media_dir)
-        os.makedirs(media_dir)
+            for entry in os.scandir(media_dir):
+                if entry.is_dir(follow_symlinks=False):
+                    shutil.rmtree(entry.path)
+                else:
+                    os.remove(entry.path)
+        else:
+            os.makedirs(media_dir)
 
     # Copy derivative media files from the archive.
     media_files_copied = 0

@@ -82,7 +82,7 @@ async def update_trip_admin(
     if old_cover_asset is not None:
         await session.delete(old_cover_asset)
 
-    if "visibility" in update_data and trip.visibility == Visibility.PRIVATE and trip.visibility != old_visibility:
+    if "visibility" in update_data and trip.visibility != old_visibility:
         await session.execute(
             update(Stop)
             .where(Stop.trip_id == trip.id)

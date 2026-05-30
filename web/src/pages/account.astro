@@ -25,10 +25,9 @@ const sms_enabled = configData.sms_enabled ?? false;
       <div class="mb-8">
         <h1 class="display text-4xl mb-2">Account</h1>
         <p class="text-muted">Manage your profile, password, and notification preferences.</p>
-        <button type="button" class="btn mt-4" onclick="signOut()">Sign out</button>
       </div>
 
-      <div id="message-banner" class="hidden mb-6 p-3 rounded border text-sm"></div>
+      <div id="message-banner" class="alert hidden mb-6"></div>
 
       <div class="grid gap-6">
         <section class="bg-surface border border-line rounded-lg p-6">
@@ -42,7 +41,10 @@ const sms_enabled = configData.sms_enabled ?? false;
               <label class="label" for="email">Email address</label>
               <input id="email" name="email" type="email" value={account.email} required class="form-input" />
             </div>
-            <button type="submit" class="btn btn-primary justify-center sm:justify-self-start">Save profile</button>
+            <div class="flex flex-wrap items-center gap-3 sm:justify-self-start">
+              <button type="submit" class="btn btn-primary justify-center">Save changes</button>
+              <button type="button" class="btn justify-center" onclick="signOut()">Sign out</button>
+            </div>
           </form>
         </section>
 
@@ -220,9 +222,8 @@ const sms_enabled = configData.sms_enabled ?? false;
   function showMessage(msg, error) {
     const banner = document.getElementById('message-banner');
     banner.textContent = msg;
-    banner.style.color = error ? 'var(--ember)' : 'var(--paper)';
-    banner.style.borderColor = error ? 'var(--ember)' : 'var(--line)';
-    banner.style.background = error ? 'var(--ember-glow)' : 'var(--surface-2)';
+    banner.classList.toggle('alert-danger', error);
+    banner.classList.toggle('alert-success', !error);
     banner.classList.remove('hidden');
   }
 </script>

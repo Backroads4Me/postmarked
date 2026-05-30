@@ -99,6 +99,9 @@
 
   /* Form input surface (overridden in light theme) */
   --input-bg: var(--surface-2);
+  --input-focus-bg: var(--surface-2);
+  --input-focus-border: var(--ember-border);
+  --input-focus-ring: var(--ember-glow);
 
   /* Cinema (media player) — intentionally dark in both themes */
   --cinema-bg: #05060a;
@@ -246,7 +249,10 @@
   --danger-border: color-mix(in srgb, var(--sunset) 45%, transparent);
 
   /* Form input surface (light) */
-  --input-bg: #f7efd8;
+  --input-bg: #fffaf0;
+  --input-focus-bg: var(--input-bg);
+  --input-focus-border: var(--ember-border);
+  --input-focus-ring: var(--ember-glow);
 
   --bg: var(--ink-0);
   --fg: var(--paper);
@@ -269,46 +275,6 @@
   color-scheme: dark;
 }
 
-@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
-    color-scheme: light;
-    --ink-0: #E1D7BE;
-    --ink-1: #FBF4DF;
-    --ink-2: #E3D5B0;
-    --ink-3: #D5C7A8;
-    --ink-4: #B9A98A;
-    --line: #9A8A72;
-    --line-soft: #C0AE96;
-    --paper: #111827;
-    --paper-2: #2E2B28;
-    --paper-muted: var(--paper-2);
-    --muted: #484340;
-    --dim: #5B5652;
-    --faint: #B9A98A;
-    --sky: #2C6F9D;
-    --forest: #3D7A6B;
-    --sunset: #D85643;
-    --sage: #5E8E78;
-    --postcard-yellow: #C99A2C;
-    --success: #2f9e54;
-    --ok: #2f9e54;
-    --input-bg: #f7efd8;
-    --bg: var(--ink-0);
-    --fg: var(--paper);
-    --surface: var(--ink-1);
-    --surface-1: var(--ink-1);
-    --surface-2: var(--ink-2);
-    --surface-3: var(--ink-3);
-    --nav-bg: rgba(251, 244, 223, 0.88);
-    --nav-bg-strong: rgba(251, 244, 223, 0.97);
-    --hero-wash: linear-gradient(90deg, rgba(225, 215, 190, 0.3), rgba(225, 215, 190, 0.78));
-    --hover-soft: rgba(22, 33, 58, 0.07);
-    --shadow-1: 0 1px 0 rgba(255, 255, 255, 0.72) inset, 0 24px 60px -34px rgba(22, 33, 58, 0.22);
-    --shadow-glow: 0 0 0 1px var(--ember-glow), 0 18px 60px -28px rgba(189, 51, 37, 0.24);
-    --shadow-card: 0 4px 18px -6px rgba(90, 66, 30, 0.22), 0 1px 0 rgba(255, 255, 255, 0.88) inset;
-    --shadow-float: 0 10px 32px -10px rgba(90, 66, 30, 0.28), 0 1px 0 rgba(255, 255, 255, 0.92) inset;
-  }
-}
 
 /* ---------- Base layer ---------- */
 @layer base {
@@ -481,6 +447,27 @@
     border-color: var(--danger-border);
   }
 
+  .alert {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 0.75rem;
+    font-family: var(--body);
+    font-size: 0.875rem;
+    line-height: 1.45;
+  }
+
+  .alert-danger {
+    background: color-mix(in srgb, var(--sunset) 12%, var(--surface));
+    border-color: var(--danger-border);
+    color: var(--paper);
+  }
+
+  .alert-success {
+    background: color-mix(in srgb, var(--success) 12%, var(--surface));
+    border-color: color-mix(in srgb, var(--success) 44%, transparent);
+    color: var(--paper);
+  }
+
   /* Pull quote / note block (e.g. stop public notes). */
   .quote-block {
     border-left: 2px solid var(--ember);
@@ -529,7 +516,9 @@
   }
   .form-input:focus {
     outline: none;
-    border-color: var(--ember-border);
+    background: var(--input-focus-bg);
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-ring), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   }
 
   input[type="checkbox"],
@@ -557,7 +546,9 @@
   }
   .admin-input:focus {
     outline: none;
-    border-color: var(--ember-border);
+    background: var(--input-focus-bg);
+    border-color: var(--input-focus-border);
+    box-shadow: 0 0 0 3px var(--input-focus-ring), inset 0 1px 0 rgba(255, 255, 255, 0.55);
   }
 
   /* Stop picker list button (CurrentStopPickerIsland). */
