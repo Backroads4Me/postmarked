@@ -140,8 +140,8 @@ export default function ImportPreviewIsland() {
 
       {/* Error */}
       {error && (
-        <div className="card-flat" style={{ borderColor: 'var(--sunset)', marginBottom: '24px' }}>
-          <span style={{ color: 'var(--sunset)' }}>⚠ {error}</span>
+        <div className="alert alert-danger mb-6">
+          <span>! {error}</span>
         </div>
       )}
 

@@ -244,7 +244,7 @@ export default function QuickPostIsland() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       {error && (
-        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--ember)" }}>
+        <div className="alert alert-danger">
           {error}
         </div>
       )}

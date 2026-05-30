@@ -98,7 +98,7 @@ export default function CurrentStopPickerIsland() {
       )}
 
       {error && (
-        <div className="card-flat" style={{ padding: 10, fontSize: 13, color: "var(--ember)" }}>
+        <div className="alert alert-danger">
           {error}
         </div>
       )}
