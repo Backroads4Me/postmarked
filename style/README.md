@@ -13,8 +13,6 @@ caused drift between layouts.
    rules.
 2. `Postmarked - Color Palette.md` for the current token values and intended
    semantic use.
-3. `../STYLE_STANDARDIZATION_PLAN.md` only for historical context and completed
-   migration notes.
 
 ## Source Of Truth
 

@@ -31,15 +31,20 @@ If a page needs styling that is likely to recur, add or extend a shared class in
 
 ## Typography
 
-Use the type tokens, not font-family literals.
+Postmarked uses three self-hosted font families (provided as local WOFF2 assets to ensure consistent rendering across deployments):
+
+- **Playfair Display**: A high-contrast display serif used for page titles and display headings (`--font-display` / `var(--display)`).
+- **Source Serif 4**: A highly legible body serif used for prose and narrative body copy (`--font-body` / `var(--body)`).
+- **IBM Plex Mono**: A clean monospace typeface used for metadata, coordinates, forms, and badges (`--font-label` / `var(--mono)`).
+
+Always use the CSS type tokens, never font-family literals.
 
 - Display headings: `.display` or `font-family: var(--display)`
 - Body copy: `var(--body)`
 - Pull quotes and italic emphasis: `var(--quote)`
 - Labels, metadata, coordinates, badges: `var(--mono)`
 
-`--sans` exists only as a backwards-compatible alias to `--body`. Do not use it
-in new code.
+`--sans` exists only as a backwards-compatible alias to `--body` (referencing Source Serif 4). Do not use it in new code.
 
 Recommended text patterns:
 
@@ -141,15 +146,12 @@ admin screens.
 
 ## Maps
 
-Map code has a separate source because Google Maps marker APIs cannot consume
-CSS variables.
+Map code has a separate source because Google Maps marker APIs cannot consume CSS variables.
 
-- CSS map tokens live in `global.css` as `--map-*`.
 - JS map constants live in `web/src/lib/mapColors.js`.
-- Keep both files aligned in the same change.
 
-Use the JS constants for marker fill, route stroke, fallback map colors, and map
-background colors.
+Use these JS constants for marker fill, route stroke, fallback map colors, and map background colors.
+
 
 ## Media Player
 
@@ -163,8 +165,7 @@ direction changes.
 
 ## Theme Behavior
 
-Dark mode is the default. Light mode is selected with `data-theme="light"` on
-`:root`.
+The application defaults to light mode via a script in the `<head>` unless the user has explicitly selected dark mode in localStorage or their system preference is dark. In the CSS, the `:root` pseudo-class defines the dark mode variables as the base fallback values. Light mode is activated by setting `data-theme="light"` on `:root`.
 
 Theme-sensitive CSS should use tokens rather than hardcoded color values. For
 JS-driven theme behavior, keep theme-color meta values in sync with:

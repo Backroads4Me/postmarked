@@ -107,16 +107,6 @@
   --cinema-bg: #05060a;
   --cinema-video-bg: #000;
 
-  /* Map marker palette — JS mirror lives in src/lib/mapColors.js;
-     keep the two in sync. Maps API cannot read CSS variables. */
-  --map-campground: #6FA694;
-  --map-trailhead:  #7AB8D6;
-  --map-fuel:       #EC8068;
-  --map-restaurant: #c46f9f;
-  --map-attraction: #9f6fc4;
-  --map-other:      #888888;
-  --map-photo:      #e8c44a;
-  --map-current:    #e05252;
 
   /* Semantic aliases */
   --bg:        var(--ink-0);

@@ -6,7 +6,7 @@ values, unless you are updating the token source itself.
 
 ## Dark Theme
 
-Dark mode is the default `:root` theme.
+Dark mode variables are defined as the fallback properties directly on `:root` in CSS. In practice, the application's resolved default is light mode unless the user's system theme is dark or they have explicitly selected dark mode.
 
 | Token | Value | Use |
 | --- | --- | --- |
@@ -64,22 +64,6 @@ Light mode is selected with `:root[data-theme="light"]`.
 | `--cinema-bg` | `#05060a` | Media player page background |
 | `--cinema-video-bg` | `#000` | Media player video well |
 
-## Map Tokens
-
-CSS map tokens live in `global.css`; JS mirrors them in
-`web/src/lib/mapColors.js`.
-
-| Token | Value | Use |
-| --- | --- | --- |
-| `--map-campground` | `#6FA694` | Stop/campground marker |
-| `--map-trailhead` | `#7AB8D6` | Trailhead/fallback marker |
-| `--map-fuel` | `#EC8068` | Fuel marker |
-| `--map-restaurant` | `#c46f9f` | Restaurant marker |
-| `--map-attraction` | `#9f6fc4` | Attraction marker |
-| `--map-other` | `#888888` | Unknown POI marker |
-| `--map-photo` | `#e8c44a` | Media GPS marker |
-| `--map-current` | `#e05252` | Current stop marker |
-
 ## Usage Rules
 
 - Use semantic tokens in CSS and inline styles: `var(--ember)`, not `#BD3325`.
@@ -87,5 +71,3 @@ CSS map tokens live in `global.css`; JS mirrors them in
   `global.css`.
 - Do not introduce page-local palettes.
 - If a new color is needed more than once, add a token and document it here.
-- If map marker colors change, update `global.css`, `mapColors.js`, and this
-  document together.
