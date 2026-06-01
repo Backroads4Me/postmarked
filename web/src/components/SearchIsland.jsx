@@ -107,7 +107,7 @@ export default function SearchIsland() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="nav-link inline-flex flex-row gap-1.5 text-xs"
+        className="nav-link"
       >
         <span className="nav-symbol">
           <svg viewBox="0 0 24 24" aria-hidden="true">

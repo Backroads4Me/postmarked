@@ -821,7 +821,7 @@ function tileClass(_m: MediaSummary) {
     :global(.media-lightbox-nav) {
       background: rgb(0 0 0 / 0.52);
       border-color: rgb(255 255 255 / 0.32);
-      font-size: 28px;
+      font-size: 36px;
       height: 52px;
       top: 50%;
       transform: translateY(-50%);
@@ -908,8 +908,8 @@ function tileClass(_m: MediaSummary) {
     }
 
     :global(.media-lightbox-close) {
-      top: 6px;
-      right: 10px;
+      top: max(10px, env(safe-area-inset-top, 10px));
+      right: max(16px, env(safe-area-inset-right, 16px));
       padding: 5px 8px;
       z-index: 3;
     }
@@ -917,7 +917,7 @@ function tileClass(_m: MediaSummary) {
     :global(.media-lightbox-nav) {
       background: rgb(0 0 0 / 0.52);
       border-color: rgb(255 255 255 / 0.32);
-      font-size: 24px;
+      font-size: 36px;
       height: 44px;
       top: 50%;
       transform: translateY(-50%);
@@ -926,11 +926,11 @@ function tileClass(_m: MediaSummary) {
     }
 
     :global(.media-lightbox-prev) {
-      left: 10px;
+      left: max(16px, env(safe-area-inset-left, 16px));
     }
 
     :global(.media-lightbox-next) {
-      right: 10px;
+      right: max(16px, env(safe-area-inset-right, 16px));
     }
   }
 </style>
