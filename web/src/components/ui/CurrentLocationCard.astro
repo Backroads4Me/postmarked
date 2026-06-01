@@ -149,9 +149,12 @@ const postmarkState = cityState?.state || '';
 
     <footer class={`route-footer${prevStop || nextStop ? ' has-stops' : ''}`}>
       {prevStop ? (
-        <a href={`/trips/${prevStop.tripSlug}/stops/${prevStop.slug}`} aria-label={`Previous stop: ${prevStop.cityState}`}>
-          {prevStop.cityState}
-        </a>
+        <div class="route-stop">
+          <span class="route-stop-label"><svg viewBox="0 0 24 24" aria-hidden="true" class="route-stop-arrow" width="14" height="14"><path d="M15 18 9 12l6-6"/></svg> Prev Stop</span>
+          <a href={`/trips/${prevStop.tripSlug}/stops/${prevStop.slug}`} aria-label={`Previous stop: ${prevStop.cityState}`}>
+            {prevStop.cityState}
+          </a>
+        </div>
       ) : <span />}
 
       <a href={`/trips/${tripSlug}`} class="route-trip">
@@ -159,9 +162,12 @@ const postmarkState = cityState?.state || '';
       </a>
 
       {nextStop ? (
-        <a href={`/trips/${nextStop.tripSlug}/stops/${nextStop.slug}`} aria-label={`Next stop: ${nextStop.cityState}`}>
-          {nextStop.cityState}
-        </a>
+        <div class="route-stop route-stop--next">
+          <span class="route-stop-label">Next Stop <svg viewBox="0 0 24 24" aria-hidden="true" class="route-stop-arrow" width="14" height="14"><path d="m9 6 6 6-6 6"/></svg></span>
+          <a href={`/trips/${nextStop.tripSlug}/stops/${nextStop.slug}`} aria-label={`Next stop: ${nextStop.cityState}`}>
+            {nextStop.cityState}
+          </a>
+        </div>
       ) : <span />}
     </footer>
   </article>
@@ -222,7 +228,7 @@ const postmarkState = cityState?.state || '';
     margin: 0 0 10px;
     color: var(--paper);
     font-family: var(--display);
-    font-size: clamp(2.1rem, 5vw, 3.55rem);
+    font-size: clamp(34px, 5vw, 57px);
     font-weight: 700;
     letter-spacing: 0;
     line-height: 0.96;
@@ -240,14 +246,14 @@ const postmarkState = cityState?.state || '';
     margin: 0;
     color: color-mix(in srgb, var(--muted) 72%, var(--paper) 28%);
     font-family: var(--mono);
-    font-size: 1.2rem;
+    font-size: var(--fs-lg);
     letter-spacing: 0.04em;
   }
 
   .current-weather-line {
     margin: 10px 0 0;
     color: var(--paper-2);
-    font-size: 0.95rem;
+    font-size: var(--fs-md);
   }
 
   .current-meta {
@@ -265,7 +271,7 @@ const postmarkState = cityState?.state || '';
   .current-meta span {
     color: var(--paper);
     font-family: var(--mono);
-    font-size: 0.72rem;
+    font-size: var(--fs-xs);
     font-weight: 700;
     letter-spacing: 0.12em;
     text-transform: uppercase;
@@ -274,14 +280,14 @@ const postmarkState = cityState?.state || '';
   .current-meta strong {
     color: var(--paper-2);
     font-family: var(--display);
-    font-size: 1.2rem;
+    font-size: var(--fs-lg);
   }
 
   .current-note {
     max-width: 42rem;
     margin: 18px 0 0;
     color: var(--paper-2);
-    font-size: 0.9rem;
+    font-size: var(--fs-base);
   }
 
   .current-postmark {
@@ -302,7 +308,7 @@ const postmarkState = cityState?.state || '';
     padding: 14px clamp(18px, 3vw, 28px);
     color: color-mix(in srgb, var(--muted) 72%, var(--paper) 28%);
     font-family: var(--display);
-    font-size: 1.05rem;
+    font-size: var(--fs-base);
   }
 
   .route-footer a {
@@ -319,6 +325,39 @@ const postmarkState = cityState?.state || '';
     letter-spacing: 0.14em;
     text-align: center;
     text-transform: uppercase;
+  }
+
+  .route-stop {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .route-stop--next {
+    text-align: right;
+    align-items: flex-end;
+  }
+
+  .route-stop-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-family: var(--mono);
+    font-size: var(--fs-2xs);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--dim);
+  }
+
+  .route-stop-arrow {
+    width: 14px;
+    height: 14px;
+    stroke: currentColor;
+    stroke-width: 2;
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    flex-shrink: 0;
   }
 
   .route-footer > :last-child {

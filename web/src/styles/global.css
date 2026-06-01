@@ -148,6 +148,27 @@
   /* Bottom nav safe area */
   --nav-height: 64px;
   --nav-height-safe: calc(64px + env(safe-area-inset-bottom, 0px));
+
+  /* Font size scale — change these to tune the whole app */
+  --fs-2xs: 11px;   /* tiny: nav tab labels, badge-sm */
+  --fs-xs: 13px;    /* x-small: mono labels, badges, chips, eyebrow */
+  --fs-sm: 15px;    /* small: compact UI — btn-sm, admin inputs */
+  --fs-base: 16px;  /* base: standard UI — btns, alerts, form inputs */
+  --fs-md: 18px;    /* medium: body prose */
+  --fs-lg: 20px;    /* large */
+  --fs-xl: 22px;    /* x-large: section headings */
+}
+
+@media (max-width: 640px), (orientation: landscape) and (max-height: 500px) {
+  :root {
+    --fs-2xs: 14px;
+    --fs-xs:  16px;
+    --fs-sm:  18px;
+    --fs-base: 19px;
+    --fs-md:  21px;
+    --fs-lg:  23px;
+    --fs-xl:  26px;
+  }
 }
 
 @theme {
@@ -203,6 +224,13 @@
   --radius-md: var(--r-md);
   --radius-lg: var(--r-lg);
   --radius-xl: 24px;
+
+  /* Text scale — references --fs-* vars so one place controls everything */
+  --text-xs: var(--fs-xs);     /* 13px */
+  --text-sm: var(--fs-base);   /* 16px */
+  --text-base: var(--fs-md);   /* 18px */
+  --text-lg: var(--fs-lg);     /* 20px */
+  --text-xl: var(--fs-xl);     /* 22px */
 }
 
 :root[data-theme="light"] {
@@ -312,7 +340,7 @@
 
   .eyebrow {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-xs);
     letter-spacing: 0.12em;
     text-transform: uppercase;
     color: var(--muted);
@@ -321,7 +349,7 @@
 
   .coord {
     font-family: var(--mono);
-    font-size: 12px;
+    font-size: var(--fs-xs);
     letter-spacing: 0.04em;
     color: var(--muted);
   }
@@ -330,7 +358,7 @@
     font-family: var(--display);
     font-weight: 320;
     font-variation-settings: "opsz" 18;
-    font-size: clamp(17px, 1.6vw, 21px);
+    font-size: clamp(19px, 1.8vw, 24px);
     line-height: 1.5;
     color: var(--paper-2);
     max-width: 62ch;
@@ -338,7 +366,7 @@
 
   .label {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     letter-spacing: 0.1em;
     text-transform: uppercase;
     color: var(--dim);
@@ -346,7 +374,7 @@
 
   .current-meta-label {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-weight: 700;
     letter-spacing: 0.1em;
     text-transform: uppercase;
@@ -442,7 +470,7 @@
     border-radius: 8px;
     padding: 0.75rem;
     font-family: var(--body);
-    font-size: 0.875rem;
+    font-size: var(--fs-base);
     line-height: 1.45;
   }
 
@@ -497,7 +525,7 @@
     border: 1px solid var(--line-soft);
     border-radius: 6px;
     padding: 0.75rem;
-    font-size: 0.875rem;
+    font-size: var(--fs-base);
     color: var(--paper);
     transition: border-color 0.2s;
   }
@@ -530,7 +558,7 @@
     border: 1px solid var(--line-soft);
     border-radius: 6px;
     color: var(--paper);
-    font-size: 0.8125rem;
+    font-size: var(--fs-sm);
     padding: 0.4rem 0.6rem;
     transition: border-color 0.2s;
   }
@@ -564,7 +592,7 @@
     text-align: left;
     padding: 6px 10px;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     letter-spacing: 0.06em;
     text-transform: uppercase;
     color: var(--muted);
@@ -585,7 +613,7 @@
     padding: 6px 8px;
     border: 1px solid var(--line-soft);
     border-radius: 6px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
   .photo-item__name {
     flex: 1;
@@ -600,7 +628,7 @@
     gap: 8px;
     padding: 10px 20px;
     font-family: var(--body);
-    font-size: 14px;
+    font-size: var(--fs-base);
     font-weight: 500;
     border-radius: 8px;
     border: 1px solid var(--line);
@@ -627,7 +655,7 @@
   }
   .btn-sm {
     padding: 6px 14px;
-    font-size: 13px;
+    font-size: var(--fs-sm);
   }
   .btn-ghost {
     background: transparent;
@@ -657,7 +685,7 @@
     display: inline-flex;
     align-items: center;
     padding: 4px 10px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-family: var(--mono);
     font-weight: 600;
     letter-spacing: 0.08em;
@@ -669,7 +697,7 @@
   }
   /* Compact badge: owns its own font-size so pages do not need ad-hoc values. */
   .badge-sm {
-    font-size: 10px;
+    font-size: var(--fs-2xs);
     padding: 3px 8px;
     letter-spacing: 0.06em;
   }
@@ -714,7 +742,7 @@
     align-items: center;
     gap: 4px;
     padding: 4px 10px;
-    font-size: 12px;
+    font-size: var(--fs-xs);
     border-radius: 6px;
     background: var(--ink-3);
     color: var(--paper-2);
@@ -727,7 +755,7 @@
     align-items: center;
     gap: 4px;
     padding: 3px 8px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-family: var(--mono);
     letter-spacing: 0.05em;
     border-radius: 4px;
@@ -784,13 +812,14 @@
     align-items: center;
     gap: 2px;
     color: var(--dim);
-    font-size: 10px;
+    font-size: var(--fs-2xs);
     font-family: var(--mono);
     letter-spacing: 0.04em;
     text-transform: uppercase;
     transition: color 0.2s;
-    padding: 4px 12px;
+    padding: 4px 8px;
     text-decoration: none;
+    white-space: nowrap;
   }
   .nav-link:hover, .nav-link.active {
     color: var(--ember);
@@ -893,7 +922,7 @@
     gap: 7px;
     padding: 0 12px;
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: var(--fs-xs);
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
@@ -902,19 +931,30 @@
     min-height: 48px;
     border: 0;
     background: transparent;
+    color: var(--dim);
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: flex-start;
     gap: 2px;
-    padding: 4px 10px;
+    padding: 4px 8px;
     font-family: var(--mono);
-    font-size: 10px;
+    font-size: var(--fs-2xs);
     letter-spacing: 0.04em;
     text-transform: uppercase;
+    white-space: nowrap;
   }
   .theme-toggle--mobile:hover {
     background: transparent;
+    color: var(--ember);
+  }
+  .theme-toggle--mobile .theme-toggle__icon {
+    width: 22px;
+    height: 22px;
+  }
+  .theme-toggle--mobile .theme-toggle__icon svg {
+    width: 20px;
+    height: 20px;
   }
 
   .section-band {
@@ -977,7 +1017,7 @@
     border: 1px solid var(--line);
     border-radius: 6px;
     padding: 6px 12px;
-    font-size: 11px;
+    font-size: var(--fs-xs);
     font-family: var(--mono);
     letter-spacing: 0.06em;
     color: var(--muted);
@@ -999,13 +1039,13 @@
   }
   .empty-state h3 {
     font-family: var(--display);
-    font-size: 20px;
+    font-size: var(--fs-xl);
     color: var(--paper-2);
     margin-bottom: 8px;
   }
   .empty-state p {
     color: var(--muted);
-    font-size: 14px;
+    font-size: var(--fs-base);
     max-width: 320px;
   }
 

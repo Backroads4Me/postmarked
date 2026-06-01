@@ -476,7 +476,7 @@ export default function QuickPostIsland() {
         .post-preview-markdown h4,
         .post-preview-markdown h5 {
           color: var(--paper);
-          font-size: 1rem;
+          font-size: var(--fs-base);
           font-weight: 600;
           margin: 0.7rem 0 0.3rem;
         }

@@ -186,8 +186,8 @@ function fmtRange(start, end) {
                   {(() => {
                     const thumbs = stopThumbs(stop);
                     return thumbs.length > 0 ? (
-                      <div class="hidden sm:flex gap-1.5 shrink-0 self-center">
-                        {thumbs.map((m: any) => (
+                      <div class="flex gap-1.5 shrink-0 self-center">
+                        {thumbs.map((m: any, i: number) => (
                           <img
                             src={thumbSrc(m)}
                             alt={m.alt_text || m.caption || ''}
@@ -195,6 +195,7 @@ function fmtRange(start, end) {
                             height="48"
                             loading="lazy"
                             decoding="async"
+                            class={i >= 2 ? 'hidden sm:block' : ''}
                             style="width:48px;height:48px;object-fit:cover;border-radius:5px;flex-shrink:0;"
                           />
                         ))}

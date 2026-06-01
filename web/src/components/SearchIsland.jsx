@@ -8,7 +8,7 @@ function formatDate(dateStr) {
   } catch { return ''; }
 }
 
-export default function SearchIsland() {
+export default function SearchIsland({ mobile = false }) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -62,7 +62,7 @@ export default function SearchIsland() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
-          <button onClick={() => setIsOpen(false)} className="text-xs text-muted hover:text-fg font-mono uppercase tracking-widest bg-surface-2 px-2 py-1 rounded">Esc</button>
+          <button onClick={() => setIsOpen(false)} className="text-xs text-muted hover:text-fg font-mono uppercase tracking-widest bg-surface-2 px-2 py-1 rounded ml-3 mr-1 shrink-0">Esc</button>
         </div>
 
         <div className="max-h-96 overflow-y-auto">
@@ -107,7 +107,7 @@ export default function SearchIsland() {
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="nav-link"
+        className={mobile ? "nav-link" : "nav-link inline-flex flex-row gap-1.5 text-xs"}
       >
         <span className="nav-symbol">
           <svg viewBox="0 0 24 24" aria-hidden="true">

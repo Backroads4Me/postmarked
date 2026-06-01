@@ -133,7 +133,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
       aria-label="Comments"
     >
       <header style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
-        <h2 className="display" style={{ fontSize: 22, margin: 0 }}>
+        <h2 className="display" style={{ fontSize: "var(--fs-xl)", margin: 0 }}>
           Comments
         </h2>
         <span className="label">
@@ -164,7 +164,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
                   {fmt(c.created_at)}
                 </span>
               </div>
-              <p style={{ margin: 0, color: "var(--paper-2)", whiteSpace: "pre-wrap", fontSize: 14 }}>
+              <p style={{ margin: 0, color: "var(--paper-2)", whiteSpace: "pre-wrap", fontSize: "var(--fs-base)" }}>
                 {c.body}
               </p>
             </li>
@@ -175,7 +175,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
       {!authKnown && <div className="label">Checking comment permissions…</div>}
 
       {authKnown && !canComment && (
-        <div className="card-flat" style={{ padding: 12, fontSize: 13, color: "var(--muted)", display: "flex", flexDirection: "column", gap: 10 }}>
+        <div className="card-flat" style={{ padding: 12, fontSize: "var(--fs-base)", color: "var(--muted)", display: "flex", flexDirection: "column", gap: 10 }}>
           <div>{disabledReason}</div>
           {!viewer && (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -202,7 +202,7 @@ export default function CommentsIsland({ targetKind, targetId }) {
             style={{ fontFamily: "var(--sans)", resize: "vertical" }}
           />
           {postError && (
-            <div style={{ fontSize: 12, color: "var(--ember)" }}>{postError}</div>
+            <div style={{ fontSize: "var(--fs-xs)", color: "var(--ember)" }}>{postError}</div>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span className="label">{draft.length}/2000</span>
