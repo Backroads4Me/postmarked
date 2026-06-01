@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -30,7 +31,7 @@ export default function SearchIsland() {
       setResults([]);
       return;
     }
-    
+
     const timeoutId = setTimeout(async () => {
       setLoading(true);
       try {
@@ -48,41 +49,25 @@ export default function SearchIsland() {
     return () => clearTimeout(timeoutId);
   }, [query]);
 
-  if (!isOpen) {
-    return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="nav-link hidden md:inline-flex flex-row gap-1.5 text-xs"
-      >
-        <span className="nav-symbol">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-        </span>
-        <span>Search</span>
-      </button>
-    );
-  }
-
-  return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex items-start justify-center pt-8 bg-bg/80 backdrop-blur-sm" style={{ top: '56px' }} onClick={() => setIsOpen(false)}>
-      <div className="w-full max-w-2xl bg-surface-1 border border-line rounded-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+  const overlay = isOpen ? (
+    <div className="fixed inset-x-0 bottom-0 z-[200] flex items-start justify-center pt-8 bg-bg/80 backdrop-blur-sm" style={{ top: '56px' }} onClick={() => setIsOpen(false)}>
+      <div className="w-full max-w-2xl mx-3 md:mx-0 bg-surface-1 border border-line rounded-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
         <div className="flex border-b border-line items-center px-4 py-3">
           <span className="text-muted mr-3">🔍</span>
-          <input 
-            autoFocus 
-            type="text" 
-            placeholder="Search trips and stops..." 
+          <input
+            autoFocus
+            type="text"
+            placeholder="Search trips and stops..."
             className="flex-1 bg-transparent border-none outline-none text-lg text-fg"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           <button onClick={() => setIsOpen(false)} className="text-xs text-muted hover:text-fg font-mono uppercase tracking-widest bg-surface-2 px-2 py-1 rounded">Esc</button>
         </div>
-        
+
         <div className="max-h-96 overflow-y-auto">
           {loading && <div className="p-8 text-center text-dim font-mono text-xs uppercase tracking-widest">Searching...</div>}
-          
+
           {!loading && results.length > 0 && (
             <ul className="divide-y divide-line">
               {results.map(r => (
@@ -106,16 +91,32 @@ export default function SearchIsland() {
             </ul>
           )}
 
-
           {!loading && query.length >= 2 && results.length === 0 && (
             <div className="p-8 text-center text-dim">No results found for "{query}"</div>
           )}
-          
+
           {!loading && query.length < 2 && (
             <div className="p-8 text-center text-dim font-mono text-xs uppercase tracking-widest">Type to search the journal</div>
           )}
         </div>
       </div>
     </div>
+  ) : null;
+
+  return (
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="nav-link inline-flex flex-row gap-1.5 text-xs"
+      >
+        <span className="nav-symbol">
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </span>
+        <span>Search</span>
+      </button>
+      {typeof document !== 'undefined' && createPortal(overlay, document.body)}
+    </>
   );
 }

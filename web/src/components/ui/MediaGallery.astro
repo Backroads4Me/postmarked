@@ -307,6 +307,21 @@ function tileClass(_m: MediaSummary) {
     const close = dialog.querySelector<HTMLButtonElement>('[data-media-lightbox-close]')!;
     const state: { items: LightboxItem[]; activeIndex: number } = { items: [], activeIndex: 0 };
 
+    let captionTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function isLandscapeMobile() {
+      return window.matchMedia('(orientation: landscape) and (max-height: 500px)').matches;
+    }
+
+    function showCaptionBriefly() {
+      if (!isLandscapeMobile()) return;
+      if (captionTimer) clearTimeout(captionTimer);
+      dialog.classList.remove('media-lightbox--caption-hidden');
+      captionTimer = setTimeout(() => {
+        dialog.classList.add('media-lightbox--caption-hidden');
+      }, 4000);
+    }
+
     function preloadItem(item: LightboxItem | undefined) {
       if (!item || item.kind === 'video') return;
       const img = new Image();
@@ -343,6 +358,7 @@ function tileClass(_m: MediaSummary) {
       // Kick off background fetches for neighbours so they're cached before the user gets there
       preloadItem(state.items[state.activeIndex + 1]);
       preloadItem(state.items[state.activeIndex - 1]);
+      showCaptionBriefly();
     }
 
     dialog.__mediaLightboxOpen = function(items: LightboxItem[], index: number) {
@@ -360,6 +376,8 @@ function tileClass(_m: MediaSummary) {
       video.removeAttribute('poster');
       video.dataset.fallbackSrc = '';
       video.load();
+      if (captionTimer) clearTimeout(captionTimer);
+      dialog.classList.remove('media-lightbox--caption-hidden');
     });
     video.addEventListener('error', () => {
       const fallbackSrc = video.dataset.fallbackSrc || '';
@@ -369,7 +387,11 @@ function tileClass(_m: MediaSummary) {
       video.load();
     });
     dialog.addEventListener('click', (event) => {
-      if (event.target === dialog) dialog.close();
+      if (event.target === dialog) { dialog.close(); return; }
+      const target = event.target as Element;
+      if (!target.closest('.media-lightbox-nav, .media-lightbox-close')) {
+        showCaptionBriefly();
+      }
     });
     window.addEventListener('keydown', (event) => {
       if (!dialog.open) return;
@@ -738,8 +760,61 @@ function tileClass(_m: MediaSummary) {
       height: 100dvh;
       max-height: 100dvh;
       max-width: 100vw;
-      padding: 56px 16px 16px;
+      padding: 0;
+      position: relative;
       width: 100vw;
+    }
+
+    :global(.media-lightbox-body) {
+      position: absolute;
+      inset: 0;
+      flex: unset;
+    }
+
+    :global(.media-lightbox-image),
+    :global(.media-lightbox-video) {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    :global(.media-lightbox-footer) {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      background: none;
+      padding: 12px 16px max(16px, env(safe-area-inset-bottom, 16px));
+      text-align: left;
+    }
+
+    :global(.media-lightbox-caption) {
+      font-size: 14px;
+      background: rgb(0 0 0 / 0.72);
+      backdrop-filter: blur(6px);
+      border-radius: 6px;
+      padding: 6px 10px;
+      display: inline;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+
+    :global(.media-lightbox-count) {
+      background: rgb(0 0 0 / 0.60);
+      backdrop-filter: blur(6px);
+      border-radius: 4px;
+      padding: 2px 7px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+
+    :global(.media-lightbox-close) {
+      top: max(14px, env(safe-area-inset-top, 14px));
+      right: 10px;
+      z-index: 3;
     }
 
     :global(.media-lightbox-nav) {
@@ -750,6 +825,7 @@ function tileClass(_m: MediaSummary) {
       top: 50%;
       transform: translateY(-50%);
       width: 52px;
+      z-index: 3;
     }
 
     :global(.media-lightbox-prev) {
@@ -761,29 +837,98 @@ function tileClass(_m: MediaSummary) {
     }
   }
 
-  @media (max-width: 926px) and (orientation: landscape) and (max-height: 500px) {
+  @media (orientation: landscape) and (max-height: 500px) {
+    :global(.media-lightbox-footer) {
+      transition: opacity 0.4s ease;
+    }
+    :global(.media-lightbox--caption-hidden .media-lightbox-footer) {
+      opacity: 0;
+      pointer-events: none;
+    }
+
     :global(.media-lightbox) {
-      padding: 36px 16px 6px;
+      border-radius: 0;
+      height: 100dvh;
+      max-height: 100dvh;
+      max-width: 100vw;
+      padding: 0;
+      position: relative;
+      width: 100vw;
+    }
+
+    :global(.media-lightbox-body) {
+      position: absolute;
+      inset: 0;
+      flex: unset;
+    }
+
+    :global(.media-lightbox-image),
+    :global(.media-lightbox-video) {
+      width: 100%;
+      height: 100%;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    :global(.media-lightbox-footer) {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 2;
+      background: none;
+      padding: 10px 12px max(8px, env(safe-area-inset-bottom, 8px));
+      text-align: left;
+      gap: 3px;
+    }
+
+    :global(.media-lightbox-caption) {
+      font-size: 12px;
+      line-height: 1.3;
+      background: rgb(0 0 0 / 0.72);
+      backdrop-filter: blur(6px);
+      border-radius: 5px;
+      padding: 5px 8px;
+      display: inline;
+      -webkit-box-decoration-break: clone;
+      box-decoration-break: clone;
+    }
+
+    :global(.media-lightbox-count) {
+      font-size: 10px;
+      background: rgb(0 0 0 / 0.60);
+      backdrop-filter: blur(6px);
+      border-radius: 4px;
+      padding: 2px 6px;
+      display: inline-block;
+      margin-top: 3px;
     }
 
     :global(.media-lightbox-close) {
       top: 6px;
       right: 10px;
       padding: 5px 8px;
+      z-index: 3;
     }
 
-    :global(.media-lightbox-footer) {
-      padding-top: 4px;
-      gap: 2px;
+    :global(.media-lightbox-nav) {
+      background: rgb(0 0 0 / 0.52);
+      border-color: rgb(255 255 255 / 0.32);
+      font-size: 24px;
+      height: 44px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 44px;
+      z-index: 3;
     }
 
-    :global(.media-lightbox-caption) {
-      font-size: 12px;
-      line-height: 1.3;
+    :global(.media-lightbox-prev) {
+      left: 10px;
     }
 
-    :global(.media-lightbox-count) {
-      font-size: 10px;
+    :global(.media-lightbox-next) {
+      right: 10px;
     }
   }
 </style>

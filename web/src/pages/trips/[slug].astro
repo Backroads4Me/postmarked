@@ -99,19 +99,19 @@ function fmtRange(start, end) {
     <section class="mb-8">
       <Breadcrumb items={[{ label: 'Home', href: '/' }]} />
 
-      <div class="flex items-baseline justify-between gap-4 mt-3 mb-3">
+      <div class="flex flex-col md:flex-row md:items-baseline md:justify-between gap-1 md:gap-4 mt-3 mb-3">
         <h1 class="display text-3xl md:text-4xl leading-tight">{trip.title}</h1>
         {trip.start_date && (
-          <span class="shrink-0 display text-3xl md:text-4xl text-muted">{fmtRange(trip.start_date, trip.end_date)}</span>
+          <span class="shrink-0 display text-sm md:text-4xl text-muted">{fmtRange(trip.start_date, trip.end_date)}</span>
         )}
       </div>
 
       {trip.cover_media?.derivative_paths?.webp && (
-        <div class="relative rounded-xl overflow-hidden border border-line-soft bg-surface-2" style="height: clamp(12rem, 45vh, 26rem);">
+        <div class="trip-detail-cover relative rounded-xl overflow-hidden border border-line-soft bg-surface-2">
           <img
             src={`/media/${trip.cover_media.id}/webp`}
             alt={trip.cover_media.alt_text || ''}
-            class="absolute inset-0 h-full w-full object-cover"
+            class="trip-detail-cover-img w-full h-auto"
             loading="eager"
           />
         </div>
@@ -212,6 +212,18 @@ function fmtRange(start, end) {
     </section>
   </main>
 <style>
+  @media (min-width: 768px) {
+    .trip-detail-cover {
+      height: clamp(12rem, 45vh, 26rem);
+    }
+    .trip-detail-cover-img {
+      position: absolute;
+      inset: 0;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+
   .stop-meta {
     transition: color 160ms ease;
   }

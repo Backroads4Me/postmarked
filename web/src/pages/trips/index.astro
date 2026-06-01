@@ -80,11 +80,11 @@ const headerText = sectionText(siteText, 'trips.header', {
                 <span class="shrink-0 display text-sm md:text-2xl text-muted">{tripDateRange(trip)}</span>
               )}
             </div>
-            <div class="relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft" style="height: clamp(12rem, 40vh, 22rem);">
+            <div class="trip-cover-container relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft">
               <img
                 src={coverSrc(trip)}
                 alt={trip.cover_media?.alt_text || ''}
-                class="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
+                class="trip-cover-img w-full h-auto transition-transform duration-300 group-hover:scale-[1.03]"
                 loading="lazy"
               />
               {trip.stops_total > 0 && (
@@ -107,3 +107,17 @@ const headerText = sectionText(siteText, 'trips.header', {
     )}
   </main>
 </Layout>
+
+<style>
+  @media (min-width: 768px) {
+    .trip-cover-container {
+      height: clamp(12rem, 40vh, 22rem);
+    }
+    .trip-cover-img {
+      position: absolute;
+      inset: 0;
+      height: 100%;
+      object-fit: cover;
+    }
+  }
+</style>
