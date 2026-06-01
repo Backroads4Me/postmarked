@@ -743,16 +743,47 @@ function tileClass(_m: MediaSummary) {
     }
 
     :global(.media-lightbox-nav) {
+      background: rgb(0 0 0 / 0.52);
+      border-color: rgb(255 255 255 / 0.32);
+      font-size: 28px;
+      height: 52px;
       top: 50%;
       transform: translateY(-50%);
+      width: 52px;
     }
 
     :global(.media-lightbox-prev) {
-      left: 4px;
+      left: 10px;
     }
 
     :global(.media-lightbox-next) {
-      right: 4px;
+      right: 10px;
+    }
+  }
+
+  @media (max-width: 926px) and (orientation: landscape) and (max-height: 500px) {
+    :global(.media-lightbox) {
+      padding: 36px 16px 6px;
+    }
+
+    :global(.media-lightbox-close) {
+      top: 6px;
+      right: 10px;
+      padding: 5px 8px;
+    }
+
+    :global(.media-lightbox-footer) {
+      padding-top: 4px;
+      gap: 2px;
+    }
+
+    :global(.media-lightbox-caption) {
+      font-size: 12px;
+      line-height: 1.3;
+    }
+
+    :global(.media-lightbox-count) {
+      font-size: 10px;
     }
   }
 </style>

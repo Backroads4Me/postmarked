@@ -74,10 +74,10 @@ const headerText = sectionText(siteText, 'trips.header', {
       <div class="grid grid-cols-1 gap-6">
         {trips.map(trip => (
           <a href={`/trips/${trip.slug}`} class="card group" id={`trip-${trip.slug}`}>
-            <div class="flex items-baseline justify-between gap-3 mb-3">
+            <div class="flex flex-col md:flex-row md:items-baseline md:justify-between gap-1 md:gap-3 mb-3">
               <h2 class="display text-2xl group-hover:text-ember-2 transition-colors leading-tight">{trip.title}</h2>
               {tripDateRange(trip) && (
-                <span class="shrink-0 display text-2xl text-muted">{tripDateRange(trip)}</span>
+                <span class="shrink-0 display text-sm md:text-2xl text-muted">{tripDateRange(trip)}</span>
               )}
             </div>
             <div class="relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft" style="height: clamp(12rem, 40vh, 22rem);">
