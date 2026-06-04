@@ -311,6 +311,7 @@
     -webkit-font-smoothing: antialiased;
     font-feature-settings: "ss01","cv11";
     min-height: 100vh;
+    padding-top: env(safe-area-inset-top, 0px);
     padding-bottom: var(--nav-height-safe);
   }
 
