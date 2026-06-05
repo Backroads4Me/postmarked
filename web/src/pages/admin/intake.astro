@@ -1,51 +1,13 @@
 ---
 import AdminLayout from '../../layouts/AdminLayout.astro';
-import { apiUrl } from '../../lib/api.js';
-
-const cookie = Astro.request.headers.get('cookie');
-let existingFolders = [];
-
-try {
-  const res = await fetch(apiUrl('/api/admin/media'), {
-    headers: cookie ? { cookie } : {}
-  });
-  if (res.ok) {
-    const assets = await res.json();
-    existingFolders = [...new Set(assets.map(a => a.folder).filter(Boolean))].sort();
-  }
-} catch (e) {
-  // Non-critical — folder suggestions are optional
-}
 ---
 
 <AdminLayout title="Media Intake">
-  <div class="mb-6 max-w-sm">
-    <label class="block text-xs font-mono uppercase tracking-widest text-dim mb-1" for="upload-folder">
-      Folder <span class="normal-case text-muted">(optional)</span>
-    </label>
-    <div class="flex gap-2">
-      <input
-        id="upload-folder"
-        type="text"
-        list="folder-list"
-        class="admin-input flex-1"
-        placeholder="e.g. yellowstone-2026"
-        autocomplete="off"
-      />
-      <datalist id="folder-list">
-        {existingFolders.map(f => <option value={f} />)}
-      </datalist>
-    </div>
-    <p class="text-xs text-muted mt-1">Uploads will be placed in this folder. Type a new name or pick an existing one.</p>
-  </div>
-
   <div id="uppy-dashboard" class="mb-12"></div>
 
   <link href="https://releases.transloadit.com/uppy/v3.23.0/uppy.min.css" rel="stylesheet">
   <script type="module" hoist>
     import { Uppy, Dashboard, Tus } from "https://releases.transloadit.com/uppy/v3.23.0/uppy.min.mjs"
-
-    const folderInput = document.getElementById('upload-folder');
 
     const uppy = new Uppy({
       restrictions: {
@@ -64,20 +26,15 @@ try {
       chunkSize: 5 * 1024 * 1024,
     });
 
-    // Inject the folder into each file's TUS metadata before upload starts
-    uppy.on('upload', () => {
-      const folder = folderInput?.value?.trim() || '';
-      uppy.getFiles().forEach(file => {
-        if (folder) {
-          uppy.setFileMeta(file.id, { folder });
-        }
-      });
-    });
-
     uppy.on('complete', (result) => {
       console.log('Uploads complete:', result.successful);
-      if (result.successful.length > 0) {
+      const succeeded = result.successful.length;
+      const failed = result.failed.length;
+      if (failed > 0) {
+        alert(`${succeeded} upload${succeeded === 1 ? '' : 's'} completed; ${failed} failed. Review the failed files and retry.`);
+      } else if (succeeded > 0) {
         alert("Upload finished. Assets pushed to processing queue!");
+        window.location.href = '/admin/media';
       }
     });
   </script>

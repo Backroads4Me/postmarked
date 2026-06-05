@@ -28,7 +28,6 @@ class MediaAssetBase(BaseResponse):
     sort_order: int
 
     original_filename: Optional[str] = None
-    folder: Optional[str] = None
     created_at: datetime
 
     stop_id: Optional[uuid.UUID] = None

@@ -91,15 +91,27 @@ async def _attach_media_to_post(
     media_ids: List[uuid.UUID],
     visibility: Visibility,
 ) -> int:
-    attached = 0
+    assets = []
     for media_id in media_ids:
         asset = await session.get(MediaAsset, media_id)
         if not asset:
-            continue
+            raise HTTPException(status_code=422, detail=f"Media asset {media_id} does not exist")
+        assigned_elsewhere = (
+            (asset.post_id is not None and asset.post_id != post.id)
+            or (asset.post_id is None and asset.stop_id is not None)
+            or (asset.post_id is None and asset.trip_id is not None)
+        )
+        if assigned_elsewhere:
+            raise HTTPException(status_code=409, detail=f"Media asset {media_id} is already assigned elsewhere")
+        assets.append(asset)
+
+    attached = 0
+    for index, asset in enumerate(assets):
         asset.post_id = post.id
         asset.stop_id = post.stop_id
         asset.trip_id = post.trip_id
         asset.visibility = visibility
+        asset.sort_order = index
         attached += 1
     return attached
 
@@ -186,6 +198,7 @@ async def update_post(
     was_notifiable = _should_notify(post)
 
     update_data = post_in.model_dump(exclude_unset=True)
+    media_ids = update_data.pop("media_ids", [])
     if "visibility" in update_data:
         update_data["visibility"] = Visibility(update_data["visibility"])
     if "status" in update_data and update_data["status"] == PostStatus.PUBLISHED:
@@ -193,9 +206,20 @@ async def update_post(
     for key, value in update_data.items():
         setattr(post, key, value)
 
-    await log_audit_event(session, user.id, "UPDATE", "Post", post.id, update_data)
+    if media_ids:
+        await _attach_media_to_post(session, post, media_ids, Visibility(post.visibility))
+        await session.flush()
+
+    media_result = await session.execute(select(MediaAsset).where(MediaAsset.post_id == post.id))
+    for asset in media_result.scalars().all():
+        asset.visibility = Visibility(post.visibility)
+
+    audit_data = dict(update_data)
+    if media_ids:
+        audit_data["attached_media_count"] = len(media_ids)
+    await log_audit_event(session, user.id, "UPDATE", "Post", post.id, audit_data)
     await session.commit()
-    await session.refresh(post)
+    await session.refresh(post, attribute_names=["media"])
     if not was_notifiable and _should_notify(post):
         _queue_post_notification(post.id)
     return post
@@ -216,18 +240,17 @@ async def attach_post_media(
     post = result.scalars().first()
     if not post:
         raise HTTPException(status_code=404, detail="Post not found")
+    if post.status == PostStatus.PUBLISHED:
+        raise HTTPException(
+            status_code=409,
+            detail="Published posts must attach media through the post save request",
+        )
 
-    visibility = Visibility(post.visibility)
-    attached = await _attach_media_to_post(session, post, req.media_ids, visibility)
+    attached = await _attach_media_to_post(session, post, req.media_ids, Visibility(post.visibility))
     await log_audit_event(session, user.id, "ATTACH_MEDIA", "Post", post.id, {"attached_media_count": attached})
     await session.commit()
-
-    result = await session.execute(
-        select(Post)
-        .where(Post.id == post.id)
-        .options(selectinload(Post.media), selectinload(Post.poi))
-    )
-    return result.scalars().one()
+    await session.refresh(post, attribute_names=["media"])
+    return post
 
 
 class ReorderPostMediaRequest(BaseModel):

@@ -6,29 +6,39 @@ const ADMIN_TZ = (typeof process !== 'undefined' && process.env.PUBLIC_ADMIN_TIM
   || import.meta.env.PUBLIC_ADMIN_TIMEZONE
   || 'America/New_York';
 
-let mediaAssets = [];
 const cookie = Astro.request.headers.get('cookie');
+const today = new Intl.DateTimeFormat('en-CA', { timeZone: ADMIN_TZ }).format(new Date());
+const selectedDate = Astro.url.searchParams.get('date') || today;
+
+let mediaAssets = [];
+let availableDates: string[] = [];
 
 try {
-  const res = await fetch(apiUrl('/api/admin/media'), {
-    headers: cookie ? { cookie } : {}
-  });
+  const [mediaRes, datesRes] = await Promise.all([
+    fetch(apiUrl(`/api/admin/media?date=${selectedDate}`), {
+      headers: cookie ? { cookie } : {}
+    }),
+    fetch(apiUrl('/api/admin/media/dates'), {
+      headers: cookie ? { cookie } : {}
+    }),
+  ]);
 
-  if (res.status === 401 || res.status === 403) {
+  if (mediaRes.status === 401 || mediaRes.status === 403) {
     return Astro.redirect('/auth/login');
   }
 
-  if (res.ok) {
-    mediaAssets = await res.json();
-  }
+  if (mediaRes.ok) mediaAssets = await mediaRes.json();
+  if (datesRes.ok) availableDates = await datesRes.json();
 } catch (e) {
   console.error("Failed to load admin media", e);
 }
 
-// Collect unique folders for the filter bar
-const folders = [...new Set(mediaAssets.map(a => a.folder).filter(Boolean))].sort();
+// Ensure the selected date always appears in the dropdown even if no uploads exist yet
+const dateOptions: string[] = availableDates.includes(selectedDate)
+  ? availableDates
+  : [selectedDate, ...availableDates];
 
-function formatDate(isoStr) {
+function formatDate(isoStr: string) {
   if (!isoStr) return '';
   try {
     return new Intl.DateTimeFormat('en-US', {
@@ -44,11 +54,15 @@ function formatDate(isoStr) {
 
 <AdminLayout title="Media">
   <div class="mb-6 flex flex-wrap gap-3 justify-between items-center">
-    <div class="flex flex-wrap gap-2" id="folder-filters">
-      <button class="folder-btn active" data-folder="">All</button>
-      {folders.map(f => (
-        <button class="folder-btn" data-folder={f}>{f}</button>
-      ))}
+    <div class="flex items-center gap-3">
+      <label for="date-select" class="text-xs font-mono uppercase tracking-widest text-dim shrink-0">Date</label>
+      <select id="date-select" class="admin-input">
+        {dateOptions.map(d => (
+          <option value={d} selected={d === selectedDate}>
+            {d === today ? `${d} (today)` : d}
+          </option>
+        ))}
+      </select>
     </div>
     <a href="/admin/intake" class="btn">Upload More</a>
   </div>
@@ -56,11 +70,10 @@ function formatDate(isoStr) {
   <div class="admin-list">
     {mediaAssets.length > 0 ? (
       <div class="divide-y divide-line" id="asset-list">
-        {mediaAssets.map(asset => (
+        {mediaAssets.map((asset: any) => (
           <div
             class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4"
             data-asset-row={asset.id}
-            data-folder={asset.folder || ''}
           >
             <div class="flex gap-4 items-center">
               {/* Thumbnail — click to preview */}
@@ -90,8 +103,7 @@ function formatDate(isoStr) {
               )}
 
               <div>
-                <div class="text-xs font-mono text-dim truncate max-w-xs">{asset.original_filename || asset.id}</div>
-                <div class="text-xs text-dim font-mono tracking-widest uppercase mt-0.5">
+                <div class="text-xs text-dim font-mono tracking-widest uppercase">
                   {asset.kind} ·
                   <span style={asset.processing_state === 'failed' ? 'color: var(--sunset);' : asset.processing_state === 'ready' ? 'color: var(--forest);' : ''}>
                     {asset.processing_state}
@@ -101,13 +113,13 @@ function formatDate(isoStr) {
                 </div>
                 <div class="text-xs text-dim mt-0.5">
                   {formatDate(asset.created_at)}
-                  {asset.folder && <span class="ml-2 px-1.5 py-0.5 bg-surface-2 border border-line rounded text-xs font-mono">{asset.folder}</span>}
                 </div>
                 {asset.error_message && (
                   <div class="text-xs mt-1 max-w-xl" style="color: var(--sunset);">
                     {asset.error_message}
                   </div>
                 )}
+                <div class="text-[11px] font-mono opacity-40 truncate max-w-xs mt-1">{asset.original_filename || asset.id}</div>
               </div>
             </div>
 
@@ -146,7 +158,7 @@ function formatDate(isoStr) {
       </div>
     ) : (
       <div class="p-8 text-center text-muted">
-        No media assets found.
+        No media uploaded on {selectedDate}.
       </div>
     )}
   </div>
@@ -168,36 +180,10 @@ function formatDate(isoStr) {
   <div id="preview-content" class="max-w-5xl max-h-[90vh] flex items-center justify-center p-4"></div>
 </div>
 
-<style>
-  .folder-btn {
-    padding: 0.25rem 0.75rem;
-    font-size: 0.75rem;
-    font-family: var(--font-mono, monospace);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    border: 1px solid var(--line);
-    border-radius: 9999px;
-    background: var(--surface-1);
-    color: var(--text-muted);
-    cursor: pointer;
-    transition: background 0.15s, color 0.15s, border-color 0.15s;
-  }
-  .folder-btn:hover { border-color: var(--ember); color: var(--ember); }
-  .folder-btn.active { background: var(--ember); color: #fff; border-color: var(--ember); }
-</style>
-
 <script define:vars={{ adminTz: ADMIN_TZ }}>
-  // ── Folder filter ───────────────────────────────────────────────────────
-  document.querySelectorAll('.folder-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.folder-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      const folder = btn.dataset.folder;
-      document.querySelectorAll('[data-asset-row]').forEach(row => {
-        const match = folder === '' || row.dataset.folder === folder;
-        row.style.display = match ? '' : 'none';
-      });
-    });
+  // ── Date selector ─────────────────────────────────────────────────────────
+  document.getElementById('date-select')?.addEventListener('change', (e) => {
+    window.location.href = '/admin/media?date=' + e.target.value;
   });
 
   // ── Preview modal ────────────────────────────────────────────────────────

@@ -5,11 +5,23 @@ import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
 
+const PAGE_SIZE = 20;
 let timelineData = null;
 let error = null;
 const showUpcoming = Astro.url.searchParams.get('upcoming') === '1';
+const _rawPage = Astro.url.searchParams.get('page') || '1';
+const _parsedPage = Number.parseInt(_rawPage, 10);
+const page = Number.isFinite(_parsedPage) && _parsedPage > 0 ? _parsedPage : 1;
+const offset = (page - 1) * PAGE_SIZE;
+
+function buildPageUrl(p: number) {
+  const u = new URL(Astro.url);
+  u.searchParams.set('page', String(p));
+  return u.pathname + u.search;
+}
+
 try {
-  const params = new URLSearchParams({ limit: '50' });
+  const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
   if (showUpcoming) params.set('include_future_stops', 'true');
   const res = await fetch(apiUrl(`/api/timeline?${params.toString()}`));
   if (res.ok) {
@@ -20,6 +32,8 @@ try {
 } catch (e) {
   error = e?.message || 'Failed to connect';
 }
+
+const hasMore: boolean = timelineData?.has_more ?? false;
 
 const updates = (timelineData?.updates ?? []).toSorted((a, b) => {
   return new Date(b.posted_at).getTime() - new Date(a.posted_at).getTime();
@@ -140,6 +154,34 @@ const headerText = sectionText(siteText, 'timeline.header', {
             </div>
           </section>
         ))}
+
+        {(page > 1 || hasMore) && (
+          <div class="flex items-center justify-between gap-4 pt-4 border-t border-line-soft">
+            {page > 1 ? (
+              <a href={buildPageUrl(page - 1)} class="btn btn-sm btn-ghost-ember timeline-page-btn">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+                Newer
+              </a>
+            ) : <span />}
+            <span class="label">Page {page}</span>
+            {hasMore ? (
+              <a href={buildPageUrl(page + 1)} class="btn btn-sm btn-ghost-ember timeline-page-btn">
+                Older
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 6 6 6-6 6" /></svg>
+              </a>
+            ) : <span />}
+          </div>
+        )}
+      </div>
+    ) : page > 1 ? (
+      <div class="space-y-6">
+        <div class="pt-4 border-t border-line-soft">
+          <a href={buildPageUrl(page - 1)} class="btn btn-sm btn-ghost-ember timeline-page-btn">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6" /></svg>
+            Newer
+          </a>
+        </div>
+        <p class="text-sm text-muted">No more entries past this page.</p>
       </div>
     ) : (
       <EmptyState
@@ -150,3 +192,21 @@ const headerText = sectionText(siteText, 'timeline.header', {
     )}
   </main>
 </Layout>
+
+<style>
+  .timeline-page-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .timeline-page-btn svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.4;
+    width: 1rem;
+  }
+</style>

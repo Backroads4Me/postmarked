@@ -8,7 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 
 from pydantic import BaseModel
-from sqlalchemy import select
+from datetime import date as date_type
+from sqlalchemy import cast, func, select, Date
 from sqlalchemy.exc import IntegrityError
 
 from app.db import get_async_session
@@ -21,18 +22,36 @@ from app.services.media_storage import delete_media_asset_files
 
 router = APIRouter(prefix="/media", tags=["admin-media"])  # tus sub-router lives at /media/tus
 
+ADMIN_TZ = os.getenv("PUBLIC_ADMIN_TIMEZONE", "UTC")
+
+
+def _asset_date_expr():
+    """Cast created_at to DATE in the configured admin timezone."""
+    return cast(func.timezone(ADMIN_TZ, MediaAsset.created_at), Date)
+
 
 @router.get("", response_model=List[MediaAssetOut])
 async def list_media_admin(
-    folder: Optional[str] = Query(None),
+    date: Optional[date_type] = Query(None),
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_admin_user),
 ):
     q = select(MediaAsset).order_by(MediaAsset.created_at.desc())
-    if folder is not None:
-        q = q.where(MediaAsset.folder == (folder if folder else None))
+    if date is not None:
+        q = q.where(_asset_date_expr() == date)
     result = await session.execute(q)
     return result.scalars().all()
+
+
+@router.get("/dates", response_model=List[str])
+async def list_media_dates_admin(
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_admin_user),
+):
+    date_expr = _asset_date_expr()
+    q = select(date_expr).distinct().order_by(date_expr.desc())
+    result = await session.execute(q)
+    return [row.isoformat() for row in result.scalars().all()]
 
 
 @router.get("/orphans", response_model=List[MediaAssetOut])
@@ -269,7 +288,6 @@ async def patch_upload(
 
         mime = state["metadata"].get("filetype", "application/octet-stream")
         filename = state["metadata"].get("filename", f"{file_id}.bin")
-        folder = state["metadata"].get("folder") or None
         kind = MediaKind.VIDEO if "video" in mime else MediaKind.PHOTO
 
         asset = MediaAsset(
@@ -286,7 +304,6 @@ async def patch_upload(
             visibility=Visibility.PRIVATE,
             featured=False,
             sort_order=1,
-            folder=folder,
         )
         session.add(asset)
         try:
@@ -312,6 +329,18 @@ async def patch_upload(
         )
 
     return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
+
+
+@router.get("/{asset_id}", response_model=MediaAssetOut)
+async def get_media_asset_admin(
+    asset_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_admin_user),
+):
+    asset = await session.get(MediaAsset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    return asset
 
 
 @router.patch("/{asset_id}", response_model=MediaAssetOut)

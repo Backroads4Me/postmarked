@@ -8,6 +8,11 @@ import MediaGallery from '../../../components/ui/MediaGallery.astro';
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
 
+const ADMIN_TZ = (typeof process !== 'undefined' && process.env.PUBLIC_ADMIN_TIMEZONE)
+  || import.meta.env.PUBLIC_ADMIN_TIMEZONE
+  || 'America/New_York';
+const todayInAdminTz = new Intl.DateTimeFormat('en-CA', { timeZone: ADMIN_TZ }).format(new Date());
+
 let post = null;
 let stops = [];
 try {
@@ -117,7 +122,7 @@ function stopOptionLabel(stop) {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div class="flex items-baseline gap-3">
             <label class="text-sm font-bold">Attached media</label>
-            <span class="text-xs text-dim">{attachedMedia.length} item{attachedMedia.length === 1 ? '' : 's'}</span>
+            <span id="media-count-label" class="text-xs text-dim">{attachedMedia.length} item{attachedMedia.length === 1 ? '' : 's'}</span>
           </div>
           <div class="flex flex-wrap items-center gap-2">
             <input id="media-upload-input" type="file" accept="image/*,video/*" multiple class="hidden" />
@@ -130,6 +135,10 @@ function stopOptionLabel(stop) {
           <div class="flex items-center justify-between gap-3 mb-3">
             <div class="label">Media library</div>
             <button type="button" id="close-media-picker-btn" class="btn btn-sm btn-ghost">Close</button>
+          </div>
+          <div class="flex items-center gap-2 mb-2">
+            <label for="picker-date-select" class="text-xs font-mono uppercase tracking-widest text-dim shrink-0">Date</label>
+            <select id="picker-date-select" class="admin-input text-xs py-0.5"></select>
           </div>
           <div id="media-picker-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2 max-h-80 overflow-auto"></div>
           <div class="flex items-center gap-2 mt-3">
@@ -145,6 +154,7 @@ function stopOptionLabel(stop) {
                 draggable="true"
                 data-media-card
                 data-media-id={m.id}
+                data-processing-state={m.processing_state}
               >
                 <span
                   class="media-drag-handle shrink-0 cursor-grab text-dim select-none px-1"
@@ -158,7 +168,12 @@ function stopOptionLabel(stop) {
                   class="block w-16 h-16 shrink-0 overflow-hidden rounded bg-line-soft border border-line hover:opacity-90 transition-opacity"
                   style="text-decoration: none;"
                 >
-                  {m.kind === 'video' ? (
+                  {m.processing_state !== 'ready' ? (
+                    <div
+                      class="w-full h-full flex items-center justify-center text-[10px] text-dim font-mono"
+                      data-pending-thumb
+                    >{m.processing_state}</div>
+                  ) : m.kind === 'video' ? (
                     <img
                       src={`/media/${m.id}/poster`}
                       alt={m.alt_text || m.caption || ''}
@@ -199,7 +214,7 @@ function stopOptionLabel(stop) {
             ))}
           </div>
         ) : (
-          <div class="admin-list p-3 text-sm text-muted">
+          <div id="media-empty-state" class="admin-list p-3 text-sm text-muted">
             No media is attached to this post.
           </div>
         )}
@@ -230,14 +245,14 @@ function stopOptionLabel(stop) {
 
       <div class="flex flex-wrap gap-3 items-center mt-2">
         <button type="submit" class="btn btn-primary">Save</button>
-        <button type="button" id="delete-btn" class="btn btn-sm btn-primary">
+        <button type="button" id="delete-btn" class="btn btn-primary">
           Delete
         </button>
       </div>
     </form>
   </div>
 
-  <script define:vars={{ stops }}>
+  <script define:vars={{ stops, todayInAdminTz }}>
     const form = document.getElementById('post-edit-form');
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
@@ -258,6 +273,7 @@ function stopOptionLabel(stop) {
     const mediaPickerStatus = document.getElementById('media-picker-status');
     const mediaAttachStatus = document.getElementById('media-attach-status');
     const TUS_VERSION = '1.0.0';
+    const stagedMediaIds = new Set();
 
     function escapeHtml(value) {
       return String(value ?? '')
@@ -349,6 +365,7 @@ function stopOptionLabel(stop) {
         visibility: formData.get('visibility'),
         posted_at: formData.get('posted_at') ? formData.get('posted_at') + 'T00:00:00.000Z' : undefined,
         post_type: 'update',
+        media_ids: Array.from(document.querySelectorAll('[data-media-card]')).map((card) => card.dataset.mediaId),
       };
 
       try {
@@ -360,6 +377,7 @@ function stopOptionLabel(stop) {
         });
 
         if (res.ok) {
+          stagedMediaIds.clear();
           successDiv.classList.remove('hidden');
           setTimeout(() => successDiv.classList.add('hidden'), 3000);
         } else {
@@ -378,20 +396,174 @@ function stopOptionLabel(stop) {
       return '/media/' + asset.id + '/webp';
     }
 
+    function updateMediaCount() {
+      const countEl = document.getElementById('media-count-label');
+      if (!countEl) return;
+      const count = document.querySelectorAll('[data-media-card]').length;
+      countEl.textContent = count + ' item' + (count === 1 ? '' : 's');
+    }
+
+    function wireCaptionInput(input) {
+      let savedValue = input.value;
+      let saveTimer = null;
+      async function saveCaption() {
+        const mediaId = input.dataset.mediaId;
+        const caption = input.value.trim();
+        const status = document.querySelector(`[data-media-caption-status="${mediaId}"]`);
+        if (!mediaId || caption === savedValue.trim()) return;
+        if (saveTimer) window.clearTimeout(saveTimer);
+        status.textContent = 'Saving';
+        input.disabled = true;
+        try {
+          const res = await fetch(`/api/admin/media/${mediaId}`, {
+            method: 'PATCH',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ caption }),
+          });
+          if (res.ok) {
+            savedValue = caption;
+            status.textContent = 'Saved';
+            saveTimer = window.setTimeout(() => { status.textContent = ''; }, 2000);
+          } else {
+            const err = await res.json().catch(() => ({}));
+            status.textContent = err.detail || `Save failed: HTTP ${res.status}`;
+          }
+        } catch {
+          status.textContent = 'Network error';
+        } finally {
+          input.disabled = false;
+        }
+      }
+      input.addEventListener('blur', saveCaption);
+      input.addEventListener('keydown', (event) => {
+        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+          event.preventDefault();
+          input.blur();
+        }
+      });
+    }
+
+    function wireDeleteButton(button) {
+      button.addEventListener('click', async () => {
+        const mediaId = button.dataset.deleteMediaId;
+        const kind = button.dataset.deleteMediaKind || 'media item';
+        if (!mediaId) return;
+        if (!confirm(`Delete this ${kind}? This removes it from the post and deletes the media file.`)) return;
+        errorDiv.classList.add('hidden');
+        successDiv.classList.add('hidden');
+        button.disabled = true;
+        button.textContent = 'Deleting';
+        try {
+          const res = await fetch(`/api/admin/media/${mediaId}`, {
+            method: 'DELETE',
+            credentials: 'include',
+          });
+          if (res.ok) {
+            stagedMediaIds.delete(mediaId);
+            document.querySelector(`[data-media-card][data-media-id="${mediaId}"]`)?.remove();
+            updateMediaCount();
+            const list = document.getElementById('media-list');
+            if (list && !list.querySelector('[data-media-card]')) {
+              list.remove();
+              const emptyState = document.createElement('div');
+              emptyState.id = 'media-empty-state';
+              emptyState.className = 'admin-list p-3 text-sm text-muted';
+              emptyState.textContent = 'No media is attached to this post.';
+              document.getElementById('media-attach-status')?.insertAdjacentElement('afterend', emptyState);
+            }
+          } else {
+            const err = await res.json().catch(() => ({}));
+            errorDiv.textContent = err.detail || `Delete failed: HTTP ${res.status}`;
+            errorDiv.classList.remove('hidden');
+            button.disabled = false;
+            button.textContent = 'Delete';
+          }
+        } catch {
+          errorDiv.textContent = 'Network error';
+          errorDiv.classList.remove('hidden');
+          button.disabled = false;
+          button.textContent = 'Delete';
+        }
+      });
+    }
+
+    function insertMediaCard(asset) {
+      const id = asset.id;
+      const kind = asset.kind || 'photo';
+      const href = kind === 'video' ? `/media-player/${id}` : `/media/${id}/webp`;
+      const card = document.createElement('div');
+      card.className = 'flex items-center gap-3 p-2 media-card';
+      card.draggable = true;
+      card.dataset.mediaCard = '';
+      card.dataset.mediaId = id;
+      card.dataset.processingState = asset.processing_state;
+      const thumbnail = asset.processing_state === 'ready'
+        ? '<img src="' + mediaThumb(asset) + '" alt="" class="w-full h-full object-cover" loading="lazy" decoding="async" />'
+        : '<div class="w-full h-full flex items-center justify-center text-[10px] text-dim font-mono" data-pending-thumb>' + asset.processing_state + '</div>';
+      card.innerHTML =
+        '<span class="media-drag-handle shrink-0 cursor-grab text-dim select-none px-1" aria-hidden="true" title="Drag to reorder">⠿</span>'
+        + '<a href="' + href + '" target="_blank" rel="noopener noreferrer"'
+        + ' class="block w-16 h-16 shrink-0 overflow-hidden rounded bg-line-soft border border-line hover:opacity-90 transition-opacity"'
+        + ' style="text-decoration: none;">'
+        + thumbnail
+        + '</a>'
+        + '<div class="min-w-0 flex-1 self-center">'
+        + '<textarea rows="2" aria-label="Photo description"'
+        + ' class="media-caption-input admin-input w-full h-12 resize-none"'
+        + ' data-media-caption-input data-media-id="' + id + '"'
+        + ' placeholder="Add a description"></textarea>'
+        + '<div class="text-xs text-dim h-0 overflow-hidden" data-media-caption-status="' + id + '"></div>'
+        + '</div>'
+        + '<button type="button" class="btn btn-sm btn-primary shrink-0"'
+        + ' data-delete-media-id="' + id + '" data-delete-media-kind="' + kind + '"'
+        + ' aria-label="Delete ' + kind + '">Delete</button>';
+
+      wireCaptionInput(card.querySelector('[data-media-caption-input]'));
+      wireDeleteButton(card.querySelector('[data-delete-media-id]'));
+
+      let list = document.getElementById('media-list');
+      if (!list) {
+        document.getElementById('media-empty-state')?.remove();
+        list = document.createElement('div');
+        list.id = 'media-list';
+        list.className = 'admin-list divide-y divide-line-soft';
+        document.getElementById('media-picker-panel')?.insertAdjacentElement('afterend', list);
+      }
+      list.appendChild(card);
+      wireMediaReorder(list);
+      updateMediaCount();
+      return card;
+    }
+
     async function attachMediaIds(mediaIds) {
       if (!mediaIds.length) return;
-      mediaAttachStatus.textContent = 'Attaching media';
-      const res = await fetch('/api/admin/posts/' + postId + '/media', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ media_ids: mediaIds }),
-      });
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err.detail || 'Attach failed: HTTP ' + res.status);
+      mediaAttachStatus.textContent = 'Staging media';
+      const assets = await Promise.all(mediaIds.map(async (mediaId) => {
+        const res = await fetch('/api/admin/media/' + mediaId, { credentials: 'include' });
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.detail || 'Media lookup failed: HTTP ' + res.status);
+        }
+        return res.json();
+      }));
+      for (const asset of assets) {
+        const assignedElsewhere = (
+          (asset.post_id && String(asset.post_id) !== String(postId))
+          || (!asset.post_id && (asset.stop_id || asset.trip_id))
+        );
+        if (assignedElsewhere) {
+          throw new Error('Media is already assigned elsewhere and cannot be moved by this edit');
+        }
       }
-      window.location.reload();
+      assets.forEach(asset => {
+        if (!document.querySelector(`[data-media-card][data-media-id="${asset.id}"]`)) {
+          insertMediaCard(asset);
+        }
+        if (!asset.post_id) stagedMediaIds.add(String(asset.id));
+      });
+      mediaAttachStatus.textContent = 'Media staged. Save the post to publish changes.';
+      startPendingPoller();
     }
 
     async function uploadOneMedia(file) {
@@ -438,20 +610,23 @@ function stopOptionLabel(stop) {
         await attachMediaIds(mediaIds);
       } catch (err) {
         mediaAttachStatus.textContent = err?.message || 'Upload failed';
-        uploadMediaBtn.disabled = false;
       } finally {
+        uploadMediaBtn.disabled = false;
         mediaUploadInput.value = '';
       }
     });
 
-    async function loadMediaPicker() {
-      mediaPickerPanel.classList.remove('hidden');
+    const pickerDateSelect = document.getElementById('picker-date-select');
+
+    async function loadMediaForDate(date) {
       mediaPickerStatus.textContent = 'Loading';
       mediaPickerList.innerHTML = '';
       try {
-        const res = await fetch('/api/admin/media', { credentials: 'include' });
+        const url = '/api/admin/media' + (date ? '?date=' + date : '');
+        const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const assets = await res.json();
+        const allAssets = await res.json();
+        const assets = allAssets.filter((asset) => !asset.stop_id && !asset.post_id && !asset.trip_id);
         mediaPickerStatus.textContent = assets.length + ' items';
         mediaPickerList.innerHTML = assets.length ? assets.map((asset) => {
           const thumb = mediaThumb(asset);
@@ -464,11 +639,37 @@ function stopOptionLabel(stop) {
             + '<span class="label">' + asset.kind + ' · ' + asset.processing_state + '</span>'
             + '</span>'
             + '</label>';
-        }).join('') : '<div class="text-sm text-muted p-3">No media assets found.</div>';
+        }).join('') : '<div class="text-sm text-muted p-3">No media for this date.</div>';
       } catch (err) {
         mediaPickerStatus.textContent = err?.message || 'Failed to load media';
       }
     }
+
+    async function loadMediaPicker() {
+      mediaPickerPanel.classList.remove('hidden');
+      mediaPickerList.innerHTML = '';
+      mediaPickerStatus.textContent = 'Loading';
+
+      // Populate date select on first open
+      if (!pickerDateSelect.options.length) {
+        try {
+          const datesRes = await fetch('/api/admin/media/dates', { credentials: 'include' });
+          if (datesRes.ok) {
+            const dates = await datesRes.json();
+            const opts = dates.includes(todayInAdminTz) ? dates : [todayInAdminTz, ...dates];
+            pickerDateSelect.innerHTML = opts.map(d =>
+              `<option value="${d}"${d === todayInAdminTz ? ' selected' : ''}>${d === todayInAdminTz ? d + ' (today)' : d}</option>`
+            ).join('');
+          }
+        } catch (_) {
+          // Non-critical — fall back to no date filter
+        }
+      }
+
+      await loadMediaForDate(pickerDateSelect.value || todayInAdminTz);
+    }
+
+    pickerDateSelect?.addEventListener('change', (e) => loadMediaForDate(e.target.value));
 
     openMediaPickerBtn.addEventListener('click', loadMediaPicker);
     closeMediaPickerBtn.addEventListener('click', () => mediaPickerPanel.classList.add('hidden'));
@@ -482,96 +683,21 @@ function stopOptionLabel(stop) {
       mediaPickerStatus.textContent = 'Attaching';
       try {
         await attachMediaIds(mediaIds);
+        mediaPickerPanel.classList.add('hidden');
       } catch (err) {
         mediaPickerStatus.textContent = err?.message || 'Attach failed';
+      } finally {
         attachSelectedMediaBtn.disabled = false;
       }
     });
 
-    document.querySelectorAll('[data-media-caption-input]').forEach((input) => {
-      let savedValue = input.value;
-      let saveTimer = null;
-
-      async function saveCaption() {
-        const mediaId = input.dataset.mediaId;
-        const caption = input.value.trim();
-        const status = document.querySelector(`[data-media-caption-status="${mediaId}"]`);
-        if (!mediaId || caption === savedValue.trim()) return;
-
-        if (saveTimer) window.clearTimeout(saveTimer);
-        status.textContent = 'Saving';
-        input.disabled = true;
-
-        try {
-          const res = await fetch(`/api/admin/media/${mediaId}`, {
-            method: 'PATCH',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ caption }),
-          });
-          if (res.ok) {
-            savedValue = caption;
-            status.textContent = 'Saved';
-            saveTimer = window.setTimeout(() => { status.textContent = ''; }, 2000);
-          } else {
-            const err = await res.json().catch(() => ({}));
-            status.textContent = err.detail || `Save failed: HTTP ${res.status}`;
-          }
-        } catch {
-          status.textContent = 'Network error';
-        } finally {
-          input.disabled = false;
-        }
-      }
-
-      input.addEventListener('blur', saveCaption);
-      input.addEventListener('keydown', (event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
-          event.preventDefault();
-          input.blur();
-        }
-      });
-    });
-
-    document.querySelectorAll('[data-delete-media-id]').forEach((button) => {
-      button.addEventListener('click', async () => {
-        const mediaId = button.dataset.deleteMediaId;
-        const kind = button.dataset.deleteMediaKind || 'media item';
-        if (!mediaId) return;
-        if (!confirm(`Delete this ${kind}? This removes it from the post and deletes the media file.`)) return;
-
-        errorDiv.classList.add('hidden');
-        successDiv.classList.add('hidden');
-        button.disabled = true;
-        button.textContent = 'Deleting';
-
-        try {
-          const res = await fetch(`/api/admin/media/${mediaId}`, {
-            method: 'DELETE',
-            credentials: 'include',
-          });
-          if (res.ok) {
-            window.location.reload();
-          } else {
-            const err = await res.json().catch(() => ({}));
-            errorDiv.textContent = err.detail || `Delete failed: HTTP ${res.status}`;
-            errorDiv.classList.remove('hidden');
-            button.disabled = false;
-            button.textContent = 'Delete';
-          }
-        } catch {
-          errorDiv.textContent = 'Network error';
-          errorDiv.classList.remove('hidden');
-          button.disabled = false;
-          button.textContent = 'Delete';
-        }
-      });
-    });
+    document.querySelectorAll('[data-media-caption-input]').forEach(wireCaptionInput);
+    document.querySelectorAll('[data-delete-media-id]').forEach(wireDeleteButton);
 
     // ── Media drag-to-reorder ─────────────────────────────────────────────
-    (function initMediaReorder() {
-      const list = document.getElementById('media-list');
-      if (!list) return;
+    function wireMediaReorder(list) {
+      if (list.dataset.reorderWired === 'true') return;
+      list.dataset.reorderWired = 'true';
 
       let dragging = null;
 
@@ -628,7 +754,65 @@ function stopOptionLabel(stop) {
           mediaAttachStatus.textContent = 'Network error';
         }
       });
-    })();
+    }
+    const existingMediaList = document.getElementById('media-list');
+    if (existingMediaList) wireMediaReorder(existingMediaList);
+
+    // Poll pending thumbnails until processing reaches a terminal state
+    const _pollCounts = new Map();
+    const MAX_POLLS = 60; // stop after ~3 min per asset
+    let _pollerRunning = false;
+    function startPendingPoller() {
+      if (_pollerRunning) return;
+      const pendingCards = () => Array.from(document.querySelectorAll('[data-media-card] [data-pending-thumb]'))
+        .map(el => el.closest('[data-media-card]'))
+        .filter(Boolean);
+      if (!pendingCards().length) return;
+      _pollerRunning = true;
+      const timer = setInterval(async () => {
+        const cards = pendingCards();
+        if (!cards.length) { clearInterval(timer); _pollerRunning = false; return; }
+        await Promise.allSettled(cards.map(async (card) => {
+          const id = card.dataset.mediaId;
+          const count = (_pollCounts.get(id) || 0) + 1;
+          _pollCounts.set(id, count);
+          try {
+            const res = await fetch('/api/admin/media/' + id, { credentials: 'include' });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const asset = await res.json();
+            const placeholder = card.querySelector('[data-pending-thumb]');
+            if (!placeholder) return;
+            if (asset.processing_state === 'ready') {
+              const link = placeholder.closest('a');
+              if (!link) return;
+              const img = document.createElement('img');
+              img.src = (asset.kind === 'video') ? '/media/' + id + '/poster' : '/media/' + id + '/webp';
+              img.alt = '';
+              img.className = 'w-full h-full object-cover';
+              img.loading = 'lazy';
+              img.decoding = 'async';
+              link.replaceChildren(img);
+            } else if (asset.processing_state === 'failed') {
+              placeholder.textContent = 'failed';
+              placeholder.style.color = 'var(--sunset)';
+              placeholder.removeAttribute('data-pending-thumb');
+            } else {
+              if (count >= MAX_POLLS) {
+                placeholder.textContent = 'timed out';
+                placeholder.removeAttribute('data-pending-thumb');
+              }
+            }
+          } catch (_) {
+            const placeholder = card.querySelector('[data-pending-thumb]');
+            if (placeholder && count >= MAX_POLLS) {
+              placeholder.textContent = 'timed out';
+              placeholder.removeAttribute('data-pending-thumb');
+            }
+          }
+        }));
+      }, 3000);
+    }
+    startPendingPoller();
 
     document.getElementById('delete-btn').addEventListener('click', async () => {
       const id = form.querySelector('[name="id"]').value;

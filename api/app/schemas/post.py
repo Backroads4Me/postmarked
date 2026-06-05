@@ -79,3 +79,4 @@ class PostUpdate(BaseModel):
     activity_started_at: Optional[datetime] = None
     activity_ended_at: Optional[datetime] = None
     poi_id: Optional[uuid.UUID] = None
+    media_ids: List[uuid.UUID] = Field(default_factory=list)
