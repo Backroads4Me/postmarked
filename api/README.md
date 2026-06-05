@@ -92,6 +92,13 @@ extras.
 | `/api/admin/imports` | `routers/admin/imports.py` | RV Trip Wizard preview/apply/history |
 | `/api/admin/media` | `routers/admin/media.py` | TUS-style uploads and media assignment |
 | `/api/admin/users` | `routers/admin/users.py` | Pending/approved user list and approval actions |
+| `/api/account` | `routers/account.py` | Current user profile, password, notification, and SMS prefs |
+| `/api/search` | `routers/search.py` | Public full-text search |
+| `/api/site-text` | `routers/site_text.py` | Public site text sections |
+| `/api/admin/stops/{stop_id}/pois` | `routers/admin/pois.py` | Admin POI CRUD nested under stops |
+| `/api/admin/site-config`, `/api/admin/pre-approved-emails` | `routers/admin/site_config.py` | Site config and pre-approved email list |
+| `/api/admin/site-text` | `routers/admin/site_text.py` | Admin site text section editing |
+| `/api/admin/backup` | `routers/admin/backup.py` | Full data export and import |
 | `/api/auth/jwt` | fastapi-users | Cookie-backed login/logout |
 | `/api/auth` | fastapi-users | Registration |
 | `/api/users/me` | fastapi-users | Current-user check |

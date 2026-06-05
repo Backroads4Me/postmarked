@@ -296,12 +296,13 @@ function tileClass(_m: MediaSummary) {
     const dialog = document.createElement('dialog') as MediaLightboxDialog;
     dialog.className = 'media-lightbox';
     dialog.dataset.globalMediaLightbox = 'true';
-    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><div class="media-lightbox-body"><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video></div><div class="media-lightbox-footer"><div class="media-lightbox-controls"><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><div class="media-lightbox-count" data-media-lightbox-count></div><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button></div><p class="media-lightbox-caption" data-media-lightbox-caption></p></div>';
+    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><div class="media-lightbox-body"><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><div class="media-lightbox-count-overlay" data-media-lightbox-count-overlay></div></div><div class="media-lightbox-footer"><div class="media-lightbox-controls"><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><div class="media-lightbox-count" data-media-lightbox-count></div><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button></div><p class="media-lightbox-caption" data-media-lightbox-caption></p></div>';
     document.body.append(dialog);
 
     const image = dialog.querySelector<HTMLImageElement>('[data-media-lightbox-image]')!;
     const video = dialog.querySelector<HTMLVideoElement>('[data-media-lightbox-video]')!;
     const count = dialog.querySelector<HTMLElement>('[data-media-lightbox-count]')!;
+    const countOverlay = dialog.querySelector<HTMLElement>('[data-media-lightbox-count-overlay]')!;
     const caption = dialog.querySelector<HTMLElement>('[data-media-lightbox-caption]')!;
     const prev = dialog.querySelector<HTMLButtonElement>('[data-media-lightbox-prev]')!;
     const next = dialog.querySelector<HTMLButtonElement>('[data-media-lightbox-next]')!;
@@ -319,7 +320,6 @@ function tileClass(_m: MediaSummary) {
     }
 
     function showCaptionBriefly() {
-      if (!isMobile()) return;
       if (captionTimer) clearTimeout(captionTimer);
       dialog.classList.remove('media-lightbox--caption-hidden');
       captionTimer = setTimeout(() => {
@@ -358,6 +358,7 @@ function tileClass(_m: MediaSummary) {
       caption.textContent = item.caption || '';
       caption.hidden = !item.caption;
       count.textContent = String(state.activeIndex + 1) + ' / ' + String(state.items.length);
+      countOverlay.textContent = count.textContent;
       prev.style.visibility = state.activeIndex === 0 ? 'hidden' : 'visible';
       next.style.visibility = state.activeIndex === state.items.length - 1 ? 'hidden' : 'visible';
       // Kick off background fetches for neighbours so they're cached before the user gets there
@@ -674,7 +675,7 @@ function tileClass(_m: MediaSummary) {
     height: 96vh;
     margin: auto;
     max-width: 96vw;
-    padding: 44px 20px 16px;
+    padding: 16px 20px 16px;
     width: 96vw;
   }
 
@@ -720,6 +721,7 @@ function tileClass(_m: MediaSummary) {
     right: 16px;
     text-transform: uppercase;
     top: 14px;
+    z-index: 5;
   }
 
   :global(.media-lightbox-nav) {
@@ -734,18 +736,20 @@ function tileClass(_m: MediaSummary) {
   :global(.media-lightbox-footer) {
     flex-shrink: 0;
     display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 6px;
-    padding-top: 14px;
-    width: 100%;
-  }
-
-  :global(.media-lightbox-controls) {
-    display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 8px;
-    width: 100%;
+    padding-top: 8px;
+  }
+
+  /* Dissolve controls into the footer row so prev/next flank the caption */
+  :global(.media-lightbox-controls) {
+    display: contents;
+  }
+
+  :global(.media-lightbox-prev) {
+    order: 1;
+    flex-shrink: 0;
   }
 
   :global(.media-lightbox-caption) {
@@ -754,8 +758,15 @@ function tileClass(_m: MediaSummary) {
     font-size: var(--fs-sm);
     line-height: 1.45;
     margin: 0;
+    min-width: 0;
+    order: 2;
+    flex: 1;
     text-align: center;
-    width: 100%;
+  }
+
+  :global(.media-lightbox-next) {
+    order: 3;
+    flex-shrink: 0;
   }
 
   :global(.media-lightbox-count) {
@@ -766,6 +777,30 @@ function tileClass(_m: MediaSummary) {
     margin: 0 auto;
     text-align: center;
     width: fit-content;
+    display: none;
+  }
+
+  :global(.media-lightbox-count-overlay) {
+    background: rgb(0 0 0 / 0.60);
+    backdrop-filter: blur(6px);
+    border-radius: 4px;
+    bottom: 12px;
+    color: rgb(255 255 255 / 0.85);
+    font-family: var(--mono);
+    font-size: var(--fs-2xs);
+    left: 50%;
+    letter-spacing: 0.08em;
+    padding: 2px 7px;
+    pointer-events: none;
+    position: absolute;
+    transform: translateX(-50%);
+    transition: opacity 0.4s ease;
+    white-space: nowrap;
+    z-index: 2;
+  }
+
+  :global(.media-lightbox--caption-hidden .media-lightbox-count-overlay) {
+    opacity: 0;
   }
 
   @media (max-width: 640px) {
@@ -829,12 +864,14 @@ function tileClass(_m: MediaSummary) {
       right: 0;
       z-index: 2;
       background: none;
+      flex-direction: column;
       padding: 8px 12px max(16px, env(safe-area-inset-bottom, 16px));
       align-items: stretch;
       gap: 8px;
     }
 
     :global(.media-lightbox-controls) {
+      display: flex;
       gap: 10px;
     }
 
@@ -862,15 +899,26 @@ function tileClass(_m: MediaSummary) {
       width: fit-content;
     }
 
+    :global(.media-lightbox-count-overlay) {
+      display: none;
+    }
+
     :global(.media-lightbox-caption) {
       background: rgb(0 0 0 / 0.72);
       backdrop-filter: blur(6px);
       border-radius: 6px;
       display: block;
+      flex: unset;
       font-size: var(--fs-base);
+      order: unset;
       padding: 6px 10px;
       text-align: center;
       width: 100%;
+    }
+
+    :global(.media-lightbox-prev),
+    :global(.media-lightbox-next) {
+      order: unset;
     }
 
     :global(.media-lightbox-close) {
@@ -937,6 +985,7 @@ function tileClass(_m: MediaSummary) {
       right: 0;
       z-index: 2;
       background: none;
+      flex-direction: column;
       padding-top: 6px;
       padding-bottom: max(8px, env(safe-area-inset-bottom, 8px));
       padding-left: max(10px, env(safe-area-inset-left, 10px));
@@ -946,6 +995,7 @@ function tileClass(_m: MediaSummary) {
     }
 
     :global(.media-lightbox-controls) {
+      display: flex;
       gap: 8px;
     }
 
@@ -972,16 +1022,27 @@ function tileClass(_m: MediaSummary) {
       width: fit-content;
     }
 
+    :global(.media-lightbox-count-overlay) {
+      display: none;
+    }
+
     :global(.media-lightbox-caption) {
       background: rgb(0 0 0 / 0.72);
       backdrop-filter: blur(6px);
       border-radius: 5px;
       display: block;
+      flex: unset;
       font-size: var(--fs-base);
       line-height: 1.45;
+      order: unset;
       padding: 5px 8px;
       text-align: center;
       width: 100%;
+    }
+
+    :global(.media-lightbox-prev),
+    :global(.media-lightbox-next) {
+      order: unset;
     }
 
     :global(.media-lightbox-close) {

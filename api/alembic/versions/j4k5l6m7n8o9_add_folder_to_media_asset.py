@@ -18,8 +18,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.add_column("media_asset", sa.Column("folder", sa.String(), nullable=True))
-    op.create_index("ix_media_asset_folder", "media_asset", ["folder"], unique=False)
+    conn = op.get_bind()
+    has_col = conn.execute(sa.text(
+        "SELECT 1 FROM information_schema.columns "
+        "WHERE table_name='media_asset' AND column_name='folder'"
+    )).scalar()
+    if not has_col:
+        op.add_column("media_asset", sa.Column("folder", sa.String(), nullable=True))
+
+    has_idx = conn.execute(sa.text(
+        "SELECT 1 FROM pg_indexes "
+        "WHERE tablename='media_asset' AND indexname='ix_media_asset_folder'"
+    )).scalar()
+    if not has_idx:
+        op.create_index("ix_media_asset_folder", "media_asset", ["folder"], unique=False)
 
 
 def downgrade() -> None:
