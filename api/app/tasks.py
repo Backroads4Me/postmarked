@@ -182,6 +182,35 @@ def _probe_video_dimensions(file_path: str) -> tuple[int, int]:
     raise ValueError("No video stream with numeric width and height found")
 
 
+def _probe_duration(file_path: str) -> float:
+    """Return container duration in seconds via ffprobe."""
+    cmd = [
+        "ffprobe", "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        file_path,
+    ]
+    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8").strip()
+    return float(out)
+
+
+def _assert_transcode_complete(src_path: str, dst_path: str) -> None:
+    """
+    Raise ValueError if the transcoded output is meaningfully shorter than the source.
+    iPhone MOV files have the moov atom at the front so ffprobe reports a full
+    duration even when the mdat payload is truncated; this catches that case.
+    """
+    src_dur = _probe_duration(src_path)
+    dst_dur = _probe_duration(dst_path)
+    # Allow 2 s or 2% tolerance for encoder rounding differences
+    tolerance = max(2.0, src_dur * 0.02)
+    if dst_dur < src_dur - tolerance:
+        raise ValueError(
+            f"Transcoded video is truncated: source={src_dur:.1f}s output={dst_dur:.1f}s — "
+            "the original upload may be incomplete"
+        )
+
+
 def _transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
     """Create an iOS/Safari-friendly H.264/AAC MP4 derivative."""
     subprocess.run([
@@ -344,6 +373,7 @@ def process_media_asset(asset_id: str):
                 # so we always produce a web-safe derivative.
                 tmp_mp4 = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp.mp4")
                 _transcode_video_to_mp4(file_path, tmp_mp4)
+                _assert_transcode_complete(file_path, tmp_mp4)
 
                 # Probe dimensions from the transcoded file so rotation is
                 # already baked in and width/height match what the browser sees.

@@ -271,6 +271,8 @@ class MediaAsset(Base):
     stop_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("stop.id", ondelete="SET NULL"), nullable=True)
     post_id: Mapped[Optional[uuid.UUID]] = mapped_column(ForeignKey("post.id", ondelete="SET NULL"), nullable=True)
 
+    folder: Mapped[Optional[str]] = mapped_column(String, nullable=True, index=True)
+
     attached_to: Mapped[Optional[str]] = mapped_column(String, nullable=True)  # 'rv_profile' or 'traveler_profile'
 
     featured: Mapped[bool] = mapped_column(Boolean, default=False)

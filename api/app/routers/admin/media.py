@@ -3,7 +3,7 @@ import uuid
 import json
 import base64
 import hashlib
-from fastapi import APIRouter, Depends, Request, Response, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Query, Request, Response, Header, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Optional, List
 
@@ -24,10 +24,14 @@ router = APIRouter(prefix="/media", tags=["admin-media"])  # tus sub-router live
 
 @router.get("", response_model=List[MediaAssetOut])
 async def list_media_admin(
+    folder: Optional[str] = Query(None),
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_admin_user),
 ):
-    result = await session.execute(select(MediaAsset).order_by(MediaAsset.created_at.desc()))
+    q = select(MediaAsset).order_by(MediaAsset.created_at.desc())
+    if folder is not None:
+        q = q.where(MediaAsset.folder == (folder if folder else None))
+    result = await session.execute(q)
     return result.scalars().all()
 
 
@@ -265,6 +269,7 @@ async def patch_upload(
 
         mime = state["metadata"].get("filetype", "application/octet-stream")
         filename = state["metadata"].get("filename", f"{file_id}.bin")
+        folder = state["metadata"].get("folder") or None
         kind = MediaKind.VIDEO if "video" in mime else MediaKind.PHOTO
 
         asset = MediaAsset(
@@ -281,6 +286,7 @@ async def patch_upload(
             visibility=Visibility.PRIVATE,
             featured=False,
             sort_order=1,
+            folder=folder,
         )
         session.add(asset)
         try:
@@ -328,6 +334,23 @@ async def update_media_asset(
     await session.commit()
     await session.refresh(asset)
     return asset
+
+
+@router.post("/{asset_id}/detach")
+async def detach_media_asset(
+    asset_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user=Depends(current_admin_user),
+):
+    asset = await session.get(MediaAsset, asset_id)
+    if not asset:
+        raise HTTPException(status_code=404, detail="Asset not found")
+    asset.stop_id = None
+    asset.post_id = None
+    asset.trip_id = None
+    asset.visibility = Visibility.PRIVATE
+    await session.commit()
+    return {"ok": True}
 
 
 @router.post("/{asset_id}/requeue")

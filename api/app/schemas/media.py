@@ -11,21 +11,29 @@ class MediaAssetBase(BaseResponse):
     kind: MediaKind
     processing_state: MediaProcessingState
     error_message: Optional[str] = None
-    
+
     width: Optional[int] = None
     height: Optional[int] = None
     aspect_ratio: Optional[float] = None
     duration_seconds: Optional[float] = None
     dominant_color: Optional[str] = None
     blurhash: Optional[str] = None
-    
+
     caption: Optional[str] = None
     alt_text: Optional[str] = None
     visibility: Visibility
-    
+
     derivative_paths: Optional[dict] = dict()
     featured: bool
     sort_order: int
-    
+
+    original_filename: Optional[str] = None
+    folder: Optional[str] = None
+    created_at: datetime
+
+    stop_id: Optional[uuid.UUID] = None
+    post_id: Optional[uuid.UUID] = None
+    trip_id: Optional[uuid.UUID] = None
+
 class MediaAssetOut(MediaAssetBase):
     pass
