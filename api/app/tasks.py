@@ -336,7 +336,7 @@ def process_media_asset(asset_id: str):
 
                 # Extract poster image
                 tmp_poster = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp-poster.jpg")
-                ffmpeg_cmd = ["ffmpeg", "-y", "-i", file_path, "-vframes", "1", "-q:v", "2", tmp_poster]
+                ffmpeg_cmd = ["ffmpeg", "-y", "-i", file_path, "-map", "0:v:0", "-frames:v", "1", "-update", "1", "-q:v", "2", tmp_poster]
                 subprocess.run(ffmpeg_cmd, check=True)
 
                 # Transcode to H.264/AAC MP4 for universal browser compatibility.

@@ -115,6 +115,8 @@ def extract_poster(file_path: str, poster_path: str) -> None:
         "0:v:0",
         "-frames:v",
         "1",
+        "-update",
+        "1",
         "-q:v",
         "2",
         poster_path,
