@@ -296,7 +296,7 @@ function tileClass(_m: MediaSummary) {
     const dialog = document.createElement('dialog') as MediaLightboxDialog;
     dialog.className = 'media-lightbox';
     dialog.dataset.globalMediaLightbox = 'true';
-    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><div class="media-lightbox-body"><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video><div class="media-lightbox-count-overlay" data-media-lightbox-count-overlay></div></div><div class="media-lightbox-footer"><div class="media-lightbox-controls"><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><div class="media-lightbox-count" data-media-lightbox-count></div><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button></div><p class="media-lightbox-caption" data-media-lightbox-caption></p></div>';
+    dialog.innerHTML = '<button type="button" class="media-lightbox-close" data-media-lightbox-close aria-label="Close">Close</button><div class="media-lightbox-body"><img class="media-lightbox-image" data-media-lightbox-image alt="" /><video class="media-lightbox-video" data-media-lightbox-video controls playsinline></video></div><div class="media-lightbox-footer"><div class="media-lightbox-count-overlay" data-media-lightbox-count-overlay></div><div class="media-lightbox-controls"><button type="button" class="media-lightbox-nav media-lightbox-prev" data-media-lightbox-prev aria-label="Previous media">‹</button><div class="media-lightbox-count" data-media-lightbox-count></div><button type="button" class="media-lightbox-nav media-lightbox-next" data-media-lightbox-next aria-label="Next media">›</button></div><p class="media-lightbox-caption" data-media-lightbox-caption></p></div>';
     document.body.append(dialog);
 
     const image = dialog.querySelector<HTMLImageElement>('[data-media-lightbox-image]')!;
@@ -740,6 +740,7 @@ function tileClass(_m: MediaSummary) {
     align-items: center;
     gap: 8px;
     padding-top: 8px;
+    position: relative;
   }
 
   /* Dissolve controls into the footer row so prev/next flank the caption */
@@ -784,15 +785,17 @@ function tileClass(_m: MediaSummary) {
     background: rgb(0 0 0 / 0.60);
     backdrop-filter: blur(6px);
     border-radius: 4px;
-    bottom: 12px;
     color: rgb(255 255 255 / 0.85);
     font-family: var(--mono);
     font-size: var(--fs-2xs);
-    left: 50%;
+    left: 0;
     letter-spacing: 0.08em;
     padding: 2px 7px;
     pointer-events: none;
     position: absolute;
+    bottom: 100%;
+    left: 22px;
+    margin-bottom: 4px;
     transform: translateX(-50%);
     transition: opacity 0.4s ease;
     white-space: nowrap;
