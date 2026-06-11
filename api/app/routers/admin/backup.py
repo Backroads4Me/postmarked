@@ -207,7 +207,10 @@ async def export_backup(
     return StreamingResponse(
         buf,
         media_type="application/zip",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(buf.getbuffer().nbytes),
+        },
     )
 
 
