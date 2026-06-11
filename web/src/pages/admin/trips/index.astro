@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
+import { formatDate } from '../../../lib/dates.js';
 
 let trips = [];
 const cookie = Astro.request.headers.get('cookie');
@@ -59,8 +60,8 @@ function statusBadge(status) {
                 </div>
                 <div class="text-xs text-dim font-mono tracking-widest">
                   {trip.slug}
-                  {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
-                  {trip.end_date && ` – ${new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                  {trip.start_date && ` · ${formatDate(trip.start_date, { month: 'short', year: 'numeric' })}`}
+                  {trip.end_date && ` – ${formatDate(trip.end_date, { month: 'short', year: 'numeric' })}`}
                 </div>
               </div>
               <div class="flex gap-2">
@@ -95,8 +96,8 @@ function statusBadge(status) {
               </div>
               <div class="text-xs text-dim font-mono tracking-widest">
                 {trip.slug}
-                {trip.start_date && ` · ${new Date(trip.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
-                {trip.end_date && ` – ${new Date(trip.end_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`}
+                {trip.start_date && ` · ${formatDate(trip.start_date, { month: 'short', year: 'numeric' })}`}
+                {trip.end_date && ` – ${formatDate(trip.end_date, { month: 'short', year: 'numeric' })}`}
               </div>
             </div>
             <div class="flex gap-2">

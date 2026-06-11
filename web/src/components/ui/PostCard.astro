@@ -4,6 +4,7 @@
  * Shared between the home screen (LocationUpdateGroup) and stop detail pages.
  */
 import MediaGallery from './MediaGallery.astro';
+import { formatDate as fmtDate } from '../../lib/dates.js';
 
 interface MediaSummary {
   id: string;
@@ -30,16 +31,7 @@ interface Props {
 
 const { title, posted_at, body, summary, media, href, cardClass = '' } = Astro.props;
 
-function formatDate(dateStr?: string) {
-  if (!dateStr) return '';
-  try {
-    return new Date(dateStr)
-      .toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-      .toUpperCase();
-  } catch { return ''; }
-}
-
-const dateLabel = formatDate(posted_at);
+const dateLabel = fmtDate(posted_at, { month: 'short', day: 'numeric', year: 'numeric' }).toUpperCase();
 ---
 
 <article class:list={[cardClass, href ? 'post-card-linked' : false]}>

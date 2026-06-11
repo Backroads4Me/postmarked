@@ -3,8 +3,10 @@ import Layout from '../layouts/Layout.astro';
 import LocationUpdateGroup from '../components/ui/LocationUpdateGroup.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
+import { formatDate } from '../lib/dates.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
 
+const SITE_TZ = import.meta.env.PUBLIC_ADMIN_TIMEZONE || 'America/New_York';
 const PAGE_SIZE = 20;
 let timelineData = null;
 let error = null;
@@ -63,8 +65,8 @@ function groupByMonth(items) {
   const groups = {};
   for (const item of items) {
     const d = new Date(item.posted_at);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const key = new Intl.DateTimeFormat('en-CA', { timeZone: SITE_TZ, year: 'numeric', month: '2-digit' }).format(d);
+    const label = formatDate(item.posted_at, { month: 'long', year: 'numeric' });
     if (!groups[key]) {
       groups[key] = { label, locations: new Map() };
     }

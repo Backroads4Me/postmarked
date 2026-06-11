@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
+import { formatDate as fmtDate } from '../../../lib/dates.js';
 
 let posts = [];
 try {
@@ -13,8 +14,7 @@ try {
 }
 
 function formatPostDate(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return fmtDate(dateStr, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function statusBadge(status) {

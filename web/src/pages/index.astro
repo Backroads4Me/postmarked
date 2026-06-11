@@ -4,6 +4,7 @@ import CurrentLocationCard from '../components/ui/CurrentLocationCard.astro';
 import LocationUpdateGroup from '../components/ui/LocationUpdateGroup.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
+import { formatDate } from '../lib/dates.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
 import { fetchWeather } from '../lib/weather.js';
 
@@ -97,8 +98,7 @@ const prevStopMention = previousStop ? { cityState: stopCityState(previousStop),
 const updateGroups = groupHomeUpdates(homeData?.recent_stops || [], homeData?.recent_posts || []);
 
 function formatStopDate(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+  return formatDate(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
 }
 
 ---

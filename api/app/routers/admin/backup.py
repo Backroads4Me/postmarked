@@ -71,6 +71,15 @@ async def _query_all(session: AsyncSession, model_class) -> list[dict]:
     ]
 
 
+def _serialize_stop_backup_row(row: dict[str, Any]) -> dict[str, Any]:
+    data = dict(row)
+    for key in ("start_date", "end_date"):
+        value = data.get(key)
+        if isinstance(value, str) and "T" in value:
+            data[key] = value.split("T", 1)[0]
+    return data
+
+
 def _geo_col_keys(model_class) -> set[str]:
     """Return column keys that hold Geography/Geometry values."""
     mapper = sa_inspect(model_class)
@@ -108,7 +117,7 @@ async def export_backup(
 ):
     """Download a ZIP archive of all content, users, and media derivatives."""
     from app.models.content import MediaAsset, PointOfInterest, Post, Stop, SiteTextSection, Trip
-    from app.models.system import PreApprovedEmail, SiteConfig
+    from app.models.system import Comment, Like, PreApprovedEmail, SiteConfig
     from app.models.user import NotificationPreference, User as UserModel
 
     buf = io.BytesIO()
@@ -117,6 +126,8 @@ async def export_backup(
     with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         async def _dump(name: str, model_class):
             rows = await _query_all(session, model_class)
+            if name == "stops":
+                rows = [_serialize_stop_backup_row(row) for row in rows]
             entity_counts[name] = len(rows)
             zf.writestr(f"data/{name}.json", json.dumps(rows))
 
@@ -134,6 +145,8 @@ async def export_backup(
         zf.writestr("data/media_assets.json", json.dumps(media_rows))
 
         await _dump("site_text_sections", SiteTextSection)
+        await _dump("comments", Comment)
+        await _dump("likes", Like)
 
         # Bundle derivative files from disk — read paths from derivative_paths.
         import re
@@ -236,6 +249,16 @@ async def import_backup(
         path = f"data/{archive_name}.json"
         return json.loads(zf.read(path)) if path in zip_names else []
 
+    def _restore_value(archive_name: str, key: str, val: Any) -> Any:
+        if archive_name == "stops" and key in {"start_date", "end_date"} and isinstance(val, str):
+            date_part = val.split("T", 1)[0]
+            try:
+                date.fromisoformat(date_part)
+            except ValueError:
+                return val
+            return f"{date_part}T12:00:00+00:00"
+        return val
+
     async def _restore(archive_name: str, model_class, skip_cols: set[str] | None = None):
         rows = _load(archive_name)
         geo_keys = _geo_col_keys(model_class)
@@ -244,6 +267,7 @@ async def import_backup(
             for key, val in row.items():
                 if skip_cols and key in skip_cols:
                     continue
+                val = _restore_value(archive_name, key, val)
                 if val is None:
                     data[key] = None
                 elif key in geo_keys:
@@ -260,7 +284,7 @@ async def import_backup(
         entity_counts[archive_name] = len(rows)
 
     from app.models.content import MediaAsset, PointOfInterest, Post, Stop, SiteTextSection, Trip
-    from app.models.system import PreApprovedEmail, SiteConfig
+    from app.models.system import Comment, Like, PreApprovedEmail, SiteConfig
     from app.models.user import NotificationPreference, User as UserModel
 
     # Stash circular cover FKs; insert trips/stops without them first.
@@ -282,6 +306,8 @@ async def import_backup(
     await _restore("media_assets", MediaAsset, skip_cols={"post_id"})
     await _restore("posts", Post)
     await _restore("site_text_sections", SiteTextSection)
+    await _restore("comments", Comment)
+    await _restore("likes", Like)
 
     # Patch back all deferred circular FK references.
     for trip_id_str, cover_id_str in trip_cover_map.items():

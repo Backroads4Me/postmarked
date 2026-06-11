@@ -3,6 +3,7 @@
  * CurrentLocationCard — Hero card showing where the RV is right now.
  */
 import Postmark from './Postmark.astro';
+import { formatDate as fmtDate } from '../../lib/dates.js';
 
 interface StopMention {
   cityState: string;
@@ -42,18 +43,12 @@ const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, summary, arrivalDat
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
-  } catch { return dateStr; }
+  return fmtDate(dateStr, { weekday: 'short', month: 'short', day: 'numeric' }) || dateStr;
 }
 
 function stampDate(dateStr?: string) {
   if (!dateStr) return 'ON ROAD';
-  try {
-    return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  } catch {
-    return dateStr;
-  }
+  return fmtDate(dateStr, { month: 'short', day: 'numeric' }) || dateStr;
 }
 
 function stampYear(dateStr?: string) {

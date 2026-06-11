@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../../lib/api.js';
+import { toDateInput } from '../../../../lib/dates.js';
 
 const { trip_id, stop_id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
@@ -29,13 +30,6 @@ try {
 }
 
 if (!trip || !stop) return Astro.redirect(`/admin/stops/${trip_id}`);
-
-function toLocalDatetime(dateStr) {
-  if (!dateStr) return '';
-  const d = new Date(dateStr);
-  const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
 
 // Parse lat/lon from WKT POINT or direct fields
 let lat = stop.latitude ?? '';
@@ -92,13 +86,13 @@ const tripIsPrivate = trip.visibility === 'private';
 
       <div class="flex flex-col gap-1">
         <label class="text-sm font-bold">Start Date</label>
-        <input type="datetime-local" name="start_date" value={toLocalDatetime(stop.start_date)}
+        <input type="date" name="start_date" value={toDateInput(stop.start_date)}
           class="form-input" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-sm font-bold">End Date</label>
-        <input type="datetime-local" name="end_date" value={toLocalDatetime(stop.end_date)}
+        <input type="date" name="end_date" value={toDateInput(stop.end_date)}
           class="form-input" />
       </div>
 
@@ -150,20 +144,25 @@ const tripIsPrivate = trip.visibility === 'private';
 
   <script>
     const form = document.getElementById('stop-edit-form') as HTMLFormElement;
-    const errorDiv = document.getElementById('form-error');
-    const successDiv = document.getElementById('form-success');
+const errorDiv = document.getElementById('form-error');
+const successDiv = document.getElementById('form-success');
 
-    form.addEventListener('submit', async (e) => {
+function normalizeStopDate(value: FormDataEntryValue) {
+  if (typeof value !== 'string' || !value) return value;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value;
+}
+
+form.addEventListener('submit', async (e) => {
       e.preventDefault();
       const fd = new FormData(form);
       const id = fd.get('id');
 
       const body: Record<string, any> = {};
       for (const [k, v] of fd.entries()) {
-        if (k === 'id') continue;
-        if (v === '') continue;
-        body[k] = v;
-      }
+    if (k === 'id') continue;
+    if (v === '') continue;
+    body[k] = k === 'start_date' || k === 'end_date' ? normalizeStopDate(v) : v;
+  }
       if (body.latitude) body.latitude = parseFloat(body.latitude);
       if (body.longitude) body.longitude = parseFloat(body.longitude);
 

@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
+import { formatDate as fmtDate } from '../../../lib/dates.js';
 
 const { trip_id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
@@ -31,8 +32,7 @@ try {
 if (!trip) return Astro.redirect('/admin/stops');
 
 function formatDate(d) {
-  if (!d) return '—';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return fmtDate(d, { month: 'short', day: 'numeric', year: 'numeric' }) || '—';
 }
 
 const tripIsPrivate = trip.visibility === 'private';
@@ -88,13 +88,13 @@ const tripIsPrivate = trip.visibility === 'private';
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">Start Date *</label>
-        <input type="datetime-local" name="start_date" required
+        <input type="date" name="start_date" required
           class="admin-input w-full" />
       </div>
 
       <div class="flex flex-col gap-1">
         <label class="text-xs font-bold">End Date</label>
-        <input type="datetime-local" name="end_date"
+        <input type="date" name="end_date"
           class="admin-input w-full" />
       </div>
 
@@ -268,21 +268,28 @@ const tripIsPrivate = trip.visibility === 'private';
     const title = (e.target as HTMLInputElement).value;
     slugInput.value = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   });
-  document.querySelector<HTMLInputElement>('[name="slug"]')?.addEventListener('input', (e) => {
-    (e.target as HTMLInputElement).dataset.manual = '1';
-  });
+document.querySelector<HTMLInputElement>('[name="slug"]')?.addEventListener('input', (e) => {
+  (e.target as HTMLInputElement).dataset.manual = '1';
+});
 
-  // Add stop submit
-  document.getElementById('add-stop-form')?.addEventListener('submit', async (e) => {
+function normalizeStopDate(value: FormDataEntryValue | undefined) {
+  if (typeof value !== 'string' || !value) return value;
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value;
+}
+
+// Add stop submit
+document.getElementById('add-stop-form')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     const form = e.target as HTMLFormElement;
     const errorDiv = document.getElementById('add-stop-error');
     const data = Object.fromEntries(new FormData(form).entries());
 
     // Convert numeric strings
-    if (data.latitude) data.latitude = parseFloat(data.latitude as string) as any;
-    if (data.longitude) data.longitude = parseFloat(data.longitude as string) as any;
-    if (!data.end_date) delete data.end_date;
+  if (data.latitude) data.latitude = parseFloat(data.latitude as string) as any;
+  if (data.longitude) data.longitude = parseFloat(data.longitude as string) as any;
+  data.start_date = normalizeStopDate(data.start_date) as any;
+  data.end_date = normalizeStopDate(data.end_date) as any;
+  if (!data.end_date) delete data.end_date;
     if (!data.place_name) delete data.place_name;
 
     errorDiv?.classList.add('hidden');

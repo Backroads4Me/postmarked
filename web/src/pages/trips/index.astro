@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import EmptyState from '../../components/ui/EmptyState.astro';
 import { apiUrl } from '../../lib/api.js';
+import { formatDate, formatDateRange } from '../../lib/dates.js';
 import { loadSiteText, sectionText } from '../../lib/siteText.js';
 
 let trips = [];
@@ -15,25 +16,9 @@ try {
   console.error(e);
 }
 
-function formatDate(dateStr) {
-  if (!dateStr) return '';
-  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function formatRange(start, end) {
-  if (!start) return '';
-  if (!end) return formatDate(start);
-  const s = new Date(start);
-  const e = new Date(end);
-  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
-    return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${e.getFullYear()}`;
-  }
-  return `${formatDate(start)} – ${formatDate(end)}`;
-}
-
 function tripDateRange(trip) {
   if (trip.start_date || trip.end_date) {
-    return formatRange(trip.start_date, trip.end_date);
+    return formatDateRange(trip.start_date, trip.end_date);
   }
   const datedStops = (trip.stops || []).filter((s) => s.start_date || s.end_date);
   if (datedStops.length === 0) return '';
@@ -43,7 +28,7 @@ function tripDateRange(trip) {
   const end = datedStops
     .map((s) => s.end_date || s.start_date)
     .sort((a, b) => new Date(b) - new Date(a))[0];
-  return formatRange(start, end);
+  return formatDateRange(start, end);
 }
 
 function coverSrc(trip) {

@@ -1,6 +1,7 @@
 ---
 import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
+import { formatDateRange } from '../../../../lib/dates.js';
 import { cityStateFromAddress } from '../../../../lib/location.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
 import StopMapIsland from '../../../../components/StopMapIsland.jsx';
@@ -40,11 +41,6 @@ const gallery = stopMedia.filter(m => {
   seen.add(m.id);
   return true;
 });
-function fmtDate(d) {
-  if (!d) return '';
-  return new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
 function fmtActivityTime(d, timezoneId) {
   if (!d) return '';
   const opts = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
@@ -56,14 +52,7 @@ const activities = (detail.posts || []).filter(p => p.post_type === 'activity');
 const updates = (detail.posts || []).filter(p => p.post_type !== 'activity');
 
 function fmtRange(start, end) {
-  if (!start) return '';
-  if (!end) return fmtDate(start);
-  const s = new Date(start);
-  const e = new Date(end);
-  if (s.getFullYear() === e.getFullYear() && s.getMonth() === e.getMonth()) {
-    return `${s.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}–${e.getDate()}, ${e.getFullYear()}`;
-  }
-  return `${fmtDate(start)} – ${fmtDate(end)}`;
+  return formatDateRange(start, end);
 }
 
 function stopSiblingLabel(stop) {

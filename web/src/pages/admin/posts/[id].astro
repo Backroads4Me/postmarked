@@ -4,13 +4,12 @@ import { apiUrl } from '../../../lib/api.js';
 import { cityStateFromAddress } from '../../../lib/location.js';
 import { renderMarkdown } from '../../../lib/markdown.js';
 import MediaGallery from '../../../components/ui/MediaGallery.astro';
+import { formatDate, toDateInput as tzDateInput } from '../../../lib/dates.js';
 
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
 
-const ADMIN_TZ = (typeof process !== 'undefined' && process.env.PUBLIC_ADMIN_TIMEZONE)
-  || import.meta.env.PUBLIC_ADMIN_TIMEZONE
-  || 'America/New_York';
+const ADMIN_TZ = import.meta.env.PUBLIC_ADMIN_TIMEZONE || 'America/New_York';
 const todayInAdminTz = new Intl.DateTimeFormat('en-CA', { timeZone: ADMIN_TZ }).format(new Date());
 
 let post = null;
@@ -36,14 +35,13 @@ const attachedMedia = post.media || [];
 const renderedPreviewBody = renderMarkdown(post.body || '');
 
 function toDateInput(iso) {
-  if (!iso) return '';
-  return new Date(iso).toISOString().slice(0, 10);
+  return tzDateInput(iso);
 }
 
 function stopOptionLabel(stop) {
   const cityState = cityStateFromAddress(stop.address_label || stop.summary) || stop.title;
   const monthYear = stop.start_date
-    ? new Date(stop.start_date).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+    ? formatDate(stop.start_date, { month: 'short', year: 'numeric' })
     : '';
   return monthYear ? `${cityState} - ${monthYear}` : cityState;
 }
@@ -228,7 +226,7 @@ function stopOptionLabel(stop) {
         <article class="card-flat">
           <div class="flex items-start justify-between gap-3 mb-1">
             <h3 id="preview-title" class="text-lg font-medium text-paper m-0 min-w-0">{post.title}</h3>
-            <span id="preview-date" class="label shrink-0 mt-1">{new Date(post.posted_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })}</span>
+            <span id="preview-date" class="label shrink-0 mt-1">{formatDate(post.posted_at, { month: 'short', day: 'numeric' })}</span>
           </div>
           {post.summary && <p id="preview-summary" class="text-muted text-sm mt-1 mb-0">{post.summary}</p>}
           {!post.summary && <p id="preview-summary" class="text-muted text-sm mt-1 mb-0 hidden"></p>}
@@ -254,7 +252,7 @@ function stopOptionLabel(stop) {
     </form>
   </div>
 
-  <script define:vars={{ stops, todayInAdminTz, attachedMedia }}>
+  <script define:vars={{ stops, todayInAdminTz, attachedMedia, ADMIN_TZ }}>
     const form = document.getElementById('post-edit-form');
     const errorDiv = document.getElementById('form-error');
     const successDiv = document.getElementById('form-success');
@@ -344,7 +342,7 @@ function stopOptionLabel(stop) {
       previewSummary.textContent = summary;
       previewSummary.classList.toggle('hidden', !summary);
       previewBody.innerHTML = renderMarkdown(body);
-      previewDate.textContent = postedAt ? new Date(postedAt + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '';
+      previewDate.textContent = postedAt ? new Date(postedAt + 'T00:00:00Z').toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: ADMIN_TZ }) : '';
       previewMeta.textContent = `${status} · ${visibility}`;
       previewPlace.textContent = stop?.place_name || stop?.title || '';
     }

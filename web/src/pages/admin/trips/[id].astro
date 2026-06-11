@@ -1,6 +1,7 @@
 ---
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
+import { formatDate as fmtDate } from '../../../lib/dates.js';
 
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
@@ -25,8 +26,7 @@ try {
 if (!trip) return Astro.redirect('/admin/trips');
 
 function formatDate(value) {
-  if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return fmtDate(value, { month: 'short', day: 'numeric', year: 'numeric' }) || '—';
 }
 ---
 
@@ -156,7 +156,7 @@ function formatDate(value) {
               <div class="p-4 flex flex-col md:flex-row justify-between md:items-center gap-4">
                 <div>
                   <div class="font-bold text-lg">{stop.title}</div>
-                  <div class="text-xs text-dim font-mono tracking-widest">{new Date(stop.start_date).toLocaleDateString()}</div>
+                  <div class="text-xs text-dim font-mono tracking-widest">{formatDate(stop.start_date)}</div>
                 </div>
               </div>
             ))}
