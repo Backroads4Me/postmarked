@@ -1,174 +1,81 @@
 # Postmarked
 
-Postmarked is a self-hosted travel journal for sharing your journey with friends and family. Post a quick update, drop a photo, note the place — like sending a postcard from everywhere you go. Visitors can check in whenever they want, or sign up to be notified when something new is posted.
+Postmarked is a self-hosted travel journal for sharing trips, stops, updates, photos, and videos with family and friends. It works for road trips, long weekends, international travel, full-time travel, or any journey you want to share privately on your own server.
 
-It is not a trip planning tool, a blogging platform, or a journaling app. Just quick, lightweight updates from the road.
+It is meant to be simple: run it, sign in, create a trip, post updates along the way, and let visitors follow along.
 
 ## Features
 
-- Post quick updates from the road with text, photos, and location.
-- Visitors can check in anytime, or subscribe for notifications when something new is posted.
-- Admin panel for managing trips, stops, posts, activities, media, and users.
-- Import route itineraries from RV Trip Wizard Excel exports.
-- Docker-based stack: Astro frontend, FastAPI backend, Postgres/PostGIS, Redis, and Celery.
+- Public trip pages, timeline, stops, posts, photos, and videos.
+- Admin UI for trips, stops, posts, media, users, site text, and settings.
+- Public/private visibility controls.
+- Email notifications for new public updates.
+- ZIP backup export and destructive restore.
+- Docker Compose deployment.
+- RV Trip Wizard `.xlsx` import with preview and apply for RV travelers.
 
-## Local URLs
+## Screenshot
 
-When the Docker dev stack is running:
+![Postmarked trip page](screenshots/trip.png)
 
-- Web app: http://localhost:4321
-- API: http://localhost:8000/api/health/ready
-- Optional Flower dashboard: http://localhost:5555 when started with `--profile tools`
-
-Use the Astro web app at http://localhost:4321 for normal testing. Astro proxies `/api/*` and `/media/*` to FastAPI.
-
-Admin:
-
-- URL: http://localhost:4321/admin
-- Email: `ADMIN_EMAIL` from `.env` (`admin@example.com` by default)
-- Password: `ADMIN_PASSWORD` from `.env` (`changeme` by default)
-
-Change the seeded admin credentials before any real deployment.
-
-## Prerequisites
-
-- Docker and Docker Compose
-- Node 22+ for direct frontend development
-- Python 3.12+ and `uv` for direct API development
-
-## Local Setup With Docker
-
-1. Create local environment overrides:
-
-   ```bash
-   cp .env.example .env
-   ```
-
-2. Start the stack:
-
-   ```bash
-   docker compose up --build
-   ```
-
-   Add `--profile tools` if you want the optional Flower Celery dashboard.
-
-3. Seed or refresh demo data:
-
-   ```bash
-   docker compose exec api python scripts/seed.py
-   ```
-
-The `api-migrate` service runs `alembic upgrade head` automatically during compose startup.
-
-## Verification
-
-Useful smoke checks:
+## Install
 
 ```bash
-docker compose ps
-docker exec api alembic current
-docker exec api python -c "import app.main; print('api import ok')"
-docker exec api python scripts/seed.py
-docker exec web npm run build
-./scripts/check-media-storage.sh
-./scripts/smoke-media-upload.sh
+cp .env.example .env
+docker compose up -d
 ```
 
-Expected public API checks:
+Before deploying, edit `.env` and set production values for:
 
-```bash
-curl http://localhost:8000/api/health/ready
-curl http://localhost:8000/api/home
-curl http://localhost:8000/api/timeline
-curl http://localhost:8000/api/trip-segments
+- `SECRET_KEY`
+- `APP_BASE_URL`
+- `ADMIN_EMAIL`
+- `ADMIN_PASSWORD`
+- `POSTGRES_PASSWORD`
+
+Open the admin UI:
+
+```text
+http://localhost:4321/admin
 ```
 
-## RV Trip Wizard Excel Import
+Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
 
-The app supports RV Trip Wizard `.xlsx` exports for importing route itineraries as normal stops.
+## Storage
 
-Browser flow:
-
-1. Log in as admin.
-2. Open http://localhost:4321/admin/imports/rv-trip-wizard.
-3. Upload an `.xlsx` export.
-4. Review the diff.
-5. Apply it to an existing trip segment or create a new one.
-
-API flow:
-
-```bash
-curl -X POST http://localhost:8000/api/admin/imports/rv-trip-wizard/preview \
-  -H "Cookie: <session>" \
-  -F "file=@/path/to/trip.xlsx"
-```
-
-```bash
-curl -X POST http://localhost:8000/api/admin/imports/<import_run_id>/apply \
-  -H "Cookie: <session>" \
-  -H "Content-Type: application/json" \
-  -d '{"target_trip_id": "<trip-uuid>", "create_trip": false}'
-```
-
-Use `"create_trip": true` to create a trip segment from the file title.
-
-Reimport is preview-first. Removed stops are marked `REMOVED_FROM_LATEST_IMPORT`, not deleted. Private fields such as reservation numbers, comments, cost, and fuel data are stored for the owner but are not returned by public reader endpoints.
-
-## Direct Development
-
-Frontend:
-
-```bash
-cd web
-npm install
-API_BASE_URL=http://localhost:8000 npm run dev
-```
-
-API:
-
-```bash
-cd api
-uv venv
-uv pip install -e ".[dev]"
-PYTHONPATH=. DATABASE_URL=postgresql+psycopg://postgres:postgres@localhost:5432/postmarked uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-For direct API development you still need PostgreSQL/PostGIS and Redis. The easiest route is to run the Docker database services.
-
-## Maps
-
-The default map provider is Google Maps because it avoids requiring a local basemap file:
+Media files are mounted from `MEDIA_DIR`:
 
 ```env
-PUBLIC_GOOGLE_MAPS_API_KEY=<your browser API key>
-PUBLIC_GOOGLE_MAPS_MAP_ID=<optional cloud map ID>
+MEDIA_DIR=./data
 ```
 
-Create a Google Maps Platform API key, restrict it by HTTP referrer, and set budget/quota alerts in Google Cloud. If the key is missing, the app still renders a simple route schematic instead of a blank map. The optional map ID enables Google Advanced Markers and cloud map styling; local testing falls back to Google's demo map ID when it is blank.
+The database uses Docker's `db_data` volume by default.
 
-## Deployment Notes
+## Backup And Restore
 
-For a single-host deployment:
+In the admin UI, use Backup to export or restore an instance.
 
-1. Copy `.env.example` to `.env`.
-2. Set a strong `SECRET_KEY`:
-   ```bash
-   python3 -c "import secrets; print(secrets.token_urlsafe(64))"
-   ```
-3. Set production `ALLOWED_ORIGINS`, `ALLOWED_HOSTS`, and `FLOWER_BASIC_AUTH`.
-4. Point your own reverse proxy at the `web` service and expose only the routes you intend to publish. The bundled Compose file does not ship a Caddy container.
-5. Run:
+- Export downloads a ZIP with database records and media files.
+- Restore uploads a ZIP and replaces the current instance with its contents.
+- Restore is destructive and has no preview step.
 
-   ```bash
-   docker compose -f compose.yaml up --build -d
-   ```
+## RV Trip Wizard Import
 
-Backups and restores are handled by `scripts/backup.sh` and `scripts/restore.sh`.
-If media images start returning 404s after a compose/project-name migration,
-run `./scripts/check-media-storage.sh` to confirm the database still points at
-files present in the active Docker media volumes.
+In the admin UI, use the Import page to upload an RV Trip Wizard `.xlsx` export. Review the preview diff, then apply it.
+
+Imported stops are created as private drafts. Stops from a previous RV Trip Wizard import that are missing from the latest file are archived rather than deleted.
 
 ## License
 
-This project is licensed under the [GNU General Public License v3.0](LICENSE).
+[GPL v3](LICENSE)
 
+## Support
+
+Postmarked is free and open source.
+
+If it helped you share your travels, please star the repository so other self-hosters can find it.
+
+Sponsorships are appreciated, but never expected.
+
+[![Star Repository](https://img.shields.io/badge/%E2%AD%90%20Star%20this%20Repo-GitHub-lightgrey?logo=github&logoColor=black)](https://github.com/Backroads4Me/postmarked)
+[![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-EA4AAA?logo=github-sponsors&logoColor=white)](https://github.com/sponsors/Backroads4Me)

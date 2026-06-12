@@ -3,6 +3,7 @@ import Layout from '../../../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../../../lib/api.js';
 import { cityStateFromAddress } from '../../../../../../lib/location.js';
 import { renderMarkdown } from '../../../../../../lib/markdown.js';
+import { mediaOgImage, plainText } from '../../../../../../lib/og.js';
 import CommentsIsland from '../../../../../../components/CommentsIsland.jsx';
 import LikesIsland from '../../../../../../components/LikesIsland.jsx';
 import MediaGallery from '../../../../../../components/ui/MediaGallery.astro';
@@ -43,9 +44,18 @@ function fmtTime(d, timezoneId) {
   if (timezoneId) opts.timeZone = timezoneId;
   return new Date(d).toLocaleTimeString('en-US', opts);
 }
+
+const postDescription = plainText(post.summary || post.body || `${post.title} from ${post.trip_title}.`);
+const postOgImage = mediaOgImage(post.media);
 ---
 
-<Layout title={`${post.title} — ${post.trip_title}`}>
+<Layout
+  title={`${post.title} — ${post.trip_title}`}
+  description={postDescription}
+  canonicalPath={`/trips/${slug}/stops/${stopSlug}/posts/${post_slug}`}
+  ogImage={postOgImage}
+  ogType="article"
+>
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
     {loadError && <div class="card-flat frame-prose mb-4 text-sm text-ember">{loadError}</div>}
 

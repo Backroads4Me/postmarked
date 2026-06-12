@@ -5,14 +5,22 @@ import NavBar from '../components/ui/NavBar.astro';
 interface Props {
   title?: string;
   description?: string;
+  canonicalPath?: string;
+  ogImage?: string;
+  ogType?: string;
   hideNav?: boolean;
 }
 
 const {
   title = "Postmarked",
   description = "A travel journal for the road. Quick updates, photos, and notes — like sending a postcard from everywhere you go.",
+  canonicalPath = Astro.url.pathname,
+  ogImage,
+  ogType = "website",
   hideNav = false,
 } = Astro.props;
+const canonicalUrl = new URL(canonicalPath, Astro.url.origin).toString();
+const imageUrl = ogImage ? new URL(ogImage, Astro.url.origin).toString() : null;
 ---
 <!doctype html>
 <html lang="en">
@@ -24,11 +32,23 @@ const {
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="generator" content={Astro.generator} />
     <meta name="description" content={description} />
+    <link rel="canonical" href={canonicalUrl} />
+    <link rel="alternate" type="application/rss+xml" title="Postmarked updates" href="/rss.xml" />
     <link rel="manifest" href="/manifest.json" />
     <meta name="theme-color" content="#0D141C" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Postmarked" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={ogType} />
+    <meta property="og:url" content={canonicalUrl} />
+    <meta property="og:site_name" content="Postmarked" />
+    {imageUrl && <meta property="og:image" content={imageUrl} />}
+    <meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {imageUrl && <meta name="twitter:image" content={imageUrl} />}
     <script is:inline src="/postmarked-config.js"></script>
     <script is:inline>
       (() => {

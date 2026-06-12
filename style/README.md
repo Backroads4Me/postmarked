@@ -11,8 +11,7 @@ caused drift between layouts.
 
 1. `STYLE_GUIDE.md` for page layout, component, typography, and implementation
    rules.
-2. `Postmarked - Color Palette.md` for the current token values and intended
-   semantic use.
+2. `web/src/styles/global.css` for current token values.
 
 ## Source Of Truth
 

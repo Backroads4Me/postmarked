@@ -16,7 +16,6 @@ if (!res.ok) {
 const account = await res.json();
 const configData = configRes.ok ? await configRes.json().catch(() => ({})) : {};
 const email_enabled = configData.email_enabled ?? false;
-const sms_enabled = configData.sms_enabled ?? false;
 ---
 
 <Layout title="Account — Postmarked">
@@ -37,18 +36,23 @@ const sms_enabled = configData.sms_enabled ?? false;
               <label class="label" for="display_name">Display name</label>
               <input id="display_name" name="display_name" value={account.display_name || ''} class="form-input" />
             </div>
-            <div class="grid gap-1">
-              <label class="label" for="email">Email address</label>
-              <input id="email" name="email" type="email" value={account.email} required class="form-input" />
-            </div>
-            <div class="flex flex-wrap items-center gap-3 sm:justify-self-start">
-              <button type="submit" class="btn btn-primary justify-center">Save changes</button>
-              <button type="button" class="btn justify-center" onclick="signOut()">Sign out</button>
+          <div class="grid gap-1">
+            <label class="label" for="email">Email address</label>
+            <input id="email" name="email" type="email" value={account.email} required class="form-input" />
+          </div>
+          <div class="grid gap-1">
+            <label class="label" for="profile_current_password">Current password</label>
+            <input id="profile_current_password" name="current_password" type="password" required class="form-input" autocomplete="current-password" />
+            <p class="text-xs text-muted">Required to save profile or email changes.</p>
+          </div>
+          <div class="flex flex-wrap items-center gap-3 sm:justify-self-start">
+            <button type="submit" class="btn btn-primary justify-center">Save changes</button>
+            <button type="button" class="btn justify-center" onclick="signOut()">Sign out</button>
             </div>
           </form>
         </section>
 
-        {(email_enabled || sms_enabled) && (
+        {email_enabled && (
           <section id="notifications" class="bg-surface border border-line rounded-lg p-6">
             <h2 class="display text-2xl mb-1">Notifications</h2>
             <p class="text-sm text-muted mb-5">Choose how you'd like to hear about new updates.</p>
@@ -65,33 +69,7 @@ const sms_enabled = configData.sms_enabled ?? false;
                   </label>
                 )}
 
-                {sms_enabled && (
-                  <div class="flex flex-col gap-3">
-                    <div class="grid gap-1">
-                      <label class="label" for="phone_number">Phone number <span class="text-muted font-normal">(optional)</span></label>
-                      <input id="phone_number" name="phone_number" type="tel"
-                        value={account.phone_number || ''}
-                        placeholder="5551234567"
-                        class="form-input"
-                        onblur="normalizePhone(this)" />
-                    </div>
-                    <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
-                      <input type="checkbox" name="sms_opted_in" id="sms_opted_in" class="mt-0.5 shrink-0"
-                        checked={account.sms_opted_in}
-                        onchange="onSmsOptInChange(this)" />
-                      <span>
-                        <strong class="text-paper">Text message updates</strong><br />
-                        By selecting this box, you agree to receive SMS notifications about trip updates from Postmarked.
-                        Message frequency varies. Message &amp; data rates may apply.
-                        Reply STOP to opt out at any time or HELP for help.
-                        <a href="/privacy" class="underline hover:text-ember transition-colors">Privacy Policy</a> &amp; <a href="/terms" class="underline hover:text-ember transition-colors">Terms</a>.
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div class="grid gap-3">
+                <div class="grid gap-3">
                 <p class="label">Frequency</p>
                 <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
                   <input type="radio" name="notify_frequency" value="all_updates" class="mt-0.5 shrink-0"
@@ -134,51 +112,18 @@ const sms_enabled = configData.sms_enabled ?? false;
     await saveJson('/api/account/profile', {
       display_name: form.display_name.value.trim() || null,
       email: form.email.value,
+      current_password: form.current_password.value,
     }, 'Profile saved.');
+    form.current_password.value = '';
   }
 
-  function normalizePhone(phoneEl) {
-    let digits = phoneEl.value.replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
-    phoneEl.value = digits;
-    const optIn = document.getElementById('sms_opted_in');
-    if (digits && optIn && !optIn.checked) {
-      showMessage('Check the "Text message updates" box to opt in to SMS notifications, or clear the phone number if you don\'t want updates.', true);
-    }
-  }
-
-  function onSmsOptInChange(checkbox) {
-    const phone = document.getElementById('phone_number');
-    if (checkbox.checked) {
-      if (!phone || !phone.value.trim()) {
-        phone?.focus();
-        showMessage('Enter a phone number to receive text message updates.', true);
-      }
-    } else {
-      if (phone) phone.value = '';
-    }
-  }
-
-  async function updateNotifications(form) {
+    async function updateNotifications(form) {
     const emailOn = form.email_notify?.checked ?? false;
-    const smsOn = form.sms_opted_in?.checked ?? false;
-    const phone = form.phone_number?.value?.trim() || '';
     const freq = form.notify_frequency.value;
-
-    if (smsOn && !phone) {
-      showMessage('Enter a phone number to enable text message updates.', true);
-      return;
-    }
-    if (phone && phone.replace(/\D/g, '').length !== 10) {
-      showMessage('Enter a valid 10-digit phone number.', true);
-      return;
-    }
 
     await saveJson('/api/account/notifications', {
       email_opted_in: emailOn,
       notification_frequency: freq,
-      phone_number: phone || null,
-      sms_opted_in: smsOn,
     }, 'Notification preferences saved.');
   }
 

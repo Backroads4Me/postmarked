@@ -30,7 +30,5 @@ class NotificationPreference(Base):
     frequency: Mapped[NotificationFrequency] = mapped_column(SqlaEnum(NotificationFrequency, name="notificationfrequency"), default=NotificationFrequency.ALL_UPDATES)
     email_opted_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     unsubscribed_token: Mapped[str] = mapped_column(String, nullable=False, unique=True, default=lambda: uuid.uuid4().hex)
-    phone_number: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
-    sms_opted_in: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
 
     user: Mapped["User"] = relationship("User", back_populates="notification_preference")

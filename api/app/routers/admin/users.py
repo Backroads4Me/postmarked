@@ -10,7 +10,7 @@ from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.enums import ApprovalState, NotificationFrequency, UserRole
 from app.models.user import NotificationPreference, User
-from app.schemas.account import SmsUpdate
+from app.services.notification_preferences import get_or_create_notification_preference
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
 
@@ -24,8 +24,6 @@ class UserSummary(BaseModel):
     role: str
     email_opted_in: bool = False
     notification_frequency: NotificationFrequency
-    phone_number: Optional[str] = None
-    sms_opted_in: bool = False
 
 
 class NotificationPreferenceUpdate(BaseModel):
@@ -38,22 +36,8 @@ class AdminProfileUpdate(BaseModel):
     display_name: Optional[str] = Field(default=None, max_length=200)
 
 
-async def _get_or_create_preference(session: AsyncSession, user_id: uuid.UUID) -> NotificationPreference:
-    result = await session.execute(
-        select(NotificationPreference).where(NotificationPreference.user_id == user_id)
-    )
-    preference = result.scalars().first()
-    if preference:
-        return preference
-
-    preference = NotificationPreference(user_id=user_id, frequency=NotificationFrequency.ALL_UPDATES)
-    session.add(preference)
-    await session.flush()
-    return preference
-
-
 async def _summary(session: AsyncSession, user: User) -> UserSummary:
-    preference = await _get_or_create_preference(session, user.id)
+    preference = await get_or_create_notification_preference(session, user.id)
     return UserSummary(
         id=user.id,
         email=user.email,
@@ -63,8 +47,6 @@ async def _summary(session: AsyncSession, user: User) -> UserSummary:
         role=user.role.value,
         email_opted_in=preference.email_opted_in,
         notification_frequency=preference.frequency,
-        phone_number=preference.phone_number,
-        sms_opted_in=preference.sms_opted_in,
     )
 
 
@@ -99,7 +81,6 @@ async def approve_user(
     await session.commit()
     await session.refresh(user)
     summary = await _summary(session, user)
-    await session.commit()
     return summary
 
 
@@ -117,7 +98,6 @@ async def reject_user(
     await session.commit()
     await session.refresh(user)
     summary = await _summary(session, user)
-    await session.commit()
     return summary
 
 
@@ -131,13 +111,12 @@ async def update_user_notifications(
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    preference = await _get_or_create_preference(session, user.id)
+    preference = await get_or_create_notification_preference(session, user.id)
     preference.email_opted_in = payload.email_opted_in
     preference.frequency = payload.notification_frequency
     await session.commit()
     await session.refresh(user)
     summary = await _summary(session, user)
-    await session.commit()
     return summary
 
 
@@ -156,7 +135,6 @@ async def promote_user(
     await session.commit()
     await session.refresh(user)
     summary = await _summary(session, user)
-    await session.commit()
     return summary
 
 
@@ -175,7 +153,6 @@ async def demote_user(
     await session.commit()
     await session.refresh(user)
     summary = await _summary(session, user)
-    await session.commit()
     return summary
 
 
@@ -216,25 +193,4 @@ async def update_user_profile(
     await session.commit()
     await session.refresh(user)
     summary = await _summary(session, user)
-    await session.commit()
-    return summary
-
-
-@router.patch("/{user_id}/sms", response_model=UserSummary)
-async def update_user_sms(
-    user_id: uuid.UUID,
-    payload: SmsUpdate,
-    session: AsyncSession = Depends(get_async_session),
-    _admin=Depends(current_admin_user),
-):
-    user = await session.get(User, user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    preference = await _get_or_create_preference(session, user.id)
-    preference.phone_number = payload.phone_number
-    preference.sms_opted_in = payload.sms_opted_in and bool(payload.phone_number)
-    await session.commit()
-    await session.refresh(user)
-    summary = await _summary(session, user)
-    await session.commit()
     return summary

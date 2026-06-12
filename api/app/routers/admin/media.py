@@ -19,6 +19,7 @@ from app.models.enums import MediaKind, MediaProcessingState, Visibility
 from app.tasks import process_media_asset
 from app.schemas.media import MediaAssetOut
 from app.services.media_storage import delete_media_asset_files
+from app.services.visibility import child_visibility_for_parent
 
 router = APIRouter(prefix="/media", tags=["admin-media"])  # tus sub-router lives at /media/tus
 
@@ -30,26 +31,40 @@ def _asset_date_expr():
     return cast(func.timezone(ADMIN_TZ, MediaAsset.created_at), Date)
 
 
+def _unassigned_media_filter():
+    return (
+        MediaAsset.stop_id.is_(None),
+        MediaAsset.post_id.is_(None),
+        MediaAsset.trip_id.is_(None),
+    )
+
+
 @router.get("", response_model=List[MediaAssetOut])
 async def list_media_admin(
     date: Optional[date_type] = Query(None),
+    unassigned: bool = Query(False),
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_admin_user),
 ):
     q = select(MediaAsset).order_by(MediaAsset.created_at.desc())
     if date is not None:
         q = q.where(_asset_date_expr() == date)
+    if unassigned:
+        q = q.where(*_unassigned_media_filter())
     result = await session.execute(q)
     return result.scalars().all()
 
 
 @router.get("/dates", response_model=List[str])
 async def list_media_dates_admin(
+    unassigned: bool = Query(False),
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_admin_user),
 ):
     date_expr = _asset_date_expr()
     q = select(date_expr).distinct().order_by(date_expr.desc())
+    if unassigned:
+        q = q.where(*_unassigned_media_filter())
     result = await session.execute(q)
     return [row.isoformat() for row in result.scalars().all()]
 
@@ -90,7 +105,8 @@ async def assign_media_admin(
         raise HTTPException(status_code=404, detail="Stop not found")
 
     trip = await session.get(Trip, stop.trip_id)
-    inherited = req.visibility if req.visibility is not None else (trip.visibility if trip else Visibility.PRIVATE)
+    parent_visibility = trip.visibility if trip else Visibility.PRIVATE
+    inherited = child_visibility_for_parent(parent_visibility, req.visibility)
 
     assigned = 0
     for mid in req.media_ids:

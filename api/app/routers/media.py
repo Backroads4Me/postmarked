@@ -22,9 +22,9 @@ from sqlalchemy.orm import selectinload
 
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
-from app.models.content import MediaAsset, Post, Stop, Trip
-from app.models.enums import MediaKind, PostStatus, StopStatus, TripStatus
-from app.services.visibility import effective_visibility, is_visible_to_user
+from app.models.content import MediaAsset
+from app.models.enums import MediaKind
+from app.services.visibility import effective_visibility, is_visible_to_user, resolve_media_parent_visibility
 
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
@@ -104,43 +104,6 @@ def _resolve_hashed_path(asset: MediaAsset, filename: str) -> Optional[tuple[str
     return disk_path, mime_type
 
 
-async def _parent_visibility(session: AsyncSession, asset: MediaAsset):
-    """Return the strongest parent visibility and whether the parent chain is published."""
-    if asset.post_id:
-        result = await session.execute(
-            select(Post, Stop.visibility, Stop.status, Trip.visibility, Trip.status)
-            .outerjoin(Stop, Post.stop_id == Stop.id)
-            .outerjoin(Trip, (Post.trip_id == Trip.id) | (Stop.trip_id == Trip.id))
-            .where(Post.id == asset.post_id)
-        )
-        row = result.first()
-        if row:
-            post, stop_vis, stop_status, trip_vis, trip_status = row
-            published = post.status == PostStatus.PUBLISHED
-            if stop_status is not None:
-                published = published and stop_status == StopStatus.PUBLISHED
-            if trip_status is not None:
-                published = published and trip_status == TripStatus.PUBLISHED
-            parent_vis = effective_visibility(stop_vis, trip_vis) if stop_vis is not None else trip_vis
-            return effective_visibility(post.visibility, parent_vis), published
-    if asset.stop_id:
-        result = await session.execute(
-            select(Stop.visibility, Stop.status, Trip.visibility, Trip.status)
-            .select_from(Stop)
-            .outerjoin(Trip, Stop.trip_id == Trip.id)
-            .where(Stop.id == asset.stop_id)
-        )
-        row = result.first()
-        if row:
-            stop_vis, stop_status, trip_vis, trip_status = row
-            return effective_visibility(stop_vis, trip_vis), stop_status == StopStatus.PUBLISHED and trip_status == TripStatus.PUBLISHED
-    if asset.trip_id:
-        trip = await session.get(Trip, asset.trip_id)
-        if trip:
-            return trip.visibility, trip.status == TripStatus.PUBLISHED
-    return None, True
-
-
 def _range_response(path: str, mime_type: str, range_header: str, etag: str, cache_control: str) -> Response:
     """Serve a byte range from disk. Standard `bytes=START-END` parsing."""
     file_size = os.path.getsize(path)
@@ -150,8 +113,15 @@ def _range_response(path: str, mime_type: str, range_header: str, etag: str, cac
         if units.strip().lower() != "bytes":
             raise ValueError("only byte ranges supported")
         start_s, _, end_s = ranges.partition("-")
-        start = int(start_s) if start_s else 0
-        end = int(end_s) if end_s else file_size - 1
+        if not start_s and end_s:
+            suffix_length = int(end_s)
+            if suffix_length <= 0:
+                raise ValueError("invalid suffix range")
+            start = max(file_size - suffix_length, 0)
+            end = file_size - 1
+        else:
+            start = int(start_s) if start_s else 0
+            end = int(end_s) if end_s else file_size - 1
     except (ValueError, IndexError):
         return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
 
@@ -215,7 +185,7 @@ async def _check_asset_access(
     if not asset:
         raise HTTPException(status_code=404, detail="Not found")
 
-    parent_vis, parent_published = await _parent_visibility(session, asset)
+    parent_vis, parent_published = await resolve_media_parent_visibility(session, asset)
     if not parent_published and not user:
         raise HTTPException(status_code=404, detail="Not found")
     eff_vis = effective_visibility(asset.visibility, parent_vis)
@@ -252,8 +222,15 @@ def _serve_file(
                 if units.strip().lower() != "bytes":
                     raise ValueError
                 start_s, _, end_s = ranges.partition("-")
-                start = int(start_s) if start_s else 0
-                end = int(end_s) if end_s else file_size - 1
+                if not start_s and end_s:
+                    suffix_length = int(end_s)
+                    if suffix_length <= 0:
+                        raise ValueError("invalid suffix range")
+                    start = max(file_size - suffix_length, 0)
+                    end = file_size - 1
+                else:
+                    start = int(start_s) if start_s else 0
+                    end = int(end_s) if end_s else file_size - 1
                 if start > end or end >= file_size:
                     return Response(status_code=416, headers={"Content-Range": f"bytes */{file_size}"})
             except (ValueError, IndexError):

@@ -4,7 +4,6 @@ Social: comments and likes.
 All read and write paths enforce min(self, parent) visibility on the target.
 A target the caller cannot see returns 404 (not 403) to avoid leaking existence.
 """
-import html
 import uuid
 from typing import List
 
@@ -49,10 +48,9 @@ async def _assert_target_visible(
 
 def _sanitize_body(body: str) -> str:
     """
-    Plain-text sanitization: HTML-escape and trim. Markdown rendering is the
-    reader's responsibility; we never store raw HTML.
+    Plain-text sanitization: trim only. Renderers must escape text at output.
     """
-    return html.escape(body.strip())
+    return body.strip()
 
 
 @router.get("/comments/{target_kind}/{target_id}", response_model=List[CommentOut])

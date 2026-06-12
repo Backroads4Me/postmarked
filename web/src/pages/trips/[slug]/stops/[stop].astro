@@ -3,6 +3,7 @@ import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
 import { formatDateRange } from '../../../../lib/dates.js';
 import { cityStateFromAddress } from '../../../../lib/location.js';
+import { mediaOgImage, plainText } from '../../../../lib/og.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
 import StopMapIsland from '../../../../components/StopMapIsland.jsx';
 import MediaGallery from '../../../../components/ui/MediaGallery.astro';
@@ -58,9 +59,28 @@ function fmtRange(start, end) {
 function stopSiblingLabel(stop) {
   return cityStateFromAddress(stop?.address_label) || stop?.title || '';
 }
+
+const stopTitle = cityStateFromAddress(detail.address_label) || detail.place_name || detail.title;
+const stopDescription = plainText(
+  detail.summary
+  || detail.public_note
+  || `${stopTitle} on ${detail.trip_title}.`
+);
+const stopOgImage = mediaOgImage(gallery);
+
+const hasMapKey = Boolean(
+  (typeof process !== "undefined" && process.env.PUBLIC_GOOGLE_MAPS_API_KEY) ||
+  import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY
+);
 ---
 
-<Layout title={`${detail.title} — ${detail.trip_title}`}>
+<Layout
+  title={`${stopTitle} — ${detail.trip_title}`}
+  description={stopDescription}
+  canonicalPath={`/trips/${slug}/stops/${stop}`}
+  ogImage={stopOgImage}
+  ogType="article"
+>
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
     {loadError && <div class="card-flat frame-narrow mb-4 text-sm text-ember">{loadError}</div>}
 
@@ -105,7 +125,7 @@ function stopSiblingLabel(stop) {
     )}
 
     {/* ── Map (stop + POIs + photo GPS dots) ──────────────── */}
-    {detail.latitude != null && detail.longitude != null && (
+    {hasMapKey && detail.latitude != null && detail.longitude != null && (
       <section class="mb-16 frame-narrow">
         <StopMapIsland
           client:load

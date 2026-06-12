@@ -48,6 +48,9 @@ const currentStopId = todayStops.length === 1
     ? todayStops.reduce((a, b) => new Date(a.start_date) >= new Date(b.start_date) ? a : b).id
     : null;
 
+const tripDescription = trip.summary || trip.description || `${stops.length} stops and ${posts.length} updates from ${trip.title}.`;
+const tripOgImage = trip.cover_media?.id ? `/media/${trip.cover_media.id}/webp` : undefined;
+
 const stopsWithCoords = stops
   .filter(s => s.latitude != null && s.longitude != null)
   .map(s => ({ ...s, is_current: s.is_current || String(s.id) === String(currentStopId) }));
@@ -78,9 +81,14 @@ function fmtRange(start, end) {
   return formatDateRange(start, end);
 }
 
+const hasMapKey = Boolean(
+  (typeof process !== "undefined" && process.env.PUBLIC_GOOGLE_MAPS_API_KEY) ||
+  import.meta.env.PUBLIC_GOOGLE_MAPS_API_KEY
+);
+
 ---
 
-<Layout title={`${trip.title} — Postmarked`}>
+<Layout title={`${trip.title} — Postmarked`} description={tripDescription} canonicalPath={`/trips/${trip.slug}`} ogImage={tripOgImage} ogType="article">
   <main class="frame pt-4 pb-8 md:pt-6 md:pb-12">
     {loadError && <div class="card-flat mb-4 text-sm text-ember">{loadError}</div>}
 
@@ -110,7 +118,7 @@ function fmtRange(start, end) {
         <p class="lede lede-body mt-3 text-base">{trip.summary}</p>
       )}
 
-      {stopsWithCoords.length > 0 && (
+      {hasMapKey && stopsWithCoords.length > 0 && (
         <section class="mt-6" id="trip-map" style="height: 360px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden;">
           <MapIsland client:load stops={stopsWithCoords} />
         </section>

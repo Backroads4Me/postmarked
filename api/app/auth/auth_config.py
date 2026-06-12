@@ -57,16 +57,12 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         if frequency not in PUBLIC_NOTIFICATION_FREQUENCIES:
             frequency = NotificationFrequency.ALL_UPDATES
 
-        phone_number = getattr(user_create, "phone_number", None) or None
-        sms_opted_in = bool(getattr(user_create, "sms_opted_in", False)) and bool(phone_number)
 
         user = await super().create(user_create, safe=safe, request=request)
         self.user_db.session.add(NotificationPreference(
             user_id=user.id,
             email_opted_in=email_opted_in,
             frequency=frequency,
-            phone_number=phone_number,
-            sms_opted_in=sms_opted_in,
         ))
 
         session = self.user_db.session
