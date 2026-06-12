@@ -4,6 +4,7 @@ import shutil
 import uuid
 import logging
 import json
+import re
 from html import escape
 from celery import Celery
 from celery.schedules import crontab
@@ -23,6 +24,7 @@ from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, Not
 from app.models.system import NotificationLog
 from app.models.user import NotificationPreference, User
 from app.services.mailer import send_email
+from app.services.original_retention import delete_original_after_success
 
 logger = logging.getLogger(__name__)
 
@@ -101,9 +103,39 @@ def _record_notification(db, user_id, kind: str, payload: dict, sent: bool, erro
     )
 
 
+_MARKDOWN_IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]+\)")
+_HTML_IMAGE_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+_MEDIA_DESCRIPTION_LINE_RE = re.compile(
+    r"^\s*(?:image|photo|media)\s+(?:description|caption|alt text)\s*:.*$",
+    re.IGNORECASE,
+)
+
+
+def _post_email_text(body: str | None) -> str:
+    text = _MARKDOWN_IMAGE_RE.sub("", body or "")
+    text = _HTML_IMAGE_RE.sub("", text)
+    lines = [
+        line.rstrip()
+        for line in text.splitlines()
+        if not _MEDIA_DESCRIPTION_LINE_RE.match(line)
+    ]
+    cleaned = "\n".join(lines).strip()
+    return re.sub(r"\n{3,}", "\n\n", cleaned)
+
+
+def _email_body_html(body: str) -> str:
+    paragraphs = [part.strip() for part in body.split("\n\n") if part.strip()]
+    if not paragraphs:
+        return ""
+    return "".join(
+        f"<p>{escape(paragraph).replace(chr(10), '<br>')}</p>"
+        for paragraph in paragraphs
+    )
+
+
 def _post_email_bodies(post: Post, db) -> tuple[str, str, str]:
     url = _post_url(post)
-    body = post.body or ""
+    body = _post_email_text(post.body)
 
     config = db.execute(
         select(SiteTextSection).where(
@@ -126,19 +158,14 @@ def _post_email_bodies(post: Post, db) -> tuple[str, str, str]:
 
     if intro:
         text = f"{intro}\n\n{post.title}\n\n{body}\n\n{cta}: {url}\n"
-        html = (
-            f"<p>{escape(intro)}</p>"
-            f"<h1>{escape(post.title)}</h1>"
-            f"<p>{escape(body)}</p>"
-            f'<p><a href="{url}">{escape(cta)}</a></p>'
-        )
+        html = f"<p>{escape(intro)}</p>" f"<h1>{escape(post.title)}</h1>"
+        html += _email_body_html(body)
+        html += f'<p><a href="{url}">{escape(cta)}</a></p>'
     else:
         text = f"{post.title}\n\n{body}\n\n{cta}: {url}\n"
-        html = (
-            f"<h1>{escape(post.title)}</h1>"
-            f"<p>{escape(body)}</p>"
-            f'<p><a href="{url}">{escape(cta)}</a></p>'
-        )
+        html = f"<h1>{escape(post.title)}</h1>"
+        html += _email_body_html(body)
+        html += f'<p><a href="{url}">{escape(cta)}</a></p>'
 
     return subject, text, html
 
@@ -403,6 +430,7 @@ def process_media_asset(asset_id: str):
                 asset.processing_state = MediaProcessingState.FAILED
 
         db.commit()
+        delete_original_after_success(asset)
     finally:
         db.close()
 

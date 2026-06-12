@@ -46,6 +46,29 @@ def effective_visibility(entity_visibility, parent_visibility) -> str:
     return _val(entity_visibility)
 
 
+def child_visibility_for_parent(parent_visibility, requested_visibility=None) -> Visibility:
+    """Return allowed child visibility under a parent, applying min(child, parent)."""
+    parent = Visibility(getattr(parent_visibility, "value", parent_visibility))
+    if requested_visibility is None:
+        return parent
+    requested = Visibility(getattr(requested_visibility, "value", requested_visibility))
+    return Visibility(effective_visibility(requested, parent))
+
+
+def assert_child_visibility_allowed(
+    parent_visibility,
+    requested_visibility,
+    detail: str = "Private parent cannot have a public child.",
+) -> None:
+    """Raise when a requested child visibility would violate parent privacy."""
+    requested = Visibility(getattr(requested_visibility, "value", requested_visibility))
+    allowed = child_visibility_for_parent(parent_visibility, requested)
+    if allowed != requested:
+        from fastapi import HTTPException
+
+        raise HTTPException(status_code=422, detail=detail)
+
+
 def is_visible_to_user(entity_visibility, parent_visibility, user) -> bool:
     """Check if an entity is visible to a given user."""
     eff = effective_visibility(entity_visibility, parent_visibility)
@@ -110,6 +133,57 @@ def extract_lat_lon(location) -> tuple[float | None, float | None]:
 ALLOWED_TARGET_KINDS = {"stop", "media", "post"}
 
 
+async def resolve_media_parent_visibility(session: AsyncSession, media) -> tuple[str | None, bool]:
+    """Return (effective parent visibility, parent chain published) for a media asset."""
+    from app.models.content import Post, Stop, Trip
+
+    parent_vis = None
+    parent_published = True
+
+    if media.post_id:
+        result = await session.execute(
+            select(Post, Stop.visibility, Stop.status, Trip.visibility, Trip.status)
+            .outerjoin(Stop, Post.stop_id == Stop.id)
+            .outerjoin(Trip, (Post.trip_id == Trip.id) | (Stop.trip_id == Trip.id))
+            .where(Post.id == media.post_id)
+        )
+        row = result.first()
+        if row:
+            post, stop_vis, stop_status, trip_vis, trip_status = row
+            parent_published = post.status == PostStatus.PUBLISHED
+            if stop_status is not None:
+                parent_published = parent_published and stop_status == StopStatus.PUBLISHED
+            if trip_status is not None:
+                parent_published = parent_published and trip_status == TripStatus.PUBLISHED
+            parent_vis = effective_visibility(
+                post.visibility,
+                effective_visibility(stop_vis, trip_vis) if stop_vis is not None else trip_vis,
+            )
+
+    if parent_vis is None and media.stop_id:
+        result = await session.execute(
+            select(Stop.visibility, Stop.status, Trip.visibility, Trip.status)
+            .select_from(Stop)
+            .outerjoin(Trip, Stop.trip_id == Trip.id)
+            .where(Stop.id == media.stop_id)
+        )
+        row = result.first()
+        if row:
+            stop_vis, stop_status, trip_vis, trip_status = row
+            parent_published = (
+                stop_status == StopStatus.PUBLISHED and trip_status == TripStatus.PUBLISHED
+            )
+            parent_vis = effective_visibility(stop_vis, trip_vis)
+
+    if parent_vis is None and media.trip_id:
+        trip = await session.get(Trip, media.trip_id)
+        if trip:
+            parent_published = trip.status == TripStatus.PUBLISHED
+            parent_vis = trip.visibility
+
+    return parent_vis, parent_published
+
+
 async def load_target_with_visibility(
     session: AsyncSession,
     target_kind: str,
@@ -163,45 +237,7 @@ async def load_target_with_visibility(
         media = await session.get(MediaAsset, target_id)
         if not media:
             return None
-        # Resolve the parent — prefer post, then stop, then trip
-        parent_vis = None
-        parent_published = True
-        if media.post_id:
-            result = await session.execute(
-                select(Post, Stop.visibility, Stop.status, Trip.visibility, Trip.status)
-                .outerjoin(Stop, Post.stop_id == Stop.id)
-                .outerjoin(Trip, (Post.trip_id == Trip.id) | (Stop.trip_id == Trip.id))
-                .where(Post.id == media.post_id)
-            )
-            row = result.first()
-            if row:
-                post, stop_vis, stop_status, trip_vis, trip_status = row
-                parent_published = post.status == PostStatus.PUBLISHED
-                if stop_status is not None:
-                    parent_published = parent_published and stop_status == StopStatus.PUBLISHED
-                if trip_status is not None:
-                    parent_published = parent_published and trip_status == TripStatus.PUBLISHED
-                parent_vis = effective_visibility(
-                    post.visibility,
-                    effective_visibility(stop_vis, trip_vis) if stop_vis is not None else trip_vis,
-                )
-        if parent_vis is None and media.stop_id:
-            result = await session.execute(
-                select(Stop.visibility, Stop.status, Trip.visibility, Trip.status)
-                .select_from(Stop)
-                .outerjoin(Trip, Stop.trip_id == Trip.id)
-                .where(Stop.id == media.stop_id)
-            )
-            row = result.first()
-            if row:
-                stop_vis, stop_status, trip_vis, trip_status = row
-                parent_published = stop_status == StopStatus.PUBLISHED and trip_status == TripStatus.PUBLISHED
-                parent_vis = effective_visibility(stop_vis, trip_vis)
-        if parent_vis is None and media.trip_id:
-            trip = await session.get(Trip, media.trip_id)
-            if trip:
-                parent_published = trip.status == TripStatus.PUBLISHED
-                parent_vis = trip.visibility
+        parent_vis, parent_published = await resolve_media_parent_visibility(session, media)
         if not parent_published:
             return None
         return media, effective_visibility(media.visibility, parent_vis)

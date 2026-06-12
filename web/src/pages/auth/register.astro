@@ -4,7 +4,7 @@ import { apiUrl } from '../../lib/api.js';
 
 const isSubscribeIntent = Astro.url.searchParams.get('subscribe') === '1';
 const configRes = await fetch(apiUrl('/api/config'));
-const { email_enabled, require_user_approval, sms_enabled } = await configRes.json();
+const { email_enabled, require_user_approval } = await configRes.json();
 ---
 
 <Layout title="Register">
@@ -54,7 +54,7 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
             <input type="password" id="password" name="password" class="form-input" required minlength="8">
           </div>
 
-          {(email_enabled || sms_enabled) && (
+          {email_enabled && (
             <fieldset class="flex flex-col gap-4 pt-4 border-t border-line">
               <legend class="label text-base">Notifications <span class="font-normal text-muted">(optional)</span></legend>
 
@@ -68,32 +68,7 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
                   </label>
                 )}
 
-                {sms_enabled && (
-                  <div class="flex flex-col gap-3">
-                    <div class="flex flex-col gap-1">
-                      <label class="label" for="phone_number">Phone number <span class="text-muted font-normal">(optional)</span></label>
-                      <input type="tel" id="phone_number" name="phone_number"
-                        class="form-input"
-                        placeholder="5551234567"
-                        oninput="onPhoneInput(this)"
-                        onblur="normalizePhone(this)" />
-                    </div>
-                    <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
-                      <input type="checkbox" name="sms_opted_in" id="sms_opted_in" class="mt-0.5 shrink-0"
-                        onchange="onSmsOptInChange(this)" />
-                      <span>
-                        <strong class="text-paper">Text message updates</strong><br />
-                        By selecting this box, you agree to receive SMS notifications about trip updates from Postmarked.
-                        Message frequency varies. Message &amp; data rates may apply.
-                        Reply STOP to opt out at any time or HELP for help.
-                        <a href="/privacy" class="underline hover:text-ember transition-colors">Privacy Policy</a> &amp; <a href="/terms" class="underline hover:text-ember transition-colors">Terms</a>.
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div class="flex flex-col gap-2">
+                <div class="flex flex-col gap-2">
                 <p class="label">Frequency</p>
                 <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
                   <input type="radio" name="notify_frequency" value="all_updates" class="mt-0.5 shrink-0" checked />
@@ -128,53 +103,13 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
     document.getElementById('error-banner')?.classList.add('hidden');
   }
 
-  function normalizePhone(phoneEl) {
-    let digits = phoneEl.value.replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
-    phoneEl.value = digits;
-    const optIn = document.getElementById('sms_opted_in');
-    if (digits && optIn && !optIn.checked) {
-      showError('Check the "Text message updates" box to opt in to SMS notifications, or clear the phone number if you don\'t want updates.');
-    }
-  }
-
-  function onPhoneInput(phoneEl) {
-    if (!phoneEl.value.trim()) clearError();
-  }
-
-  function onSmsOptInChange(checkbox) {
-    const phone = document.getElementById('phone_number');
-    if (checkbox.checked) {
-      if (!phone || !phone.value.trim()) {
-        phone?.focus();
-        showError('Enter a phone number to receive text message updates.');
-      } else {
-        clearError();
-      }
-    } else {
-      if (phone) phone.value = '';
-      clearError();
-    }
-  }
-
-  async function register(form) {
+    async function register(form) {
     const btn = document.getElementById('submit-btn');
     const banner = document.getElementById('error-banner');
     banner.classList.add('hidden');
 
     const emailOn = form.email_notify?.checked ?? false;
-    const smsOn = form.sms_opted_in?.checked ?? false;
-    const phone = form.phone_number?.value?.trim() || '';
     const freq = form.notify_frequency?.value ?? 'all_updates';
-
-    if (smsOn && !phone) {
-      showError('Enter a phone number to enable text message updates.');
-      return;
-    }
-    if (phone && phone.replace(/\D/g, '').length !== 10) {
-      showError('Enter a valid 10-digit phone number.');
-      return;
-    }
 
     btn.disabled = true;
     btn.textContent = 'Creating account…';
@@ -190,8 +125,6 @@ const { email_enabled, require_user_approval, sms_enabled } = await configRes.js
           display_name: form.display_name.value.trim() || null,
           email_opted_in: emailOn,
           notification_frequency: freq,
-          phone_number: form.phone_number?.value?.trim() || null,
-          sms_opted_in: smsOn,
         }),
       });
 

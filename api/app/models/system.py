@@ -50,7 +50,6 @@ class SiteConfig(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(primary_key=True, default=uuid.uuid4)
     require_user_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
-    sms_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 

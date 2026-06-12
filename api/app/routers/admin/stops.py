@@ -6,12 +6,13 @@ from typing import List
 
 from app.db import get_async_session
 from app.models.content import Stop, Trip
+from app.models.enums import Visibility
 from app.schemas.stop import StopOut, StopBulkUpdate, StopCreate, StopUpdate
 from app.auth.dependencies import current_admin_user
-from app.models.enums import Visibility
 from app.models.user import User
 from app.services.audit import log_audit_event
 from app.services.timezone import timezone_for_coords
+from app.services.visibility import assert_child_visibility_allowed, child_visibility_for_parent
 
 router = APIRouter(prefix="/stops", tags=["admin-stops"])
 
@@ -38,11 +39,7 @@ async def create_stop_admin(
     if not trip:
         raise HTTPException(status_code=404, detail="Trip not found")
     requested_visibility = data.pop("visibility", None)
-    data["visibility"] = (
-        Visibility.PRIVATE
-        if trip.visibility == Visibility.PRIVATE
-        else requested_visibility or trip.visibility
-    )
+    data["visibility"] = child_visibility_for_parent(trip.visibility, requested_visibility)
     stop = Stop(**data, location=f"POINT({lon} {lat})", timezone_id=timezone_for_coords(lat, lon))
     session.add(stop)
     try:
@@ -114,10 +111,14 @@ async def update_stop_admin(
         raise HTTPException(status_code=404, detail="Stop not found")
 
     update_data = stop_in.model_dump(exclude_unset=True)
-    if update_data.get("visibility") == Visibility.PUBLIC:
+    if "visibility" in update_data:
         trip = await session.get(Trip, stop.trip_id)
-        if trip and trip.visibility == Visibility.PRIVATE:
-            raise HTTPException(status_code=422, detail="Private trips cannot have public stops.")
+        if trip:
+            assert_child_visibility_allowed(
+                trip.visibility,
+                update_data["visibility"],
+                detail="Private trips cannot have public stops.",
+            )
 
     # Lat/lon are not direct columns; rebuild the PostGIS POINT.
     new_lat = update_data.pop("latitude", None)

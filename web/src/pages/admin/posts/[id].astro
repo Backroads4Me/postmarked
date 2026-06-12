@@ -125,7 +125,7 @@ function stopOptionLabel(stop) {
           <div class="flex flex-wrap items-center gap-2">
             <input id="media-upload-input" type="file" accept="image/*,video/*" multiple class="hidden" />
             <button type="button" id="upload-media-btn" class="btn btn-sm">Upload photos</button>
-            <button type="button" id="open-media-picker-btn" class="btn btn-sm btn-ghost-ember">Attach existing</button>
+            <button type="button" id="open-media-picker-btn" class="btn btn-sm btn-ghost-ember">Attach unused</button>
           </div>
         </div>
         <div id="media-attach-status" class="text-xs text-dim min-h-[1rem]"></div>
@@ -662,11 +662,12 @@ function stopOptionLabel(stop) {
       mediaPickerStatus.textContent = 'Loading';
       mediaPickerList.innerHTML = '';
       try {
-        const url = '/api/admin/media' + (date ? '?date=' + date : '');
+        const params = new URLSearchParams({ unassigned: 'true' });
+        if (date) params.set('date', date);
+        const url = '/api/admin/media?' + params.toString();
         const res = await fetch(url, { credentials: 'include' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
-        const allAssets = await res.json();
-        const assets = allAssets.filter((asset) => !asset.stop_id && !asset.post_id && !asset.trip_id);
+        const assets = await res.json();
         mediaPickerStatus.textContent = assets.length + ' items';
         mediaPickerList.innerHTML = assets.length ? assets.map((asset) => {
           const thumb = mediaThumb(asset);
@@ -679,7 +680,7 @@ function stopOptionLabel(stop) {
             + '<span class="label">' + asset.kind + ' · ' + asset.processing_state + '</span>'
             + '</span>'
             + '</label>';
-        }).join('') : '<div class="text-sm text-muted p-3">No media for this date.</div>';
+        }).join('') : '<div class="text-sm text-muted p-3">No unused media for this date.</div>';
       } catch (err) {
         mediaPickerStatus.textContent = err?.message || 'Failed to load media';
       }
@@ -693,12 +694,11 @@ function stopOptionLabel(stop) {
       // Populate date select on first open
       if (!pickerDateSelect.options.length) {
         try {
-          const datesRes = await fetch('/api/admin/media/dates', { credentials: 'include' });
+          const datesRes = await fetch('/api/admin/media/dates?unassigned=true', { credentials: 'include' });
           if (datesRes.ok) {
             const dates = await datesRes.json();
-            const opts = dates.includes(todayInAdminTz) ? dates : [todayInAdminTz, ...dates];
-            pickerDateSelect.innerHTML = opts.map(d =>
-              `<option value="${d}"${d === todayInAdminTz ? ' selected' : ''}>${d === todayInAdminTz ? d + ' (today)' : d}</option>`
+            pickerDateSelect.innerHTML = dates.map((d, index) =>
+              `<option value="${d}"${index === 0 ? ' selected' : ''}>${d}</option>`
             ).join('');
           }
         } catch (_) {
@@ -706,7 +706,7 @@ function stopOptionLabel(stop) {
         }
       }
 
-      await loadMediaForDate(pickerDateSelect.value || todayInAdminTz);
+      await loadMediaForDate(pickerDateSelect.value || '');
     }
 
     pickerDateSelect?.addEventListener('change', (e) => loadMediaForDate(e.target.value));

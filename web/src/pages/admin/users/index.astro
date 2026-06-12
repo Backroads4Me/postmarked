@@ -7,7 +7,7 @@ const authHeaders = cookie ? { cookie } : {};
 let users = [];
 let loadError = null;
 let email_enabled = false;
-let siteConfig = { require_user_approval: true, sms_enabled: false };
+let siteConfig = { require_user_approval: true };
 let preApprovedEmails = [];
 let currentUserId: string | null = null;
 
@@ -44,7 +44,6 @@ try {
   loadError = e?.message || 'Failed to connect';
 }
 
-const sms_enabled = siteConfig.sms_enabled ?? false;
 const pending = users.filter(u => u.approval_state === 'pending');
 const approved = users.filter(u => u.approval_state === 'approved');
 const rejected = users.filter(u => u.approval_state === 'rejected');
@@ -69,22 +68,6 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
         onclick="toggleApprovalRequirement(this)"
       >
         {siteConfig.require_user_approval ? 'On' : 'Off'}
-      </button>
-    </div>
-
-    <!-- SMS toggle -->
-    <div class="admin-list p-4 flex items-center justify-between gap-4">
-      <div>
-        <div class="font-bold">Enable SMS notifications</div>
-        <div class="text-sm text-muted mt-1">Show the phone number and SMS consent fields on registration and account pages. Requires Twilio credentials to be configured.</div>
-      </div>
-      <button
-        id="sms-toggle"
-        class="btn btn-sm"
-        data-value={siteConfig.sms_enabled ? 'true' : 'false'}
-        onclick="toggleSmsEnabled(this)"
-      >
-        {siteConfig.sms_enabled ? 'On' : 'Off'}
       </button>
     </div>
 
@@ -161,19 +144,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                   <option value="true" selected={u.email_opted_in}>Email on</option>
                 </select>
               )}
-              {sms_enabled && (
-                <input type="tel" class="admin-input w-28"
-                  placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
-                  onblur={`updateUserSms('${u.id}', this)`} />
-              )}
-              {sms_enabled && (
-                <select class="admin-input"
-                  data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
-                  <option value="false" selected={!u.sms_opted_in}>SMS off</option>
-                  <option value="true" selected={u.sms_opted_in}>SMS on</option>
-                </select>
-              )}
-              {(email_enabled || sms_enabled) && (
+              {email_enabled && (
                 <select class="admin-input"
                   data-freq-select={u.id}
                   onchange={`updateUserFrequency('${u.id}', this)`}>
@@ -238,19 +209,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                   <option value="true" selected={u.email_opted_in}>Email on</option>
                 </select>
               )}
-              {sms_enabled && (
-                <input type="tel" class="admin-input w-28"
-                  placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
-                  onblur={`updateUserSms('${u.id}', this)`} />
-              )}
-              {sms_enabled && (
-                <select class="admin-input"
-                  data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
-                  <option value="false" selected={!u.sms_opted_in}>SMS off</option>
-                  <option value="true" selected={u.sms_opted_in}>SMS on</option>
-                </select>
-              )}
-              {(email_enabled || sms_enabled) && (
+              {email_enabled && (
                 <select class="admin-input"
                   data-freq-select={u.id}
                   onchange={`updateUserFrequency('${u.id}', this)`}>
@@ -308,19 +267,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                   <option value="true" selected={u.email_opted_in}>Email on</option>
                 </select>
               )}
-              {sms_enabled && (
-                <input type="tel" class="admin-input w-28"
-                  placeholder="Phone" value={u.phone_number || ''} data-user-id={u.id}
-                  onblur={`updateUserSms('${u.id}', this)`} />
-              )}
-              {sms_enabled && (
-                <select class="admin-input"
-                  data-sms-select={u.id} onchange={`updateUserSmsOptIn('${u.id}', this)`}>
-                  <option value="false" selected={!u.sms_opted_in}>SMS off</option>
-                  <option value="true" selected={u.sms_opted_in}>SMS on</option>
-                </select>
-              )}
-              {(email_enabled || sms_enabled) && (
+              {email_enabled && (
                 <select class="admin-input"
                   data-freq-select={u.id}
                   onchange={`updateUserFrequency('${u.id}', this)`}>
@@ -363,9 +310,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
     const next = !current;
     btn.disabled = true;
     try {
-      const smsBtn = document.getElementById('sms-toggle');
-      const currentSms = smsBtn ? smsBtn.dataset.value === 'true' : false;
-      await _patchSiteConfig({ require_user_approval: next, sms_enabled: currentSms });
+      await _patchSiteConfig({ require_user_approval: next });
       btn.dataset.value = next ? 'true' : 'false';
       btn.textContent = next ? 'On' : 'Off';
     } catch (e) {
@@ -374,25 +319,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
       btn.disabled = false;
     }
   }
-
-  async function toggleSmsEnabled(btn) {
-    const current = btn.dataset.value === 'true';
-    const next = !current;
-    btn.disabled = true;
-    try {
-      const approvalBtn = document.getElementById('approval-toggle');
-      const currentApproval = approvalBtn ? approvalBtn.dataset.value === 'true' : true;
-      await _patchSiteConfig({ require_user_approval: currentApproval, sms_enabled: next });
-      btn.dataset.value = next ? 'true' : 'false';
-      btn.textContent = next ? 'On' : 'Off';
-    } catch (e) {
-      alert(e.message || 'Could not reach server');
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  async function addPreApproved(form) {
+async function addPreApproved(form) {
     const raw = form.emails.value.trim();
     if (!raw) return;
     const emails = raw.split('\n').map(e => e.trim()).filter(Boolean);
@@ -574,55 +501,7 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
       alert('Could not reach server');
     }
   }
-
-  async function _patchUserSms(userId, phone, optedIn) {
-    const res = await fetch(`/api/admin/users/${userId}/sms`, {
-      method: 'PATCH',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone_number: phone || null, sms_opted_in: optedIn }),
-    });
-    if (!res.ok) {
-      const d = await res.json().catch(() => ({}));
-      throw new Error(d.detail || 'Failed to update SMS');
-    }
-    return res.json();
-  }
-
-  async function updateUserSms(userId, phoneInput) {
-    let digits = phoneInput.value.replace(/\D/g, '');
-    if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
-    phoneInput.value = digits;
-    const card = phoneInput.closest('.card-flat');
-    const optInSelect = card?.querySelector(`[data-sms-select="${userId}"]`);
-    const optedIn = optInSelect ? optInSelect.value === 'true' : false;
-    try {
-      const result = await _patchUserSms(userId, digits || null, optedIn && digits.length > 0);
-      if (optInSelect) optInSelect.value = result.sms_opted_in ? 'true' : 'false';
-    } catch (e) {
-      alert(e.message);
-    }
-  }
-
-  async function updateUserSmsOptIn(userId, select) {
-    const optedIn = select.value === 'true';
-    const card = select.closest('.card-flat');
-    const phoneInput = card?.querySelector(`input[data-user-id="${userId}"]`);
-    const phone = phoneInput ? phoneInput.value.trim() : null;
-    if (optedIn && !phone) {
-      alert('Enter a phone number before enabling SMS.');
-      select.value = 'false';
-      return;
-    }
-    try {
-      await _patchUserSms(userId, phone || null, optedIn);
-    } catch (e) {
-      select.value = optedIn ? 'false' : 'true';
-      alert(e.message);
-    }
-  }
-
-  async function updateUserRole(userId, select) {
+async function updateUserRole(userId, select) {
     const original = select.dataset.original || select.value;
     if (select.value === original) return;
     const endpoint = select.value === 'admin'

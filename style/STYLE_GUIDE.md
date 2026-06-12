@@ -24,7 +24,6 @@ surface behind it: warm, legible, restrained, and easy to scan.
 - Tokens, component classes, and utilities: `web/src/styles/global.css`
 - Google Maps color constants: `web/src/lib/mapColors.js`
 - Visual component lab: `web/src/pages/design-lab/postmarked-components.astro`
-- Palette reference: `style/Postmarked - Color Palette.md`
 
 If a page needs styling that is likely to recur, add or extend a shared class in
 `global.css` instead of adding inline styles to the page.

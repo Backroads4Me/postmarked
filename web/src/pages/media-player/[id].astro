@@ -8,14 +8,14 @@ const title = 'Media Player - Postmarked';
 <Layout title={title} hideNav>
   <main class="media-player-page">
     <video
-      src={id ? '/media/' + id + '/original' : undefined}
+      src={id ? '/media/' + id + '/mp4' : undefined}
       poster={id ? '/media/' + id + '/poster' : undefined}
       controls
       autoplay
       playsinline
       class="media-player-video"
     >
-      <a href={id ? '/media/' + id + '/original' : '#'}>Open video</a>
+      <a href={id ? '/media/' + id + '/mp4' : '#'}>Open video</a>
     </video>
   </main>
 </Layout>

@@ -34,6 +34,7 @@ class CommentOut(BaseModel):
     id: uuid.UUID
     target_kind: str
     target_id: uuid.UUID
+    # Plain text only: clients/renderers must escape this value before HTML output.
     body: str
     author_id: uuid.UUID
     author_display_name: Optional[str] = None
