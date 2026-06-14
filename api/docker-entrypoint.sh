@@ -1,7 +1,8 @@
 #!/bin/sh
 set -e
 
-for dir in "${ORIGINALS_PATH:-/tmp/originals}" "${DERIVATIVES_PATH:-/tmp/derivatives}" "${INGEST_PATH:-/tmp/ingest}"; do
+MEDIA_DIR="${MEDIA_DIR:-/media}"
+for dir in "${ORIGINALS_PATH:-$MEDIA_DIR/originals}" "${DERIVATIVES_PATH:-$MEDIA_DIR/derivatives}" "${INGEST_PATH:-$MEDIA_DIR/ingest}"; do
   mkdir -p "$dir"
   chown -R appuser:appuser "$dir"
 done
