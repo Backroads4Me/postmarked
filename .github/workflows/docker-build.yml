@@ -14,8 +14,8 @@ on:
 
 jobs:
   build:
-    name: Build ${{ matrix.image }} (${{ matrix.platform }})
-    runs-on: ${{ matrix.runner }}
+    name: Build ${{ matrix.image.name }} (${{ matrix.platform.slug }})
+    runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
       matrix:
