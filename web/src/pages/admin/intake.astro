@@ -27,7 +27,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     });
 
     uppy.on('complete', (result) => {
-      console.log('Uploads complete:', result.successful);
       const succeeded = result.successful.length;
       const failed = result.failed.length;
       if (failed > 0) {
