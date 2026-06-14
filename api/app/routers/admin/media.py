@@ -128,7 +128,8 @@ async def assign_media_admin(
 # TUS resumable upload
 # ──────────────────────────────────────────────────────────────────────────
 
-ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
+MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
 os.makedirs(ORIGINALS_PATH, exist_ok=True)
 
 TUS_VERSION = "1.0.0"

@@ -32,8 +32,9 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 _DATABASE_URL_RAW = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postmarked")
 DATABASE_URL_SYNC = _DATABASE_URL_RAW.replace("postgresql://", "postgresql+psycopg://", 1)
 
-ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
-DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
+MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
+DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "derivatives"))
 
 celery_app = Celery("postmarked_tasks", broker=REDIS_URL)
 celery_app.conf.timezone = os.getenv("CELERY_TIMEZONE", "UTC")
@@ -473,7 +474,7 @@ def dispatch_post_notification(post_id: str):
     finally:
         db.close()
 
-INGEST_PATH = os.getenv("INGEST_PATH", "/tmp/ingest")
+INGEST_PATH = os.getenv("INGEST_PATH", os.path.join(MEDIA_DIR, "ingest"))
 PROCESSED_INGEST_PATH = os.path.join(INGEST_PATH, "processed")
 os.makedirs(INGEST_PATH, exist_ok=True)
 

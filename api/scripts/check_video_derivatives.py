@@ -22,7 +22,8 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg://postgres:postgres@db:5432/postmarked",
 ).replace("postgresql://", "postgresql+psycopg://", 1)
 
-DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/derivatives")
+MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "derivatives"))
 
 _HASHED_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
 

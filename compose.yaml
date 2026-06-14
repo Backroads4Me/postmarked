@@ -5,9 +5,7 @@ x-app-base: &app-base
   env_file: .env
   environment:
     - PYTHONPATH=/app
-    - ORIGINALS_PATH=/originals
-    - DERIVATIVES_PATH=/derivatives
-    - INGEST_PATH=/ingest
+    - MEDIA_DIR=/media
     - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postmarked}
     - APP_BASE_URL=${APP_BASE_URL:-http://localhost:4321}
     - SMTP_HOST=${SMTP_HOST:-}
@@ -30,9 +28,7 @@ services:
     <<: *app-base
     container_name: api
     volumes:
-      - ${MEDIA_DIR:-./data}/originals:/originals
-      - ${MEDIA_DIR:-./data}/derivatives:/derivatives
-      - ${MEDIA_DIR:-./data}/ingest:/ingest
+      - ${MEDIA_DIR:-./data}:/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
       interval: 5s
@@ -44,9 +40,7 @@ services:
     container_name: worker
     command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
     volumes:
-      - ${MEDIA_DIR:-./data}/originals:/originals
-      - ${MEDIA_DIR:-./data}/derivatives:/derivatives
-      - ${MEDIA_DIR:-./data}/ingest:/ingest
+      - ${MEDIA_DIR:-./data}:/media
 
   beat:
     <<: *app-base
@@ -92,7 +86,7 @@ services:
     container_name: postgis_db
     env_file: .env
     volumes:
-      - ${DB_SOURCE:-db_data}:/var/lib/postgresql/data
+      - ${MEDIA_DIR:-./data}/db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 5s
@@ -109,6 +103,3 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-
-volumes:
-  db_data:

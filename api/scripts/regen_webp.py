@@ -34,8 +34,9 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg://postgres:postgres@db:5432/postmarked",
 ).replace("postgresql://", "postgresql+psycopg://", 1)
 
-ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/originals")
-DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/derivatives")
+MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
+DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "derivatives"))
 
 FULL_MAX = 1400
 SM_MAX = 768

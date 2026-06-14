@@ -26,8 +26,9 @@ from app.models.content import MediaAsset
 from app.models.enums import MediaKind
 from app.services.visibility import effective_visibility, is_visible_to_user, resolve_media_parent_visibility
 
-ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
-DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
+MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
+DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "derivatives"))
 
 # Variants the worker actually produces today (api/app/tasks.py).
 # Add more here as tasks.py grows.

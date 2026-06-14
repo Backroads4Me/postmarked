@@ -3,8 +3,9 @@ import re
 
 from app.models.content import MediaAsset
 
-ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", "/tmp/originals")
-DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", "/tmp/derivatives")
+MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
+ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
+DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "derivatives"))
 
 _HASHED_FILENAME_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
 
