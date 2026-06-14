@@ -36,7 +36,7 @@ PHOTO_VARIANTS = {"original", "webp", "avif", "webp_sm"}
 VIDEO_VARIANTS = {"original", "poster", "mp4"}
 
 # Regex matching a hashed derivative filename: {variant}-{hash8}.{ext}
-_HASHED_FILENAME_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
+_HASHED_FILENAME_RE = re.compile(r"^[a-z0-9_]+-[0-9a-f]{8,}\.\w+$")
 
 router = APIRouter(prefix="/media", tags=["media"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)

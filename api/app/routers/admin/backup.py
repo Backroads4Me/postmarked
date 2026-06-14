@@ -154,7 +154,7 @@ async def export_backup(
 
             # Bundle derivative files from disk — read paths from derivative_paths.
             import re
-            _HASHED_FILENAME_RE = re.compile(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$")
+            _HASHED_FILENAME_RE = re.compile(r"^[a-z0-9_]+-[0-9a-f]{8,}\.\w+$")
             for row in media_rows:
                 asset_id = row["id"]
                 dp = row.get("derivative_paths") or {}
