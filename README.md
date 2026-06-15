@@ -25,6 +25,9 @@ cp .env.example .env
 docker compose up -d
 ```
 
+The database image is built locally from the official multi-architecture
+PostgreSQL image, so the same installation works on AMD64 and ARM64 hosts.
+
 Before deploying, edit `.env` and set production values for:
 
 - `SECRET_KEY`
