@@ -10,7 +10,7 @@ It is meant to be simple: run it, sign in, create a trip, post updates along the
 - Admin UI for trips, stops, posts, media, users, site text, and settings.
 - Public/private visibility controls.
 - Email notifications for new public updates.
-- ZIP backup export and destructive restore.
+- One-file `pg_dump` + media ZIP export, with destructive restore, for instance migration.
 - Docker Compose deployment.
 - RV Trip Wizard `.xlsx` import with preview and apply for RV travelers.
 
@@ -82,11 +82,31 @@ See Cloudflare's guide: <https://developers.cloudflare.com/cache/troubleshooting
 
 ## Backup And Restore
 
-In the admin UI, use Backup to export or restore an instance.
+In the admin UI, use Backup to export or restore an instance. This is a
+**migration tool** — designed for standing up a new instance, or moving from a
+dev site to prod — not a scheduled disaster-recovery system (see below).
 
-- Export downloads a ZIP with database records and media files.
-- Restore uploads a ZIP and replaces the current instance with its contents.
-- Restore is destructive and has no preview step.
+- **Export** downloads a single ZIP containing a `pg_dump` of the database
+  (custom format, data-only) plus all processed media derivatives. Original
+  uploads are intentionally not included; derivatives are sufficient to serve
+  the site.
+- **Restore** uploads a ZIP and **replaces** the current instance with its
+  contents. It truncates every table, runs `pg_restore`, then replaces the
+  media derivatives. Restore is destructive and has no preview step.
+- The schema is supplied by the target's own migrations (`alembic upgrade head`
+  runs on startup), so a restore only loads data. Source and target should run
+  the **same app/schema version**; restoring across schema versions may fail.
+- ZIPs exported by older versions (per-table JSON format) still restore.
+
+### Limits and recommendations
+
+- **Behind Cloudflare, restore uploads are capped at ~100 MB** (Free/Pro plans).
+  A large media library will exceed this. Perform big migrations over the
+  LAN/Tailscale address (bypassing the proxy) rather than the public hostname.
+- For routine, unattended **disaster recovery**, do not rely on this feature.
+  Run `pg_dump` plus a file-level, incremental backup of the media directory
+  (e.g. `restic`/`borg`) from a host cron to external storage. That keeps
+  working when the app is down — which is when you need it most.
 
 ## RV Trip Wizard Import
 
