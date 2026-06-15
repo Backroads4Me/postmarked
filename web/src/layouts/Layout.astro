@@ -78,6 +78,19 @@ const imageUrl = ogImage ? new URL(ogImage, Astro.url.origin).toString() : null;
         });
       }
     </script>
+    <script>
+      fetch('/api/config').then(r => r.json()).then(cfg => {
+        if (cfg.app_env !== 'dev') return;
+        const banner = document.createElement('div');
+        banner.textContent = 'Development mode — not for public use';
+        Object.assign(banner.style, {
+          position: 'fixed', bottom: '0', left: '0', right: '0', zIndex: '9999',
+          background: '#b45309', color: '#fff', textAlign: 'center',
+          padding: '6px 12px', fontSize: '13px', fontFamily: 'monospace',
+        });
+        document.body.appendChild(banner);
+      }).catch(() => {});
+    </script>
   </body>
 </html>
 

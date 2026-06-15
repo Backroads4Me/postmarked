@@ -326,12 +326,14 @@ app.include_router(admin_backup.router, prefix="/api/admin")
 class AppConfig(BaseModel):
     email_enabled: bool
     require_user_approval: bool
+    app_env: str
 
 
 @app.get("/api/config", response_model=AppConfig)
 async def app_config():
     from sqlalchemy import select
 
+    from app.config import APP_ENV
     from app.models.system import SiteConfig
 
     require_approval = True
@@ -339,7 +341,7 @@ async def app_config():
         config = (await session.execute(select(SiteConfig).limit(1))).scalar_one_or_none()
         if config is not None:
             require_approval = config.require_user_approval
-    return {"email_enabled": is_email_configured(), "require_user_approval": require_approval}
+    return {"email_enabled": is_email_configured(), "require_user_approval": require_approval, "app_env": APP_ENV}
 
 
 class HealthCheck(BaseModel):

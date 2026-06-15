@@ -24,24 +24,7 @@ from app.services.mailer import send_email
 
 logger = logging.getLogger(__name__)
 
-APP_ENV = os.getenv("APP_ENV", "dev").lower()
-_DEV_SECRET_FALLBACK = "dev-only-change-me-not-for-production-use"
-
-_secret = os.getenv("SECRET_KEY")
-if not _secret:
-    if APP_ENV == "dev":
-        logger.warning(
-            "[auth] WARNING: SECRET_KEY not set; using insecure dev fallback. "
-            "Generate one with: python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
-        )
-        _secret = _DEV_SECRET_FALLBACK
-    else:
-        raise RuntimeError(
-            "SECRET_KEY environment variable is required when APP_ENV is not 'dev'. "
-            "Generate one with: python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
-        )
-
-SECRET = _secret
+from app.config import APP_ENV, SECRET  # noqa: E402
 
 # Cookie security flags. Secure=True requires HTTPS; in local dev we serve HTTP so we relax it.
 _COOKIE_SECURE = APP_ENV != "dev"

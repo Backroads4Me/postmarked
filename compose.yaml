@@ -6,8 +6,11 @@ x-app-base: &app-base
   environment:
     - PYTHONPATH=/app
     - MEDIA_DIR=/media
-    - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-postmarked}
+    - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-postmarked}
     - APP_BASE_URL=${APP_BASE_URL:-http://localhost:4321}
+    - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+    - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
+    - ADMIN_DISPLAY_NAME=${ADMIN_DISPLAY_NAME:-Admin}
     - SMTP_HOST=${SMTP_HOST:-}
     - SMTP_PORT=${SMTP_PORT:-587}
     - SMTP_USERNAME=${SMTP_USERNAME:-}
@@ -87,6 +90,10 @@ services:
     image: postmarked-postgis:16
     container_name: postgis_db
     env_file: .env
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-postmarked}
     volumes:
       - ${MEDIA_DIR:-./data}/db_data:/var/lib/postgresql/data
     healthcheck:
