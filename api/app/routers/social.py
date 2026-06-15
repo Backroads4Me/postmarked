@@ -18,6 +18,7 @@ from app.db import get_async_session
 from app.models.system import Comment, Like
 from app.models.user import User
 from app.schemas.social import COMMENT_BODY_MAX_LEN, CommentCreate, CommentOut, LikeToggle
+from app.tasks import dispatch_comment_notification
 from app.services.visibility import (
     ALLOWED_TARGET_KINDS,
     is_visible_to_user,
@@ -119,6 +120,8 @@ async def create_comment(
     session.add(comment)
     await session.commit()
     await session.refresh(comment)
+
+    dispatch_comment_notification.delay(str(comment.id))
 
     return CommentOut(
         id=comment.id,

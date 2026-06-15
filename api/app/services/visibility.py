@@ -130,7 +130,7 @@ def extract_lat_lon(location) -> tuple[float | None, float | None]:
 # ──────────────────────────────────────────────────────────────────────────
 
 # Allowed values for Comment.target_kind / Like.target_kind
-ALLOWED_TARGET_KINDS = {"stop", "media", "post"}
+ALLOWED_TARGET_KINDS = {"stop", "media", "post", "comment"}
 
 
 async def resolve_media_parent_visibility(session: AsyncSession, media) -> tuple[str | None, bool]:
@@ -241,5 +241,17 @@ async def load_target_with_visibility(
         if not parent_published:
             return None
         return media, effective_visibility(media.visibility, parent_vis)
+
+    if target_kind == "comment":
+        from app.models.system import Comment
+        comment = await session.get(Comment, target_id)
+        if not comment or comment.deleted_at is not None:
+            return None
+        # Inherit visibility from the comment's own target
+        loaded = await load_target_with_visibility(session, comment.target_kind, comment.target_id)
+        if not loaded:
+            return None
+        _, eff_vis = loaded
+        return comment, eff_vis
 
     return None

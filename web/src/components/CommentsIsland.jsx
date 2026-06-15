@@ -1,4 +1,77 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
+
+function CommentLikeButton({ commentId, viewer }) {
+  const [count, setCount] = useState(null);
+  const [liked, setLiked] = useState(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function load() {
+      try {
+        const res = await fetch(
+          `/api/social/likes/comment/${encodeURIComponent(commentId)}/status`,
+          { credentials: "include" }
+        );
+        if (res.ok) {
+          const d = await res.json();
+          setCount(d.count);
+          setLiked(d.liked);
+        }
+      } catch {}
+    }
+    load();
+  }, [commentId]);
+
+  const canLike = Boolean(
+    viewer?.role === "admin" || viewer?.approval_state === "approved"
+  );
+
+  async function toggle() {
+    if (loading || !canLike) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/social/likes", {
+        method: "POST",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ target_kind: "comment", target_id: commentId }),
+      });
+      if (res.ok) {
+        const d = await res.json();
+        setLiked(d.liked);
+        setCount((c) => (d.liked ? c + 1 : c - 1));
+      }
+    } catch {}
+    finally { setLoading(false); }
+  }
+
+  return (
+    <button
+      onClick={toggle}
+      disabled={loading || !canLike}
+      title={
+        !viewer ? "Sign in to like" :
+        !canLike ? "Account pending approval" :
+        liked ? "Unlike" : "Like"
+      }
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 4,
+        background: "none",
+        border: "none",
+        padding: "2px 4px",
+        cursor: canLike ? "pointer" : "default",
+        color: liked ? "var(--ember)" : "var(--muted)",
+        fontSize: 12,
+        fontWeight: 500,
+      }}
+    >
+      <span style={{ fontSize: 14, lineHeight: 1 }}>{liked ? "♥" : "♡"}</span>
+      {count !== null && count > 0 && <span>{count}</span>}
+    </button>
+  );
+}
 
 /**
  * Inline comments section for a target (Stop, Post, or Media).
@@ -167,6 +240,9 @@ export default function CommentsIsland({ targetKind, targetId }) {
               <p style={{ margin: 0, color: "var(--paper-2)", whiteSpace: "pre-wrap", fontSize: "var(--fs-base)" }}>
                 {c.body}
               </p>
+              <div style={{ display: "flex", justifyContent: "flex-end" }}>
+                <CommentLikeButton commentId={c.id} viewer={viewer} />
+              </div>
             </li>
           ))}
         </ul>

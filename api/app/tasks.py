@@ -19,8 +19,8 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
-from app.models.content import MediaAsset, Post, SiteTextSection
-from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, Visibility
+from app.models.content import MediaAsset, Post, SiteTextSection, Stop
+from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, UserRole, Visibility
 from app.models.system import NotificationLog
 from app.models.user import NotificationPreference, User
 from app.services.mailer import send_email
@@ -475,6 +475,57 @@ def dispatch_post_notification(post_id: str):
         return f"Sent {sent_count} immediate post notifications"
     finally:
         db.close()
+
+@celery_app.task(name="dispatch_comment_notification")
+def dispatch_comment_notification(comment_id: str):
+    from app.models.system import Comment
+    db = SessionLocal()
+    try:
+        comment = db.get(Comment, uuid.UUID(comment_id))
+        if not comment:
+            return "Comment not found"
+
+        author = db.get(User, comment.author_id)
+        author_name = (author.display_name if author else None) or "Someone"
+
+        # Resolve target label
+        if comment.target_kind == "post":
+            target = db.get(Post, comment.target_id)
+            target_label = target.title if target else str(comment.target_id)
+            target_url = _post_url(target) if target else _base_url()
+        elif comment.target_kind == "stop":
+            target = db.get(Stop, comment.target_id)
+            target_label = (target.place_name or target.title) if target else str(comment.target_id)
+            target_url = _base_url()
+        else:
+            target_label = f"{comment.target_kind} {comment.target_id}"
+            target_url = _base_url()
+
+        subject = f'New comment on "{target_label}"'
+        text = (
+            f'{author_name} commented on "{target_label}":\n\n'
+            f"{comment.body}\n\n"
+            f"View: {target_url}\n"
+        )
+        html = (
+            f"<p><strong>{escape(author_name)}</strong> commented on "
+            f'<a href="{target_url}">{escape(target_label)}</a>:</p>'
+            f"<blockquote>{escape(comment.body)}</blockquote>"
+        )
+
+        admins = db.execute(
+            select(User).where(
+                User.is_active == True,
+                User.role == UserRole.ADMIN,
+            )
+        ).scalars().all()
+
+        for admin in admins:
+            send_email(admin.email, subject, text, html)
+        return f"Notified {len(admins)} admin(s) of comment {comment_id}"
+    finally:
+        db.close()
+
 
 INGEST_PATH = os.getenv("INGEST_PATH", os.path.join(MEDIA_DIR, "ingest"))
 PROCESSED_INGEST_PATH = os.path.join(INGEST_PATH, "processed")
