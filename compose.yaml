@@ -85,9 +85,7 @@ services:
     restart: unless-stopped
 
   db:
-    build:
-      context: ./docker/postgis
-    image: postmarked-postgis:16
+    image: ghcr.io/backroads4me/postmarked-postgis:${IMAGE_TAG:-latest}
     container_name: postgis_db
     env_file: .env
     environment:

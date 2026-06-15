@@ -22,6 +22,7 @@ jobs:
         image:
           - { name: postmarked-api, context: ./api }
           - { name: postmarked-web, context: ./web }
+          - { name: postmarked-postgis, context: ./docker/postgis }
         platform:
           - { tag: linux/amd64, runner: ubuntu-24.04, slug: amd64 }
           - { tag: linux/arm64, runner: ubuntu-24.04-arm, slug: arm64 }
@@ -74,7 +75,7 @@ jobs:
     needs: build
     strategy:
       matrix:
-        image: [postmarked-api, postmarked-web]
+        image: [postmarked-api, postmarked-web, postmarked-postgis]
     env:
       REGISTRY: ghcr.io
     steps:
