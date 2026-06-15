@@ -1,18 +1,18 @@
 # Postmarked
 
-Postmarked is a self-hosted travel journal for sharing trips, stops, updates, photos, and videos with family and friends. It works for road trips, long weekends, international travel, full-time travel, or any journey you want to share privately on your own server.
+Postmarked is a self-hosted digital postcard app. Replace the social media feed with a private, lightweight way to share travel photos, videos, and updates with family and friends. It works for road trips, long weekends, international travel, full-time travel, or any journey worth remembering.
 
-It is meant to be simple: run it, sign in, create a trip, post updates along the way, and let visitors follow along.
+Postmarked is intentionally simple: run it, sign in, create a trip, post updates along the way, and let people follow along.
 
 ## Features
 
-- Public trip pages, timeline, stops, posts, photos, and videos.
-- Admin UI for trips, stops, posts, media, users, site text, and settings.
+- Trip pages, timeline, posts, photos, and videos.
 - Public/private visibility controls.
-- Email notifications for new public updates.
-- One-file `pg_dump` + media ZIP export, with destructive restore, for instance migration.
-- Docker Compose deployment.
-- RV Trip Wizard `.xlsx` import with preview and apply for RV travelers.
+- New post email notifications.
+- Admin UI for trips, stops, posts, media, users, site text, and settings.
+- Backup and instance migration features.
+- RV Trip Wizard `.xlsx` import for RV travelers.
+- Docker deployment.
 
 ## Screenshot
 
@@ -20,21 +20,26 @@ It is meant to be simple: run it, sign in, create a trip, post updates along the
 
 ## Install
 
+Download the two files you need:
+
 ```bash
-cp .env.example .env
-docker compose up -d
+curl -fLO https://raw.githubusercontent.com/Backroads4Me/postmarked/main/compose.yaml
+curl -fLo .env https://raw.githubusercontent.com/Backroads4Me/postmarked/main/.env.example
 ```
 
-The database image is built locally from the official multi-architecture
-PostgreSQL image, so the same installation works on AMD64 and ARM64 hosts.
-
-Before deploying, edit `.env` and set production values for:
+Edit `.env` and set production values for:
 
 - `SECRET_KEY`
 - `APP_BASE_URL`
 - `ADMIN_EMAIL`
 - `ADMIN_PASSWORD`
 - `POSTGRES_PASSWORD`
+
+Then start the stack:
+
+```bash
+docker compose up -d
+```
 
 Open the admin UI:
 
@@ -46,101 +51,80 @@ Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
 
 ## Storage
 
-Both media and the database are stored under `MEDIA_DIR` as host bind mounts
-(not Docker named volumes):
-
 ```env
 MEDIA_DIR=./data
 ```
 
-| Subdirectory  | Contents                                      | Back up? |
-| ------------- | --------------------------------------------- | -------- |
-| `derivatives` | Processed media served to the site            | **Yes**  |
-| `backups`     | Scheduled/on-demand `pg_dump` database dumps  | **Yes**  |
-| `originals`   | Source uploads (empty unless `MEDIA_KEEP_ORIGINALS=true`) | Optional |
-| `ingest`      | Transient processing input                    | No       |
-| `db_data`     | **Live** PostgreSQL data directory            | **No** — see below |
+| Subdirectory  | Contents                                                  | Back up?           |
+| ------------- | --------------------------------------------------------- | ------------------ |
+| `derivatives` | Processed media served to the site                        | **Yes**            |
+| `backups`     | Scheduled/on-demand `pg_dump` database dumps              | **Yes**            |
+| `originals`   | Source uploads (empty unless `MEDIA_KEEP_ORIGINALS=true`) | Optional           |
+| `ingest`      | Transient processing input                                | No                 |
+| `db_data`     | **Live** PostgreSQL data directory                        | **No** — see below |
 
-For disaster recovery, copy/rsync `derivatives` and `backups` (and `originals`
-if you keep them). **Do not** file-copy the live `db_data` directory — it is
-mid-write and would produce a corrupt snapshot; the database is captured
-consistently by the `pg_dump` files in `backups` instead.
+For disaster recovery, copy `derivatives` and `backups` (and `originals` if you
+keep them). **Do not** file-copy the live `db_data` directory — it is mid-write
+and would produce a corrupt snapshot; the database is captured consistently by
+the `pg_dump` files in `backups` instead.
 
-## Serving Behind Cloudflare
+<details>
+<summary><strong>Serving Behind Cloudflare</strong></summary>
 
-If you proxy Postmarked through Cloudflare (orange cloud), videos may fail to
-play on iOS/Safari while working fine on desktop. Safari relies on HTTP range
-requests to play video, and Cloudflare's default caching can serve a full `200`
-response (with a weakened ETag) instead of the `206 Partial Content` Safari
-requires.
+If you proxy Postmarked through Cloudflare, videos may fail to
+play on iOS/Safari while working fine on desktop. To prevent this, you must add these **Cache Rules** in the Cloudflare dashboard (Caching → Cache Rules), in this order:
 
-Postmarked's origin already sends `Cloudflare-CDN-Cache-Control: no-store` for
-MP4 responses, but you must also add **two Cache Rules** in the Cloudflare
-dashboard (Caching → Cache Rules), in this order:
+1. **MP4 ETAG** — Match `URI Path` wildcard `/media/*/*.mp4`; set
+   _Eligible for cache_ and enable _Respect strong ETags_.
+2. **MP4** — Match `URI Path` wildcard `/media/*/*.mp4`; set _Bypass cache_.
+3. **Images** — Match `URI Path` wildcards `/media/*/*.webp`, `/media/*/*.avif`,
+   and `/media/*/*.jpg`; set _Eligible for cache_ with Browser TTL and Edge TTL
+   both set to _Respect origin_.
 
-1. **Respect strong ETags** — Match `URI Path` wildcard `/media/*/*.mp4`; set
-   *Eligible for cache* and enable *Respect strong ETags*.
-2. **Bypass cache** — Match `URI Path` wildcard `/media/*/*.mp4`; set
-   *Bypass cache*.
+Rules 1 and 2 must stay in this order. Rule 1 preserves the strong ETags Safari
+needs for range requests; rule 2 bypasses the shared cache so range requests
+reach the origin. Rule 3 caches images at the edge using the one-year
+`immutable` headers Postmarked sends for processed derivatives.
 
-Rule 1 must appear **above** rule 2. The first preserves the strong ETags Safari
-needs; the second forwards range requests to the origin instead of serving a
-mismatched cached response.
-
-After adding the rules, purge any already-cached MP4s (Caching → Purge) so the
-broken responses are evicted.
+After adding the rules, purge any already-cached MP4s (Caching → Purge) so
+stale responses are evicted.
 
 See Cloudflare's guide: <https://developers.cloudflare.com/cache/troubleshooting/mp4-videos-on-ios-and-safari/>
+
+![Cloudflare Cache Rules](screenshots/Cloudflare-cache-rules.png)
+
+</details>
 
 ## Backup And Restore
 
 In the admin UI, use Backup to export or restore an instance. This is a
-**migration tool** — designed for standing up a new instance, or moving from a
-dev site to prod — not a scheduled disaster-recovery system (see below).
+**convenience tool** designed to backup small sites or to migrate a dev site to prod, not a true disaster-recovery system for a mature site (see below).
 
-- **Export** downloads a single ZIP containing a `pg_dump` of the database
-  (custom format, data-only) plus all processed media derivatives. Original
-  uploads are intentionally not included; derivatives are sufficient to serve
-  the site.
+- **Export** downloads a single ZIP containing all data and processed media derivatives. Original uploads are intentionally not included; derivatives are sufficient to serve the site.
 - **Restore** uploads a ZIP and **replaces** the current instance with its
-  contents. It truncates every table, runs `pg_restore`, then replaces the
-  media derivatives. Restore is destructive and has no preview step.
-- The schema is supplied by the target's own migrations (`alembic upgrade head`
-  runs on startup), so a restore only loads data. Source and target should run
-  the **same app/schema version**; restoring across schema versions may fail.
-- ZIPs exported by older versions (per-table JSON format) still restore.
+  contents. It replaces all data and media. Restore is destructive and has no preview step.
+- **Media size grows quickly.** The export ZIP embeds **ALL** processed media
+  derivatives, so it becomes impractically large as content accumulates. Export/Import
+  is best for initial setup, moving from dev to production, or restoring a small early
+  instance — not as a routine backup strategy for a mature library.
 
-### Scheduled database snapshots
+### Disaster Recovery Backup
 
-For routine **disaster recovery** (as opposed to migration), the app writes a
-`pg_dump` to `${MEDIA_DIR}/backups` automatically:
+For routine **disaster recovery**, the app writes a database dump to `${MEDIA_DIR}/backups` automatically:
 
-- A daily snapshot runs on the Celery scheduler at `BACKUP_HOUR`:`BACKUP_MINUTE`
+- A daily snapshot runs at `BACKUP_HOUR`:`BACKUP_MINUTE`
   (server timezone), keeping the most recent `BACKUP_RETENTION` dumps.
 - The admin Backup page has a **Snapshot Database Now** button to trigger one
   on demand.
-- These dumps are DB-only; pair them with a file-level copy of `derivatives`
+- These dumps are **DB-only**; pair them with a file-level copy of `derivatives`
   (e.g. `rsync`/`restic`/`borg` to external storage) for a complete recovery
-  set. Restore a dump with `pg_restore --data-only --disable-triggers` into a
-  freshly migrated instance.
-
-### Limits
-
-- **Media size grows quickly.** The export ZIP embeds all processed media
-  derivatives, so it becomes impractically large as content accumulates. Export/Import
-  is best for initial setup, moving from dev to production, or restoring a small early
-  instance — not as a routine backup strategy for a mature library. Use scheduled
-  database snapshots plus a file-level copy of `derivatives` for ongoing disaster
-  recovery instead.
-- **Behind Cloudflare, restore uploads are capped at ~100 MB** (Free/Pro plans).
-  A large media library will exceed this. Perform big migrations over the
-  LAN/Tailscale address (bypassing the proxy) rather than the public hostname.
+  set.
 
 ## RV Trip Wizard Import
 
 In the admin UI, use the Import page to upload an RV Trip Wizard `.xlsx` export. Review the preview diff, then apply it.
 
-Imported stops are created as private drafts. Stops from a previous RV Trip Wizard import that are missing from the latest file are archived rather than deleted.
+Imported stops are created as private drafts.
 
 ## License
 
