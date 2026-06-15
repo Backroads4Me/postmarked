@@ -1,10 +1,22 @@
 FROM python:3.12-slim
 
-# Runtime deps: libpq5 for psycopg, ffmpeg for video processing
+# Runtime deps: libpq5 for psycopg, ffmpeg for video processing,
+# postgresql-client-16 for backup/restore (pg_dump/pg_restore) — pulled from the
+# official PGDG repo since Debian bookworm only ships client v15 (too old for a
+# v16 server).
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     ffmpeg \
     gosu \
+    curl \
+    gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+        -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    postgresql-client-16 \
     && rm -rf /var/lib/apt/lists/*
 
 RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser

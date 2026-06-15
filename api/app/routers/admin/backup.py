@@ -1,14 +1,17 @@
 """
 Admin backup endpoints — export and import a full ZIP archive for migration.
 """
+import asyncio
 import json
 import os
+import shutil
 import tempfile
 import uuid
 import zipfile
 from datetime import date, datetime
 from enum import Enum
 from typing import Any
+from urllib.parse import unquote, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
@@ -36,6 +39,71 @@ def _read_app_version() -> str:
             return f.read().strip()
     except OSError:
         return "unknown"
+
+
+def _pg_conn_args() -> tuple[list[str], dict[str, str]]:
+    """Derive pg_dump/pg_restore connection flags + env from DATABASE_URL.
+
+    Password is passed via PGPASSWORD (env) so special characters never need
+    shell/URL escaping.
+    """
+    raw = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postmarked")
+    # Strip any SQLAlchemy driver suffix (e.g. +psycopg, +asyncpg) for libpq tools.
+    scheme, _, rest = raw.partition("://")
+    base_scheme = scheme.split("+", 1)[0]
+    parsed = urlparse(f"{base_scheme}://{rest}")
+    args = [
+        "-h", parsed.hostname or "db",
+        "-p", str(parsed.port or 5432),
+        "-U", unquote(parsed.username or "postgres"),
+        "-d", (parsed.path.lstrip("/") or "postmarked"),
+    ]
+    env = {**os.environ, "PGPASSWORD": unquote(parsed.password or "")}
+    return args, env
+
+
+async def _run_pg_tool(tool: str, *tool_args: str, env: dict[str, str]) -> None:
+    """Run pg_dump/pg_restore, raising HTTPException on failure."""
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            tool, *tool_args,
+            env=env,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except FileNotFoundError:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{tool} is not installed in the API image — rebuild with postgresql-client-16.",
+        )
+    _, stderr = await proc.communicate()
+    if proc.returncode != 0:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{tool} failed (exit {proc.returncode}): {stderr.decode(errors='replace')[:1000]}",
+        )
+
+
+def _restore_media_files(zf: zipfile.ZipFile, zip_names: set[str]) -> int:
+    """Wipe and repopulate the derivatives directory from the archive."""
+    for media_dir in (ORIGINALS_PATH, DERIVATIVES_PATH):
+        if os.path.exists(media_dir):
+            for entry in os.scandir(media_dir):
+                if entry.is_dir(follow_symlinks=False):
+                    shutil.rmtree(entry.path)
+                else:
+                    os.remove(entry.path)
+        else:
+            os.makedirs(media_dir)
+
+    copied = 0
+    for zip_path in zip_names:
+        if zip_path.startswith("media/derivatives/"):
+            dest = os.path.join(DERIVATIVES_PATH, os.path.basename(zip_path))
+            with open(dest, "wb") as fh:
+                fh.write(zf.read(zip_path))
+            copied += 1
+    return copied
 
 
 def _serialize_value(value: Any) -> Any:
@@ -116,7 +184,14 @@ async def export_backup(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
-    """Download a ZIP archive of all content, users, and media derivatives."""
+    """Download a ZIP archive of all content, users, and media derivatives.
+
+    The database is captured with `pg_dump --data-only` (custom format) rather
+    than per-table JSON: it is transactionally consistent, schema-complete, and
+    restores via pg_restore. The target instance supplies the schema via
+    `alembic upgrade head`, so a data-only dump is sufficient for migration.
+    """
+    from sqlalchemy import select
     from app.models.content import MediaAsset, PointOfInterest, Post, Stop, SiteTextSection, Trip
     from app.models.system import Comment, Like, PreApprovedEmail, SiteConfig
     from app.models.user import NotificationPreference, User as UserModel
@@ -124,33 +199,42 @@ async def export_backup(
     tmp = tempfile.NamedTemporaryFile(prefix="postmarked-backup-", suffix=".zip", delete=False)
     tmp_path = tmp.name
     tmp.close()
+    dump_fd, dump_path = tempfile.mkstemp(prefix="postmarked-db-", suffix=".dump")
+    os.close(dump_fd)
     entity_counts: dict[str, int] = {}
 
     try:
+        # Consistent, schema-complete data dump. spatial_ref_sys (PostGIS) and
+        # alembic_version are owned by the target's own migrations — exclude them.
+        pg_args, pg_env = _pg_conn_args()
+        await _run_pg_tool(
+            "pg_dump", *pg_args,
+            "--data-only", "--format=custom",
+            "--exclude-table=spatial_ref_sys",
+            "--exclude-table=alembic_version",
+            "-f", dump_path,
+            env=pg_env,
+        )
+
+        # Row counts for the manifest (informational; cheap COUNT(*) per table).
+        count_models = {
+            "site_config": SiteConfig, "pre_approved_emails": PreApprovedEmail,
+            "users": UserModel, "notification_preferences": NotificationPreference,
+            "trips": Trip, "stops": Stop, "pois": PointOfInterest, "posts": Post,
+            "media_assets": MediaAsset, "site_text_sections": SiteTextSection,
+            "comments": Comment, "likes": Like,
+        }
+        for name, model in count_models.items():
+            entity_counts[name] = (
+                await session.execute(select(func.count()).select_from(model))
+            ).scalar_one()
+
+        # media_rows drives derivative-file bundling (resolves on-disk paths).
+        media_rows = await _query_all(session, MediaAsset)
+
         with zipfile.ZipFile(tmp_path, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-            async def _dump(name: str, model_class):
-                rows = await _query_all(session, model_class)
-                if name == "stops":
-                    rows = [_serialize_stop_backup_row(row) for row in rows]
-                entity_counts[name] = len(rows)
-                zf.writestr(f"data/{name}.json", json.dumps(rows))
-
-            await _dump("site_config", SiteConfig)
-            await _dump("pre_approved_emails", PreApprovedEmail)
-            await _dump("users", UserModel)
-            await _dump("notification_preferences", NotificationPreference)
-            await _dump("trips", Trip)
-            await _dump("stops", Stop)
-            await _dump("pois", PointOfInterest)
-            await _dump("posts", Post)
-
-            media_rows = await _query_all(session, MediaAsset)
-            entity_counts["media_assets"] = len(media_rows)
-            zf.writestr("data/media_assets.json", json.dumps(media_rows))
-
-            await _dump("site_text_sections", SiteTextSection)
-            await _dump("comments", Comment)
-            await _dump("likes", Like)
+            # Media is already-compressed; store the dump without re-deflating media.
+            zf.write(dump_path, "db.dump")
 
             # Bundle derivative files from disk — read paths from derivative_paths.
             import re
@@ -198,6 +282,7 @@ async def export_backup(
                     app_version=_read_app_version(),
                     created_at=datetime.utcnow(),
                     entity_counts=entity_counts,
+                    format="pgdump",
                 ).model_dump_json(indent=2),
             )
 
@@ -214,9 +299,68 @@ async def export_backup(
             background=BackgroundTask(os.remove, tmp_path),
         )
     except Exception:
-        if os.path.exists(tmp_path):
-            os.remove(tmp_path)
+        for path in (tmp_path, dump_path):
+            if os.path.exists(path):
+                os.remove(path)
         raise
+    finally:
+        # The dump is now inside the zip; the success path no longer needs it.
+        if os.path.exists(dump_path):
+            os.remove(dump_path)
+
+
+async def _import_pgdump(
+    session: AsyncSession,
+    user: User,
+    zf: zipfile.ZipFile,
+    zip_names: set[str],
+    manifest: BackupManifest,
+) -> ImportResult:
+    """Restore a pg_dump-based backup: TRUNCATE, pg_restore --data-only, then media.
+
+    The TRUNCATE is committed before pg_restore runs because pg_restore opens its
+    own connection and must see empty tables. This is destructive and irreversible
+    once started — the admin UI warns before invoking it.
+    """
+    dump_fd, dump_path = tempfile.mkstemp(prefix="postmarked-restore-", suffix=".dump")
+    with os.fdopen(dump_fd, "wb") as fh:
+        fh.write(zf.read("db.dump"))
+
+    try:
+        # Truncate every public table the dump can target (same exclusions as
+        # pg_dump above), so the wipe scope always matches the restore scope even
+        # as the schema grows. Commit it so pg_restore's own connection sees the
+        # tables empty.
+        tables = (await session.execute(text(
+            "SELECT quote_ident(tablename) FROM pg_tables "
+            "WHERE schemaname = 'public' "
+            "AND tablename NOT IN ('spatial_ref_sys', 'alembic_version')"
+        ))).scalars().all()
+        if tables:
+            await session.execute(text(f"TRUNCATE {', '.join(tables)} CASCADE"))
+        await session.commit()
+
+        pg_args, pg_env = _pg_conn_args()
+        # --disable-triggers loads rows regardless of FK order (no manual deferral);
+        # --single-transaction rolls the whole load back on any error.
+        await _run_pg_tool(
+            "pg_restore", *pg_args,
+            "--data-only", "--disable-triggers", "--no-owner",
+            "--single-transaction",
+            dump_path,
+            env=pg_env,
+        )
+    finally:
+        if os.path.exists(dump_path):
+            os.remove(dump_path)
+
+    media_files_copied = _restore_media_files(zf, zip_names)
+
+    await log_audit_event(
+        session, user.id, "IMPORT_BACKUP", "backup", uuid.uuid4(), manifest.entity_counts
+    )
+    await session.commit()
+    return ImportResult(entity_counts=manifest.entity_counts, media_files_copied=media_files_copied)
 
 
 @router.post("/import", response_model=ImportResult)
@@ -243,10 +387,15 @@ async def import_backup(
                     raise HTTPException(status_code=400, detail="Archive is missing manifest.json.")
 
                 try:
-                    BackupManifest(**json.loads(zf.read("manifest.json")))
+                    manifest = BackupManifest(**json.loads(zf.read("manifest.json")))
                 except Exception:
                     raise HTTPException(status_code=400, detail="manifest.json is malformed.")
 
+                # New-format backups carry a pg_dump archive — restore via pg_restore.
+                if "db.dump" in zip_names:
+                    return await _import_pgdump(session, user, zf, zip_names, manifest)
+
+                # ---- Legacy JSON path (backups exported before the pg_dump switch) ----
                 # Full wipe — CASCADE clears all FK-dependent rows automatically.
                 await session.execute(text(f"TRUNCATE {_TRUNCATE_TABLES} CASCADE"))
                 await session.flush()
@@ -338,28 +487,8 @@ async def import_backup(
                         .values(post_id=uuid.UUID(post_id_str))
                     )
 
-                # Wipe existing media directories before restoring.
-                # Use rmtree on contents only — the dirs are Docker volume mount points
-                # that the process can't remove, only write into.
-                import shutil
-                for media_dir in (ORIGINALS_PATH, DERIVATIVES_PATH):
-                    if os.path.exists(media_dir):
-                        for entry in os.scandir(media_dir):
-                            if entry.is_dir(follow_symlinks=False):
-                                shutil.rmtree(entry.path)
-                            else:
-                                os.remove(entry.path)
-                    else:
-                        os.makedirs(media_dir)
-
-                # Copy derivative media files from the archive.
-                media_files_copied = 0
-                for zip_path in zip_names:
-                    if zip_path.startswith("media/derivatives/"):
-                        dest = os.path.join(DERIVATIVES_PATH, os.path.basename(zip_path))
-                        with open(dest, "wb") as fh:
-                            fh.write(zf.read(zip_path))
-                        media_files_copied += 1
+                # Wipe and repopulate the derivatives directory from the archive.
+                media_files_copied = _restore_media_files(zf, zip_names)
 
                 await session.commit()
                 return ImportResult(entity_counts=entity_counts, media_files_copied=media_files_copied)
