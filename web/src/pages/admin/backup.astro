@@ -6,11 +6,31 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
   <div class="max-w-2xl mx-auto space-y-6">
 
     <section class="admin-list p-6">
+      <h2 class="display text-xl mb-2">Server Database Snapshot</h2>
+      <p class="text-sm text-dim mb-4">
+        Write a timestamped database dump to the server's <code>backups</code>
+        directory now. Snapshots are also taken automatically on a schedule.
+        Back these up by copying the <code>backups</code> directory alongside
+        <code>derivatives</code>.
+      </p>
+      <button id="snapshot-btn" class="btn btn-primary">
+        Snapshot Database Now
+      </button>
+      <p id="snapshot-status" class="text-sm mt-3 hidden" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="admin-list p-6">
       <h2 class="display text-xl mb-2">Export Backup</h2>
       <p class="text-sm text-dim mb-4">
         Download a ZIP archive containing all trips, stops, posts, media metadata,
-        users, and processed photo/video derivatives. Use this to back up your
-        instance or migrate to a new server.
+        users, and processed photo/video derivatives. Use this to migrate to a new
+        server or restore an early-stage instance.
+      </p>
+      <p class="text-sm text-dim mb-4">
+        <strong>Practical size limit:</strong> this archive embeds all media files,
+        so it grows quickly as content accumulates. It is best suited for initial
+        setup, moving from dev to production, or restoring when the library is still
+        small — not as a routine backup strategy for a mature instance.
       </p>
       <a
         href="/api/admin/backup/export"
@@ -20,20 +40,6 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       >
         Download Backup
       </a>
-    </section>
-
-    <section class="admin-list p-6">
-      <h2 class="display text-xl mb-2">Server Database Snapshot</h2>
-      <p class="text-sm text-dim mb-4">
-        Write a timestamped database dump to the server's <code>backups</code>
-        directory now. Snapshots are also taken automatically on a schedule.
-        Back these up by copying the <code>backups</code> directory alongside
-        <code>derivatives</code>.
-      </p>
-      <button id="snapshot-btn" class="btn btn-ghost">
-        Snapshot Database Now
-      </button>
-      <p id="snapshot-status" class="text-sm mt-3 hidden" role="status" aria-live="polite"></p>
     </section>
 
     <section class="admin-list p-6">

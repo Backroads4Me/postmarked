@@ -126,6 +126,12 @@ For routine **disaster recovery** (as opposed to migration), the app writes a
 
 ### Limits
 
+- **Media size grows quickly.** The export ZIP embeds all processed media
+  derivatives, so it becomes impractically large as content accumulates. Export/Import
+  is best for initial setup, moving from dev to production, or restoring a small early
+  instance — not as a routine backup strategy for a mature library. Use scheduled
+  database snapshots plus a file-level copy of `derivatives` for ongoing disaster
+  recovery instead.
 - **Behind Cloudflare, restore uploads are capped at ~100 MB** (Free/Pro plans).
   A large media library will exceed this. Perform big migrations over the
   LAN/Tailscale address (bypassing the proxy) rather than the public hostname.
