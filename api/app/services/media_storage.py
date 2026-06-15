@@ -6,6 +6,10 @@ from app.models.content import MediaAsset
 MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
 DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "derivatives"))
+# Scheduled/on-demand pg_dump artifacts. A sibling of derivatives (never nested
+# inside it) so the restore wipe of originals/derivatives can't delete backups,
+# and so DB dumps never sit under the publicly-routed media tree.
+BACKUPS_PATH = os.getenv("BACKUPS_PATH", os.path.join(MEDIA_DIR, "backups"))
 
 _HASHED_FILENAME_RE = re.compile(r"^[a-z0-9_]+-[0-9a-f]{8,}\.\w+$")
 

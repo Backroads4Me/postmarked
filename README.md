@@ -53,13 +53,18 @@ Both media and the database are stored under `MEDIA_DIR` as host bind mounts
 MEDIA_DIR=./data
 ```
 
-- Media files are mounted at `${MEDIA_DIR}` (default `./data`).
-- The database data directory is bind-mounted from `${MEDIA_DIR}/db_data`
-  (default `./data/db_data`).
+| Subdirectory  | Contents                                      | Back up? |
+| ------------- | --------------------------------------------- | -------- |
+| `derivatives` | Processed media served to the site            | **Yes**  |
+| `backups`     | Scheduled/on-demand `pg_dump` database dumps  | **Yes**  |
+| `originals`   | Source uploads (empty unless `MEDIA_KEEP_ORIGINALS=true`) | Optional |
+| `ingest`      | Transient processing input                    | No       |
+| `db_data`     | **Live** PostgreSQL data directory            | **No** — see below |
 
-To back up the underlying data outside the app, copy/snapshot `${MEDIA_DIR}`.
-The database directory must be backed up with a stopped container or a
-`pg_dump`, not a live file copy.
+For disaster recovery, copy/rsync `derivatives` and `backups` (and `originals`
+if you keep them). **Do not** file-copy the live `db_data` directory — it is
+mid-write and would produce a corrupt snapshot; the database is captured
+consistently by the `pg_dump` files in `backups` instead.
 
 ## Serving Behind Cloudflare
 
@@ -105,15 +110,25 @@ dev site to prod — not a scheduled disaster-recovery system (see below).
   the **same app/schema version**; restoring across schema versions may fail.
 - ZIPs exported by older versions (per-table JSON format) still restore.
 
-### Limits and recommendations
+### Scheduled database snapshots
+
+For routine **disaster recovery** (as opposed to migration), the app writes a
+`pg_dump` to `${MEDIA_DIR}/backups` automatically:
+
+- A daily snapshot runs on the Celery scheduler at `BACKUP_HOUR`:`BACKUP_MINUTE`
+  (server timezone), keeping the most recent `BACKUP_RETENTION` dumps.
+- The admin Backup page has a **Snapshot Database Now** button to trigger one
+  on demand.
+- These dumps are DB-only; pair them with a file-level copy of `derivatives`
+  (e.g. `rsync`/`restic`/`borg` to external storage) for a complete recovery
+  set. Restore a dump with `pg_restore --data-only --disable-triggers` into a
+  freshly migrated instance.
+
+### Limits
 
 - **Behind Cloudflare, restore uploads are capped at ~100 MB** (Free/Pro plans).
   A large media library will exceed this. Perform big migrations over the
   LAN/Tailscale address (bypassing the proxy) rather than the public hostname.
-- For routine, unattended **disaster recovery**, do not rely on this feature.
-  Run `pg_dump` plus a file-level, incremental backup of the media directory
-  (e.g. `restic`/`borg`) from a host cron to external storage. That keeps
-  working when the app is down — which is when you need it most.
 
 ## RV Trip Wizard Import
 

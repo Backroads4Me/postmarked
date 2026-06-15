@@ -11,7 +11,6 @@ import zipfile
 from datetime import date, datetime
 from enum import Enum
 from typing import Any
-from urllib.parse import unquote, urlparse
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import FileResponse
@@ -26,6 +25,7 @@ from app.db import get_async_session
 from app.models.user import User
 from app.schemas.backup import BackupManifest, ImportResult
 from app.services.audit import log_audit_event
+from app.services.db_backup import pg_conn_args
 from app.services.media_storage import DERIVATIVES_PATH, ORIGINALS_PATH
 
 router = APIRouter(prefix="/backup", tags=["admin-backup"])
@@ -39,27 +39,6 @@ def _read_app_version() -> str:
             return f.read().strip()
     except OSError:
         return "unknown"
-
-
-def _pg_conn_args() -> tuple[list[str], dict[str, str]]:
-    """Derive pg_dump/pg_restore connection flags + env from DATABASE_URL.
-
-    Password is passed via PGPASSWORD (env) so special characters never need
-    shell/URL escaping.
-    """
-    raw = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postmarked")
-    # Strip any SQLAlchemy driver suffix (e.g. +psycopg, +asyncpg) for libpq tools.
-    scheme, _, rest = raw.partition("://")
-    base_scheme = scheme.split("+", 1)[0]
-    parsed = urlparse(f"{base_scheme}://{rest}")
-    args = [
-        "-h", parsed.hostname or "db",
-        "-p", str(parsed.port or 5432),
-        "-U", unquote(parsed.username or "postgres"),
-        "-d", (parsed.path.lstrip("/") or "postmarked"),
-    ]
-    env = {**os.environ, "PGPASSWORD": unquote(parsed.password or "")}
-    return args, env
 
 
 async def _run_pg_tool(tool: str, *tool_args: str, env: dict[str, str]) -> None:
@@ -206,7 +185,7 @@ async def export_backup(
     try:
         # Consistent, schema-complete data dump. spatial_ref_sys (PostGIS) and
         # alembic_version are owned by the target's own migrations — exclude them.
-        pg_args, pg_env = _pg_conn_args()
+        pg_args, pg_env = pg_conn_args()
         await _run_pg_tool(
             "pg_dump", *pg_args,
             "--data-only", "--format=custom",
@@ -340,7 +319,7 @@ async def _import_pgdump(
             await session.execute(text(f"TRUNCATE {', '.join(tables)} CASCADE"))
         await session.commit()
 
-        pg_args, pg_env = _pg_conn_args()
+        pg_args, pg_env = pg_conn_args()
         # --disable-triggers loads rows regardless of FK order (no manual deferral);
         # --single-transaction rolls the whole load back on any error.
         await _run_pg_tool(
@@ -494,3 +473,24 @@ async def import_backup(
                 return ImportResult(entity_counts=entity_counts, media_files_copied=media_files_copied)
         except zipfile.BadZipFile:
             raise HTTPException(status_code=400, detail="Invalid ZIP archive.")
+
+
+@router.post("/snapshot")
+async def create_db_snapshot(
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    """Queue an on-demand server-side pg_dump into the backups directory.
+
+    The dump is written on the Celery worker (same image, which has
+    postgresql-client-16) so the request returns immediately. Combined with the
+    scheduled task, this keeps a rotating set of dumps under BACKUPS_PATH that an
+    operator can rsync alongside the derivatives directory.
+    """
+    # Imported lazily: app.tasks pulls in heavy media-processing deps.
+    from app.tasks import create_db_backup
+
+    create_db_backup.delay()
+    await log_audit_event(session, user.id, "SNAPSHOT_DB", "backup", uuid.uuid4(), {})
+    await session.commit()
+    return {"status": "queued", "detail": "Database snapshot started on the server."}
