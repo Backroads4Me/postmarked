@@ -43,6 +43,13 @@ celery_app.conf.beat_schedule = {
         "task": "dispatch_weekly_digest",
         "schedule": crontab(hour=8, minute=0, day_of_week="monday"),
     },
+    "daily-db-backup": {
+        "task": "create_db_backup",
+        "schedule": crontab(
+            hour=int(os.getenv("BACKUP_HOUR", "3")),
+            minute=int(os.getenv("BACKUP_MINUTE", "0")),
+        ),
+    },
 }
 
 engine = create_engine(DATABASE_URL_SYNC)
@@ -630,6 +637,22 @@ def scan_filesystem():
                 process_media_asset.delay(str(new_id))
     finally:
         db.close()
+
+@celery_app.task(name="create_db_backup")
+def create_db_backup():
+    """Write a timestamped pg_dump to the backups dir and prune old ones.
+
+    The dump is DB-only; media is backed up at the filesystem level. Operators
+    rsync the backups dir alongside derivatives for disaster recovery.
+    """
+    from app.services.db_backup import create_db_dump, prune_old_dumps
+
+    keep = int(os.getenv("BACKUP_RETENTION", "7"))
+    path = create_db_dump()
+    removed = prune_old_dumps(keep=keep)
+    logger.info("DB backup written to %s (pruned %d old dump(s), keeping %d)", path, removed, keep)
+    return path
+
 
 @celery_app.task(name="dispatch_weekly_digest")
 def dispatch_weekly_digest():

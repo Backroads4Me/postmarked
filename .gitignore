@@ -53,6 +53,7 @@ pnpm-debug.log*
 *.tar.gz
 *.tgz
 *.sql
+!docker/postgis/init-postgis.sql
 *.dump
 *.sqlite
 *.sqlite3

@@ -10,7 +10,7 @@ It is meant to be simple: run it, sign in, create a trip, post updates along the
 - Admin UI for trips, stops, posts, media, users, site text, and settings.
 - Public/private visibility controls.
 - Email notifications for new public updates.
-- ZIP backup export and destructive restore.
+- One-file `pg_dump` + media ZIP export, with destructive restore, for instance migration.
 - Docker Compose deployment.
 - RV Trip Wizard `.xlsx` import with preview and apply for RV travelers.
 
@@ -24,6 +24,9 @@ It is meant to be simple: run it, sign in, create a trip, post updates along the
 cp .env.example .env
 docker compose up -d
 ```
+
+The database image is built locally from the official multi-architecture
+PostgreSQL image, so the same installation works on AMD64 and ARM64 hosts.
 
 Before deploying, edit `.env` and set production values for:
 
@@ -43,13 +46,25 @@ Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
 
 ## Storage
 
-Media files are mounted from `MEDIA_DIR`:
+Both media and the database are stored under `MEDIA_DIR` as host bind mounts
+(not Docker named volumes):
 
 ```env
 MEDIA_DIR=./data
 ```
 
-The database uses Docker's `db_data` volume by default.
+| Subdirectory  | Contents                                      | Back up? |
+| ------------- | --------------------------------------------- | -------- |
+| `derivatives` | Processed media served to the site            | **Yes**  |
+| `backups`     | Scheduled/on-demand `pg_dump` database dumps  | **Yes**  |
+| `originals`   | Source uploads (empty unless `MEDIA_KEEP_ORIGINALS=true`) | Optional |
+| `ingest`      | Transient processing input                    | No       |
+| `db_data`     | **Live** PostgreSQL data directory            | **No** — see below |
+
+For disaster recovery, copy/rsync `derivatives` and `backups` (and `originals`
+if you keep them). **Do not** file-copy the live `db_data` directory — it is
+mid-write and would produce a corrupt snapshot; the database is captured
+consistently by the `pg_dump` files in `backups` instead.
 
 ## Serving Behind Cloudflare
 
@@ -79,11 +94,41 @@ See Cloudflare's guide: <https://developers.cloudflare.com/cache/troubleshooting
 
 ## Backup And Restore
 
-In the admin UI, use Backup to export or restore an instance.
+In the admin UI, use Backup to export or restore an instance. This is a
+**migration tool** — designed for standing up a new instance, or moving from a
+dev site to prod — not a scheduled disaster-recovery system (see below).
 
-- Export downloads a ZIP with database records and media files.
-- Restore uploads a ZIP and replaces the current instance with its contents.
-- Restore is destructive and has no preview step.
+- **Export** downloads a single ZIP containing a `pg_dump` of the database
+  (custom format, data-only) plus all processed media derivatives. Original
+  uploads are intentionally not included; derivatives are sufficient to serve
+  the site.
+- **Restore** uploads a ZIP and **replaces** the current instance with its
+  contents. It truncates every table, runs `pg_restore`, then replaces the
+  media derivatives. Restore is destructive and has no preview step.
+- The schema is supplied by the target's own migrations (`alembic upgrade head`
+  runs on startup), so a restore only loads data. Source and target should run
+  the **same app/schema version**; restoring across schema versions may fail.
+- ZIPs exported by older versions (per-table JSON format) still restore.
+
+### Scheduled database snapshots
+
+For routine **disaster recovery** (as opposed to migration), the app writes a
+`pg_dump` to `${MEDIA_DIR}/backups` automatically:
+
+- A daily snapshot runs on the Celery scheduler at `BACKUP_HOUR`:`BACKUP_MINUTE`
+  (server timezone), keeping the most recent `BACKUP_RETENTION` dumps.
+- The admin Backup page has a **Snapshot Database Now** button to trigger one
+  on demand.
+- These dumps are DB-only; pair them with a file-level copy of `derivatives`
+  (e.g. `rsync`/`restic`/`borg` to external storage) for a complete recovery
+  set. Restore a dump with `pg_restore --data-only --disable-triggers` into a
+  freshly migrated instance.
+
+### Limits
+
+- **Behind Cloudflare, restore uploads are capped at ~100 MB** (Free/Pro plans).
+  A large media library will exceed this. Perform big migrations over the
+  LAN/Tailscale address (bypassing the proxy) rather than the public hostname.
 
 ## RV Trip Wizard Import
 

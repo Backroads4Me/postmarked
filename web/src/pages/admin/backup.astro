@@ -23,6 +23,20 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     </section>
 
     <section class="admin-list p-6">
+      <h2 class="display text-xl mb-2">Server Database Snapshot</h2>
+      <p class="text-sm text-dim mb-4">
+        Write a timestamped database dump to the server's <code>backups</code>
+        directory now. Snapshots are also taken automatically on a schedule.
+        Back these up by copying the <code>backups</code> directory alongside
+        <code>derivatives</code>.
+      </p>
+      <button id="snapshot-btn" class="btn btn-ghost">
+        Snapshot Database Now
+      </button>
+      <p id="snapshot-status" class="text-sm mt-3 hidden" role="status" aria-live="polite"></p>
+    </section>
+
+    <section class="admin-list p-6">
       <h2 class="display text-xl mb-2">Import Backup</h2>
       <p class="text-sm text-dim mb-4">
         Upload a previously exported ZIP to fully restore this instance.
@@ -126,6 +140,36 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
 </style>
 
 <script>
+  const snapshotBtn = document.getElementById('snapshot-btn') as HTMLButtonElement;
+  const snapshotStatus = document.getElementById('snapshot-status') as HTMLParagraphElement;
+
+  snapshotBtn.addEventListener('click', async () => {
+    snapshotBtn.disabled = true;
+    snapshotStatus.classList.remove('hidden');
+    snapshotStatus.style.color = 'var(--muted)';
+    snapshotStatus.textContent = 'Requesting snapshot…';
+    try {
+      const res = await fetch('/api/admin/backup/snapshot', {
+        method: 'POST',
+        credentials: 'include',
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        snapshotStatus.style.color = 'var(--sunset)';
+        snapshotStatus.textContent = `Error: ${data.detail ?? 'Snapshot request failed.'}`;
+      } else {
+        snapshotStatus.style.color = '';
+        snapshotStatus.textContent =
+          `${data.detail ?? 'Snapshot started.'} It runs in the background; check the server's backups directory.`;
+      }
+    } catch {
+      snapshotStatus.style.color = 'var(--sunset)';
+      snapshotStatus.textContent = 'Network error — could not reach the API.';
+    } finally {
+      snapshotBtn.disabled = false;
+    }
+  });
+
   const form = document.getElementById('import-form') as HTMLFormElement;
   const btn = document.getElementById('import-btn') as HTMLButtonElement;
   const resultEl = document.getElementById('import-result') as HTMLDivElement;
