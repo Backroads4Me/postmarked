@@ -46,13 +46,20 @@ Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
 
 ## Storage
 
-Media files are mounted from `MEDIA_DIR`:
+Both media and the database are stored under `MEDIA_DIR` as host bind mounts
+(not Docker named volumes):
 
 ```env
 MEDIA_DIR=./data
 ```
 
-The database uses Docker's `db_data` volume by default.
+- Media files are mounted at `${MEDIA_DIR}` (default `./data`).
+- The database data directory is bind-mounted from `${MEDIA_DIR}/db_data`
+  (default `./data/db_data`).
+
+To back up the underlying data outside the app, copy/snapshot `${MEDIA_DIR}`.
+The database directory must be backed up with a stopped container or a
+`pg_dump`, not a live file copy.
 
 ## Serving Behind Cloudflare
 
