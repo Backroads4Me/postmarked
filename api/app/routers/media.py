@@ -105,7 +105,14 @@ def _resolve_hashed_path(asset: MediaAsset, filename: str) -> Optional[tuple[str
     return disk_path, mime_type
 
 
-def _range_response(path: str, mime_type: str, range_header: str, etag: str, cache_control: str) -> Response:
+def _range_response(
+    path: str,
+    mime_type: str,
+    range_header: str,
+    etag: str,
+    cache_control: str,
+    cdn_cache_control: Optional[str] = None,
+) -> Response:
     """Serve a byte range from disk. Standard `bytes=START-END` parsing."""
     file_size = os.path.getsize(path)
 
@@ -142,17 +149,21 @@ def _range_response(path: str, mime_type: str, range_header: str, etag: str, cac
                 remaining -= len(buf)
                 yield buf
 
+    headers = {
+        "Content-Range": f"bytes {start}-{end}/{file_size}",
+        "Accept-Ranges": "bytes",
+        "Content-Length": str(chunk_size),
+        "Cache-Control": cache_control,
+        "ETag": etag,
+    }
+    if cdn_cache_control:
+        headers["Cloudflare-CDN-Cache-Control"] = cdn_cache_control
+
     return StreamingResponse(
         iterfile(),
         status_code=206,
         media_type=mime_type,
-        headers={
-            "Content-Range": f"bytes {start}-{end}/{file_size}",
-            "Accept-Ranges": "bytes",
-            "Content-Length": str(chunk_size),
-            "Cache-Control": cache_control,
-            "ETag": etag,
-        },
+        headers=headers,
     )
 
 
@@ -173,6 +184,16 @@ def _cache_control_legacy(variant: str, is_public: bool) -> str:
         return "private, max-age=86400"
     # Short cache for all legacy routes — they'll 301 once backfilled.
     return "public, max-age=3600, must-revalidate, no-transform"
+
+
+def _media_cache_headers(mime_type: str, cache_control: str) -> dict[str, str]:
+    """Return cache headers, bypassing shared caches for Safari MP4 ranges."""
+    if mime_type == "video/mp4":
+        return {
+            "Cache-Control": cache_control,
+            "Cloudflare-CDN-Cache-Control": "no-store",
+        }
+    return {"Cache-Control": cache_control}
 
 
 async def _check_asset_access(
@@ -210,9 +231,10 @@ def _serve_file(
         raise HTTPException(status_code=404, detail="Not found")
 
     etag = _file_etag(path, variant)
+    cache_headers = _media_cache_headers(mime_type, cache_control)
 
     if request.headers.get("if-none-match") == etag:
-        return Response(status_code=304)
+        return Response(status_code=304, headers=cache_headers)
 
     range_header = request.headers.get("range")
     if range_header:
@@ -243,11 +265,18 @@ def _serve_file(
                     "Content-Range": f"bytes {start}-{end}/{file_size}",
                     "Accept-Ranges": "bytes",
                     "Content-Length": str(end - start + 1),
-                    "Cache-Control": cache_control,
                     "ETag": etag,
+                    **cache_headers,
                 },
             )
-        return _range_response(path, mime_type, range_header, etag, cache_control)
+        return _range_response(
+            path,
+            mime_type,
+            range_header,
+            etag,
+            cache_headers["Cache-Control"],
+            cache_headers.get("Cloudflare-CDN-Cache-Control"),
+        )
 
     if head_only:
         stat = os.stat(path)
@@ -255,10 +284,10 @@ def _serve_file(
             status_code=200,
             media_type=mime_type,
             headers={
-                "Cache-Control": cache_control,
                 "ETag": etag,
                 "Accept-Ranges": "bytes",
                 "Content-Length": str(stat.st_size),
+                **cache_headers,
             },
         )
 
@@ -266,9 +295,9 @@ def _serve_file(
         path,
         media_type=mime_type,
         headers={
-            "Cache-Control": cache_control,
             "ETag": etag,
             "Accept-Ranges": "bytes",
+            **cache_headers,
         },
     )
 

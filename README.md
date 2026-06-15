@@ -51,6 +51,32 @@ MEDIA_DIR=./data
 
 The database uses Docker's `db_data` volume by default.
 
+## Serving Behind Cloudflare
+
+If you proxy Postmarked through Cloudflare (orange cloud), videos may fail to
+play on iOS/Safari while working fine on desktop. Safari relies on HTTP range
+requests to play video, and Cloudflare's default caching can serve a full `200`
+response (with a weakened ETag) instead of the `206 Partial Content` Safari
+requires.
+
+Postmarked's origin already sends `Cloudflare-CDN-Cache-Control: no-store` for
+MP4 responses, but you must also add **two Cache Rules** in the Cloudflare
+dashboard (Caching → Cache Rules), in this order:
+
+1. **Respect strong ETags** — Match `URI Path` wildcard `/media/*/*.mp4`; set
+   *Eligible for cache* and enable *Respect strong ETags*.
+2. **Bypass cache** — Match `URI Path` wildcard `/media/*/*.mp4`; set
+   *Bypass cache*.
+
+Rule 1 must appear **above** rule 2. The first preserves the strong ETags Safari
+needs; the second forwards range requests to the origin instead of serving a
+mismatched cached response.
+
+After adding the rules, purge any already-cached MP4s (Caching → Purge) so the
+broken responses are evicted.
+
+See Cloudflare's guide: <https://developers.cloudflare.com/cache/troubleshooting/mp4-videos-on-ios-and-safari/>
+
 ## Backup And Restore
 
 In the admin UI, use Backup to export or restore an instance.

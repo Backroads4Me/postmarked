@@ -89,6 +89,8 @@ def transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "23",
+        "-maxrate", "8000k",
+        "-bufsize", "16000k",
         "-profile:v", "main",
         "-level:v", "4.1",
         "-pix_fmt", "yuv420p",
@@ -128,7 +130,7 @@ def _is_hashed_url(url: str) -> bool:
     """Check if a derivative_paths URL is a hashed (immutable) URL."""
     import re
     parts = url.rsplit("/", 1)
-    return len(parts) == 2 and bool(re.match(r"^[a-z_]+-[0-9a-f]{8,}\.\w+$", parts[1]))
+    return len(parts) == 2 and bool(re.match(r"^[a-z0-9_]+-[0-9a-f]{8,}\.\w+$", parts[1]))
 
 
 def main():

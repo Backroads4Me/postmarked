@@ -248,6 +248,8 @@ def _transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
         "-c:v", "libx264",
         "-preset", "fast",
         "-crf", "23",
+        "-maxrate", "8000k",
+        "-bufsize", "16000k",
         "-profile:v", "main",
         "-level:v", "4.1",
         "-pix_fmt", "yuv420p",
