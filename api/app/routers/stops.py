@@ -286,7 +286,9 @@ async def get_post(
 
     visible_media = visible_ready_media(post.media or [], user)
 
-    # Global post siblings ordered by post date, regardless of stop or trip.
+    # Global post siblings ordered by stop date, then post date, so posts from
+    # the same stop stay grouped and contiguous rather than interleaving by
+    # post date across stops.
     post_siblings_query = (
         select(
             Post.id,
@@ -303,7 +305,12 @@ async def get_post(
             Stop.status == StopStatus.PUBLISHED,
             Post.status == PostStatus.PUBLISHED,
         )
-        .order_by(Post.posted_at.asc(), Post.id.asc())
+        .order_by(
+            Stop.start_date.asc(),
+            Stop.id.asc(),
+            Post.posted_at.asc(),
+            Post.id.asc(),
+        )
     )
     if not user:
         post_siblings_query = post_siblings_query.where(
