@@ -8,10 +8,12 @@ Postmarked is intentionally simple: run it, sign in, create a trip, post updates
 
 - Trip pages, timeline, posts, photos, and videos.
 - Public/private visibility controls.
-- New post email notifications.
+- Subscriber email notifications for new posts.
 - Admin UI for trips, stops, posts, media, users, site text, and settings.
-- Backup and instance migration features.
+- Customizable home page and section text via admin.
+- Backup and instance migration.
 - RV Trip Wizard `.xlsx` import for RV travelers.
+- Optional privacy policy and terms pages via Markdown files.
 - Docker deployment.
 
 ## Screenshot
@@ -125,6 +127,23 @@ For routine **disaster recovery**, the app writes a database dump to `${MEDIA_DI
 In the admin UI, use the Import page to upload an RV Trip Wizard `.xlsx` export. Review the preview diff, then apply it.
 
 Imported stops are created as private drafts.
+
+<details>
+<summary><strong>Privacy Policy &amp; Terms of Service Pages</strong></summary>
+
+Postmarked ships built-in privacy and terms pages at `/privacy` and `/terms`. By default they show generic placeholder content. To customize them, place `privacy.md` and/or `terms.md` in your `MEDIA_DIR` on the host. They are picked up automatically — no extra configuration needed.
+
+See `privacy.md.example` and `terms.md.example` in the repo root for templates.
+
+To include a support contact email in the default built-in pages:
+
+```env
+SUPPORT_EMAIL=support@example.com
+```
+
+If unset, the contact section reads "contact the site administrator."
+
+</details>
 
 ## License
 

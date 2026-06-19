@@ -43,7 +43,7 @@ const homeHeaderText = sectionText(siteText, 'home.header', {
 const updatesText = sectionText(siteText, 'home.updates', {
   label: null,
   heading: 'Latest Updates',
-  cta_label: 'See full timeline',
+  cta_label: 'See all updates',
   cta_href: '/timeline',
 });
 
@@ -96,6 +96,7 @@ function groupHomeUpdates(stops = [], posts = []) {
 const nextStopMention = nextStop ? { cityState: stopCityState(nextStop), slug: nextStop.slug, tripSlug: nextStop.trip_slug } : undefined;
 const prevStopMention = previousStop ? { cityState: stopCityState(previousStop), slug: previousStop.slug, tripSlug: previousStop.trip_slug } : undefined;
 const updateGroups = groupHomeUpdates(homeData?.recent_stops || [], homeData?.recent_posts || []);
+const hasMore = homeData?.has_more ?? false;
 
 function formatStopDate(dateStr) {
   return formatDate(dateStr, { weekday: 'short', month: 'short', day: 'numeric' });
@@ -164,7 +165,7 @@ function formatStopDate(dateStr) {
           {updatesText.body && <p class="text-sm text-muted mt-1">{updatesText.body}</p>}
         </div>
         {updatesText.cta_label && updatesText.cta_href && (
-          <a href={updatesText.cta_href} class="btn btn-ghost btn-display timeline-link" aria-label="View all timeline updates">
+          <a href={updatesText.cta_href} class="btn" style="background: var(--surface); border-color: var(--line);" aria-label="View all timeline updates">
             {updatesText.cta_label}
           </a>
         )}
@@ -184,6 +185,15 @@ function formatStopDate(dateStr) {
         />
       )}
     </section>
+
+    {/* ── See All Updates CTA ───────────────────────────────── */}
+    {hasMore && updatesText.cta_label && updatesText.cta_href && (
+      <div class="mt-8 flex justify-center">
+        <a href={updatesText.cta_href} class="btn btn-ghost-ember" aria-label="View all timeline updates">
+          {updatesText.cta_label}
+        </a>
+      </div>
+    )}
 
     {/* ── Footer ─────────────────────────────────────────────── */}
     <footer class="mt-16 mb-8 text-center">

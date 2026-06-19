@@ -68,7 +68,7 @@ function hasField(section, field) {
         <div class="flex items-center justify-between gap-4">
           <div>
             <div class="label mb-1">{pageLabels[section.page_key] || section.page_key}</div>
-            <h2 class="display text-xl capitalize">{section.section_key.replaceAll('-', ' ')}</h2>
+            <h2 class="display text-xl capitalize">{section.section_key.replaceAll('-', ' ').replaceAll('_', ' ')}</h2>
           </div>
           <span class="text-xs text-muted font-mono form-status" aria-live="polite"></span>
         </div>
