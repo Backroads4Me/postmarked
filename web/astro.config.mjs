@@ -12,7 +12,12 @@ export default defineConfig({
     checkOrigin: false
   },
   adapter: node({
-    mode: 'standalone'
+    mode: 'standalone',
+    // Backup archives bundle the DB dump plus every media derivative, so they
+    // routinely exceed the adapter's 1 GB default. Without this, large restore
+    // uploads are dropped at the connection level and surface in the browser as
+    // a generic "Network error". Override the cap via MAX_UPLOAD_BYTES.
+    bodySizeLimit: Number(process.env.MAX_UPLOAD_BYTES) || 5 * 1024 * 1024 * 1024,
   }),
   vite: {
     server: {

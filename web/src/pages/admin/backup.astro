@@ -238,7 +238,12 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
       }
     } catch (err) {
       resultEl.className = 'alert alert-danger mt-4';
-      resultEl.textContent = 'Network error — could not reach the API.';
+      const sizeMb = (file.size / 1024 / 1024).toFixed(0);
+      resultEl.textContent =
+        `Upload failed before the server responded (backup is ${sizeMb} MB). ` +
+        `Very large backups can exceed the server's upload size limit, or a long ` +
+        `restore can time out the connection. Check the server logs to confirm ` +
+        `whether the restore actually completed.`;
     } finally {
       btn.disabled = false;
       btn.textContent = 'Restore from Backup';
