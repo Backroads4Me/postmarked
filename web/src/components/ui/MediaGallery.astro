@@ -751,6 +751,8 @@ function tileClass(_m: MediaSummary) {
   :global(.media-lightbox-prev) {
     order: 1;
     flex-shrink: 0;
+    /* Stay pinned left even when the caption (the flex spacer) is hidden */
+    margin-right: auto;
   }
 
   :global(.media-lightbox-caption) {
@@ -768,6 +770,8 @@ function tileClass(_m: MediaSummary) {
   :global(.media-lightbox-next) {
     order: 3;
     flex-shrink: 0;
+    /* Stay pinned right even when the caption (the flex spacer) is hidden */
+    margin-left: auto;
   }
 
   :global(.media-lightbox-count) {
@@ -922,6 +926,7 @@ function tileClass(_m: MediaSummary) {
     :global(.media-lightbox-prev),
     :global(.media-lightbox-next) {
       order: unset;
+      margin: 0;
     }
 
     :global(.media-lightbox-close) {
@@ -1046,6 +1051,7 @@ function tileClass(_m: MediaSummary) {
     :global(.media-lightbox-prev),
     :global(.media-lightbox-next) {
       order: unset;
+      margin: 0;
     }
 
     :global(.media-lightbox-close) {

@@ -152,9 +152,12 @@ const postmarkState = cityState?.state || '';
         </div>
       ) : <span />}
 
-      <a href={`/trips/${tripSlug}`} class="route-trip">
-        {tripTitle}
-      </a>
+      <div class="route-trip-group">
+        <span class="route-stop-label">Trip Overview</span>
+        <a href={`/trips/${tripSlug}`} class="route-trip">
+          {tripTitle}
+        </a>
+      </div>
 
       {nextStop ? (
         <div class="route-stop route-stop--next">
@@ -322,6 +325,13 @@ const postmarkState = cityState?.state || '';
     text-transform: uppercase;
   }
 
+  .route-trip-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+  }
+
   .route-stop {
     display: flex;
     flex-direction: column;
@@ -394,6 +404,10 @@ const postmarkState = cityState?.state || '';
     .route-footer .route-trip,
     .route-footer > :last-child {
       text-align: left;
+    }
+
+    .route-trip-group {
+      align-items: flex-start;
     }
   }
 </style>

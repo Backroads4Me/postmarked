@@ -13,7 +13,7 @@ function renderInline(value) {
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
     .replace(/\*([^*]+)\*/g, "<em>$1</em>")
     .replace(
-      /\[([^\]]+)\]\((https?:\/\/[^)\s]+|\/[^)\s]*)\)/g,
+      /\[([^\]]+)\]\(((?:https?|mailto):[^)\s]+|\/[^)\s]*)\)/g,
       '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'
     );
 }

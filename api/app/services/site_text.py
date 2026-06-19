@@ -41,7 +41,7 @@ DEFAULT_SITE_TEXT_SECTIONS = [
         "label": None,
         "heading": "Latest Updates",
         "body": None,
-        "cta_label": "See full timeline",
+        "cta_label": "See all updates",
         "cta_href": "/timeline",
         "sort_order": 50,
     },

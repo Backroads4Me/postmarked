@@ -269,9 +269,11 @@ async def get_home(
         )
         .where(*_post_parent_filters(user))
         .order_by(Post.posted_at.desc())
-        .limit(8)
+        .limit(9)
     )
     posts = list((await session.execute(posts_query)).scalars().all())
+    has_more_posts = len(posts) > 8
+    posts = posts[:8]
     post_stop_coords = await _coordinates_for_stops(session, [p.stop for p in posts if p.stop])
     coords.update(post_stop_coords)
 
@@ -297,11 +299,9 @@ async def get_home(
         [stop for stop in stops if stop.start_date > now],
         key=lambda stop: stop.start_date,
     )[:5]
-    recent_stop_models = sorted(
-        [stop for stop in stops if stop.start_date <= now],
-        key=lambda stop: stop.start_date,
-        reverse=True,
-    )[:5]
+    past_stops = [stop for stop in stops if stop.start_date <= now]
+    recent_stop_models = sorted(past_stops, key=lambda stop: stop.start_date, reverse=True)[:5]
+    has_more = has_more_posts or len(past_stops) > 5
 
     return HomeOut(
         current_stop=current_stop,
@@ -311,6 +311,7 @@ async def get_home(
         recent_posts=[await _post_out(post, coords, user) for post in posts],
         active_trip_segment=_trip_summary_out(active_trip, active_trip_stops, user),
         upcoming_stops=[stop_out for s in upcoming_stop_models if (stop_out := _stop_out(s, coords, user))],
+        has_more=has_more,
     )
 
 

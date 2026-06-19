@@ -126,6 +126,7 @@ class HomeOut(BaseModel):
     recent_posts: List[PublicPostSummary] = []
     active_trip_segment: Optional[PublicTripSegmentSummary] = None
     upcoming_stops: List[PublicStopSummary] = []
+    has_more: bool = False
 
 
 class RecentUpdate(BaseModel):

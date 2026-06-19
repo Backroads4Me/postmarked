@@ -9,7 +9,7 @@ import Layout from '../layouts/Layout.astro';
       <div class="mb-10">
         <h1 class="display text-4xl md:text-5xl mb-4">Postmarked</h1>
         <p class="lede lede-body text-base">
-          A self-hosted travel journal for people who travel and want to share it simply.
+          A self-hosted digital postcard app for sharing your travels with the people who matter.
         </p>
       </div>
 
@@ -38,17 +38,29 @@ import Layout from '../layouts/Layout.astro';
             Postmarked is designed to be run on your own server. Your photos, your updates, your data — hosted wherever you choose. No subscription, no third-party platform to depend on.
           </p>
           <p class="text-sm text-muted leading-relaxed mt-3">
-            Documentation, setup guides, and releases are available at{' '}
-            <a href="https://postmarked.io" class="text-ember hover:text-ember-2 transition-colors" target="_blank" rel="noopener noreferrer">postmarked.io</a>.
+            Documentation, setup guides, and releases are available on{' '}
+            <a href="https://github.com/Backroads4Me/postmarked" class="text-ember hover:text-ember-2 transition-colors" target="_blank" rel="noopener noreferrer">GitHub</a>.
           </p>
         </section>
 
       </div>
 
       <div class="mt-12 pt-6 border-t border-line-soft text-center">
-        <a href="/" class="btn btn-ghost btn-sm">← Back home</a>
+        <a href="/" class="btn btn-ghost btn-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg> Back home</a>
       </div>
 
     </div>
   </main>
 </Layout>
+
+<style>
+  .btn svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.4;
+    width: 1rem;
+  }
+</style>

@@ -61,6 +61,8 @@ services:
       - PORT=4321
       - PUBLIC_GOOGLE_MAPS_API_KEY=${PUBLIC_GOOGLE_MAPS_API_KEY:-}
       - PUBLIC_GOOGLE_MAPS_MAP_ID=${PUBLIC_GOOGLE_MAPS_MAP_ID:-}
+    volumes:
+      - ${MEDIA_DIR:-./data}:/media:ro
     depends_on:
       api:
         condition: service_healthy

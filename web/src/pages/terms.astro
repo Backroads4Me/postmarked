@@ -1,129 +1,119 @@
 ---
+import fs from 'node:fs';
 import Layout from '../layouts/Layout.astro';
+import { renderMarkdown } from '../lib/markdown.js';
+
+const email = process.env.SUPPORT_EMAIL || '';
+
+const DEFAULT_CONTENT = `# Terms of Service
+
+Effective Date: May 25, 2026
+
+Welcome to Postmarked. By accessing or using the Postmarked website and services, you agree to these Terms of Service.
+
+## Service Description
+
+Postmarked is a travel-sharing platform that allows users to create and share travel updates, trip posts, photos, location check-ins, and related content with friends, family, and subscribers.
+
+## Eligibility
+
+You must be at least 13 years old to use Postmarked.
+
+By using the service, you represent that you are legally permitted to use the platform under applicable laws.
+
+## Accounts
+
+Users are responsible for maintaining the security of their accounts and credentials.
+
+You are responsible for all activity that occurs under your account.
+
+## User Content
+
+Users retain ownership of content they upload to Postmarked.
+
+By posting content, you grant Postmarked a limited license to store, display, and distribute the content solely for the purpose of operating the service.
+
+Users are solely responsible for the content they upload and share. Users may not upload or distribute:
+
+- Illegal content
+- Spam or malicious content
+- Content that infringes intellectual property rights
+- Harmful, abusive, or fraudulent material
+
+## Acceptable Use
+
+Users agree not to:
+
+- Abuse or disrupt the service
+- Attempt unauthorized access to systems or accounts
+- Interfere with platform operation or security
+- Use the service for unlawful activity
+- Use automated systems to scrape, spam, or overload the platform
+
+## Termination
+
+We reserve the right to suspend or terminate accounts that violate these Terms or misuse the platform.
+
+## Disclaimer of Warranties
+
+Postmarked is provided on an "as is" and "as available" basis without warranties of any kind.
+
+We do not guarantee uninterrupted availability, reliability, or error-free operation.
+
+## Limitation of Liability
+
+To the fullest extent permitted by law, Postmarked and its operators shall not be liable for indirect, incidental, special, consequential, or punitive damages arising from use of the service.
+
+## Changes to These Terms
+
+We may update these Terms from time to time. Continued use of the service after updates become effective constitutes acceptance of the revised Terms.
+`;
+
+let source = DEFAULT_CONTENT;
+try {
+  source = fs.readFileSync('/media/terms.md', 'utf8');
+} catch {
+  // fall through to default
+}
+
+const html = renderMarkdown(source);
 ---
 
 <Layout title="Terms of Service — Postmarked">
   <main class="frame py-12 md:py-20">
     <div class="max-w-prose mx-auto">
-
-      <div class="mb-10">
-        <h1 class="display text-4xl md:text-5xl mb-4">Terms of Service</h1>
-        <p class="lede lede-body text-base">
-          Effective Date: May 25, 2026
+      <div class="prose" set:html={html}></div>
+      <div class="prose mt-8">
+        <h2>Contact</h2>
+        <p>
+          For questions regarding these Terms of Service, contact{email ? ':' : ''}{' '}
+          {email ? <a href={`mailto:${email}`}>{email}</a> : 'the site administrator'}
         </p>
       </div>
-
-      <div class="grid gap-8">
-
-        <section class="card-flat">
-          <p class="text-sm text-muted leading-relaxed">
-            Welcome to Postmarked. By accessing or using the Postmarked website and services, you agree to these Terms of Service.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Service Description</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            Postmarked is a travel-sharing platform that allows users to create and share travel updates, trip posts, photos, location check-ins, and related content with friends, family, and subscribers.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Eligibility</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            You must be at least 13 years old to use Postmarked.
-          </p>
-          <p class="text-sm text-muted leading-relaxed mt-3">
-            By using the service, you represent that you are legally permitted to use the platform under applicable laws.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Accounts</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            Users are responsible for maintaining the security of their accounts and credentials.
-          </p>
-          <p class="text-sm text-muted leading-relaxed mt-3">
-            You are responsible for all activity that occurs under your account.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">User Content</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            Users retain ownership of content they upload to Postmarked.
-          </p>
-          <p class="text-sm text-muted leading-relaxed mt-3">
-            By posting content, you grant Postmarked a limited license to store, display, and distribute the content solely for the purpose of operating the service.
-          </p>
-          <p class="text-sm text-muted leading-relaxed mt-3">
-            Users are solely responsible for the content they upload and share. Users may not upload or distribute:
-          </p>
-          <ul class="text-sm text-muted leading-relaxed list-disc list-inside space-y-1 mt-2">
-            <li>Illegal content</li>
-            <li>Spam or malicious content</li>
-            <li>Content that infringes intellectual property rights</li>
-            <li>Harmful, abusive, or fraudulent material</li>
-          </ul>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Acceptable Use</h2>
-          <p class="text-sm text-muted leading-relaxed mb-3">Users agree not to:</p>
-          <ul class="text-sm text-muted leading-relaxed list-disc list-inside space-y-1">
-            <li>Abuse or disrupt the service</li>
-            <li>Attempt unauthorized access to systems or accounts</li>
-            <li>Interfere with platform operation or security</li>
-            <li>Use the service for unlawful activity</li>
-            <li>Use automated systems to scrape, spam, or overload the platform</li>
-          </ul>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Termination</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            We reserve the right to suspend or terminate accounts that violate these Terms or misuse the platform.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Disclaimer of Warranties</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            Postmarked is provided on an "as is" and "as available" basis without warranties of any kind.
-          </p>
-          <p class="text-sm text-muted leading-relaxed mt-3">
-            We do not guarantee uninterrupted availability, reliability, or error-free operation.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Limitation of Liability</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            To the fullest extent permitted by law, Postmarked and its operators shall not be liable for indirect, incidental, special, consequential, or punitive damages arising from use of the service.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Changes to These Terms</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            We may update these Terms from time to time. Continued use of the service after updates become effective constitutes acceptance of the revised Terms.
-          </p>
-        </section>
-
-        <section class="card-flat">
-          <h2 class="display text-xl mb-3">Contact</h2>
-          <p class="text-sm text-muted leading-relaxed">
-            For questions regarding these Terms of Service, contact:{' '}
-            <a href="mailto:support@werehere.app" class="text-ember hover:text-ember-2 transition-colors">support@werehere.app</a>
-          </p>
-        </section>
-
-      </div>
-
       <div class="mt-12 pt-6 border-t border-line-soft text-center">
-        <a href="/" class="btn btn-ghost btn-sm">← Back home</a>
+        <a href="/" class="btn btn-ghost btn-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg> Back home</a>
       </div>
-
     </div>
   </main>
 </Layout>
+
+<style>
+  .prose :global(h1) { font-family: var(--display); font-size: var(--fs-4xl); margin-bottom: 1rem; }
+  .prose :global(h2) { font-family: var(--display); font-size: var(--fs-xl); margin-top: 2rem; margin-bottom: 0.75rem; }
+  .prose :global(h3) { font-family: var(--display); font-size: var(--fs-lg); margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  .prose :global(p) { font-size: var(--fs-sm); color: var(--paper-muted); line-height: 1.7; margin-bottom: 0.75rem; }
+  .prose :global(ul) { font-size: var(--fs-sm); color: var(--paper-muted); line-height: 1.7; list-style: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; }
+  .prose :global(li) { margin-bottom: 0.25rem; }
+  .prose :global(a) { color: var(--ember); text-decoration: none; }
+  .prose :global(a:hover) { color: var(--ember-2); }
+  .prose :global(code) { font-family: monospace; font-size: 0.9em; background: var(--surface); padding: 0.1em 0.3em; border-radius: 3px; }
+  .btn svg {
+    fill: none;
+    height: 1rem;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 2.4;
+    width: 1rem;
+  }
+</style>

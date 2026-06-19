@@ -1,11 +1,4 @@
----
-import fs from 'node:fs';
-import Layout from '../layouts/Layout.astro';
-import { renderMarkdown } from '../lib/markdown.js';
-
-const email = process.env.SUPPORT_EMAIL || '';
-
-const DEFAULT_CONTENT = `# Privacy Policy
+# Privacy Policy
 
 Effective Date: May 25, 2026
 
@@ -60,53 +53,3 @@ Postmarked is not intended for children under the age of 13. We do not knowingly
 ## Changes to This Policy
 
 We may update this Privacy Policy from time to time. Continued use of the service after changes become effective constitutes acceptance of the revised policy.
-`;
-
-let source = DEFAULT_CONTENT;
-try {
-  source = fs.readFileSync('/media/privacy.md', 'utf8');
-} catch {
-  // fall through to default
-}
-
-const html = renderMarkdown(source);
----
-
-<Layout title="Privacy Policy — Postmarked">
-  <main class="frame py-12 md:py-20">
-    <div class="max-w-prose mx-auto">
-      <div class="prose" set:html={html}></div>
-      <div class="prose mt-8">
-        <h2>Contact</h2>
-        <p>
-          For questions regarding this Privacy Policy, contact{email ? ':' : ''}{' '}
-          {email ? <a href={`mailto:${email}`}>{email}</a> : 'the site administrator'}
-        </p>
-      </div>
-      <div class="mt-12 pt-6 border-t border-line-soft text-center">
-        <a href="/" class="btn btn-ghost btn-sm"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18 9 12l6-6"/></svg> Back home</a>
-      </div>
-    </div>
-  </main>
-</Layout>
-
-<style>
-  .prose :global(h1) { font-family: var(--display); font-size: var(--fs-4xl); margin-bottom: 1rem; }
-  .prose :global(h2) { font-family: var(--display); font-size: var(--fs-xl); margin-top: 2rem; margin-bottom: 0.75rem; }
-  .prose :global(h3) { font-family: var(--display); font-size: var(--fs-lg); margin-top: 1.5rem; margin-bottom: 0.5rem; }
-  .prose :global(p) { font-size: var(--fs-sm); color: var(--paper-muted); line-height: 1.7; margin-bottom: 0.75rem; }
-  .prose :global(ul) { font-size: var(--fs-sm); color: var(--paper-muted); line-height: 1.7; list-style: disc; padding-left: 1.25rem; margin-bottom: 0.75rem; }
-  .prose :global(li) { margin-bottom: 0.25rem; }
-  .prose :global(a) { color: var(--ember); text-decoration: none; }
-  .prose :global(a:hover) { color: var(--ember-2); }
-  .prose :global(code) { font-family: monospace; font-size: 0.9em; background: var(--surface); padding: 0.1em 0.3em; border-radius: 3px; }
-  .btn svg {
-    fill: none;
-    height: 1rem;
-    stroke: currentColor;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    stroke-width: 2.4;
-    width: 1rem;
-  }
-</style>
