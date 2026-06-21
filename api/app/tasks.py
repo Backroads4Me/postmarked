@@ -494,6 +494,7 @@ def dispatch_comment_notification(comment_id: str):
 
         author = db.get(User, comment.author_id)
         author_name = (author.display_name if author else None) or "Someone"
+        author_id = comment.author_id
 
         # Resolve target label
         if comment.target_kind == "post":
@@ -527,9 +528,90 @@ def dispatch_comment_notification(comment_id: str):
             )
         ).scalars().all()
 
-        for admin in admins:
-            send_email(admin.email, subject, text, html)
-        return f"Notified {len(admins)} admin(s) of comment {comment_id}"
+        # Everyone who has previously commented on this same target should be
+        # kept in the loop on each subsequent comment (thread participants).
+        prior_author_ids = db.execute(
+            select(Comment.author_id)
+            .where(
+                Comment.target_kind == comment.target_kind,
+                Comment.target_id == comment.target_id,
+                Comment.deleted_at.is_(None),
+                Comment.id != comment.id,
+            )
+            .distinct()
+        ).scalars().all()
+        prior_commenters = (
+            db.execute(
+                select(User).where(
+                    User.is_active == True,
+                    User.id.in_(prior_author_ids),
+                )
+            ).scalars().all()
+            if prior_author_ids
+            else []
+        )
+
+        # Dedup by user id and never notify the comment's own author.
+        recipients: dict[uuid.UUID, User] = {}
+        for recipient in (*admins, *prior_commenters):
+            if recipient.id == author_id:
+                continue
+            recipients[recipient.id] = recipient
+
+        for recipient in recipients.values():
+            send_email(recipient.email, subject, text, html)
+        return f"Notified {len(recipients)} recipient(s) of comment {comment_id}"
+    finally:
+        db.close()
+
+
+@celery_app.task(name="dispatch_like_notification")
+def dispatch_like_notification(like_id: str):
+    """Notify a comment's author when their comment is liked."""
+    from app.models.system import Comment, Like
+    db = SessionLocal()
+    try:
+        like = db.get(Like, uuid.UUID(like_id))
+        if not like:
+            return "Like not found"
+
+        # Only comment likes notify an author today; other targets are admin-owned.
+        if like.target_kind != "comment":
+            return "No notification for this like target"
+
+        comment = db.get(Comment, like.target_id)
+        if not comment or comment.deleted_at is not None:
+            return "Comment not found"
+        if comment.author_id == like.author_id:
+            return "Self-like; no notification"
+
+        author = db.get(User, comment.author_id)
+        if not author or not author.is_active:
+            return "Comment author unavailable"
+
+        liker = db.get(User, like.author_id)
+        liker_name = (liker.display_name if liker else None) or "Someone"
+
+        target_url = _base_url()
+        if comment.target_kind == "post":
+            target = db.get(Post, comment.target_id)
+            if target:
+                target_url = _post_url(target)
+
+        subject = "Someone liked your comment"
+        text = (
+            f"{liker_name} liked your comment:\n\n"
+            f"{comment.body}\n\n"
+            f"View: {target_url}\n"
+        )
+        html = (
+            f"<p><strong>{escape(liker_name)}</strong> liked your comment:</p>"
+            f"<blockquote>{escape(comment.body)}</blockquote>"
+            f'<p><a href="{target_url}">View</a></p>'
+        )
+
+        send_email(author.email, subject, text, html)
+        return f"Notified comment author of like {like_id}"
     finally:
         db.close()
 

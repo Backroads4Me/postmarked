@@ -4,28 +4,9 @@ Schemas for RV Trip Wizard Excel import endpoints.
 import uuid
 from typing import Optional, List
 from datetime import date, datetime
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 from app.schemas.common import BaseResponse
-
-
-class ParsedStopPreview(BaseModel):
-    """One parsed stop from the Excel file."""
-    model_config = ConfigDict(from_attributes=True)
-
-    sequence: int
-    name: str
-    arrival_date: Optional[date] = None
-    departure_date: Optional[date] = None
-    nights: Optional[int] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address: Optional[str] = None
-    features: List[str] = []
-    miles_from_previous: Optional[float] = None
-    total_miles: Optional[float] = None
-    estimated_travel_time: Optional[str] = None
-    fingerprint: str = ""
 
 
 class ImportDiffItem(BaseModel):

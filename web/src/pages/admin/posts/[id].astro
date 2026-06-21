@@ -4,7 +4,7 @@ import { apiUrl } from '../../../lib/api.js';
 import { cityStateFromAddress } from '../../../lib/location.js';
 import { renderMarkdown } from '../../../lib/markdown.js';
 import MediaGallery from '../../../components/ui/MediaGallery.astro';
-import { formatDate, toDateInput as tzDateInput } from '../../../lib/dates.js';
+import { formatDate, toDateInput } from '../../../lib/dates.js';
 
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
@@ -33,10 +33,6 @@ stops.sort((a, b) => new Date(b.start_date) - new Date(a.start_date));
 
 const attachedMedia = post.media || [];
 const renderedPreviewBody = renderMarkdown(post.body || '');
-
-function toDateInput(iso) {
-  return tzDateInput(iso);
-}
 
 function stopOptionLabel(stop) {
   const cityState = cityStateFromAddress(stop.address_label || stop.summary) || stop.title;

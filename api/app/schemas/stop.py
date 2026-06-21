@@ -30,9 +30,6 @@ class StopBase(BaseResponse):
 class StopOut(StopBase):
     cover_media: Optional[MediaAssetOut] = None
 
-class StopDetailOut(StopOut):
-    body: Optional[str] = None
-
 class StopCreate(BaseModel):
     trip_id: uuid.UUID
     slug: str
