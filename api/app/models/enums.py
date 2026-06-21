@@ -22,11 +22,6 @@ class PostStatus(str, enum.Enum):
     UNPUBLISHED = "unpublished"
     ARCHIVED = "archived"
 
-class ImportRunStatus(str, enum.Enum):
-    PARSED = "parsed"
-    APPLIED = "applied"
-    FAILED = "failed"
-
 class MediaKind(str, enum.Enum):
     PHOTO = "photo"
     VIDEO = "video"

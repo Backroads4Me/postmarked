@@ -73,17 +73,6 @@ DEFAULT_SITE_TEXT_SECTIONS = [
 ]
 
 
-def default_site_text_section(page_key: str, section_key: str) -> dict | None:
-    return next(
-        (
-            section
-            for section in DEFAULT_SITE_TEXT_SECTIONS
-            if section["page_key"] == page_key and section["section_key"] == section_key
-        ),
-        None,
-    )
-
-
 def serialize_site_text_section(section: SiteTextSection | dict) -> SiteTextSectionOut:
     if isinstance(section, SiteTextSection):
         return SiteTextSectionOut.model_validate(section)

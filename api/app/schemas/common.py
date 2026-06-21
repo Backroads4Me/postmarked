@@ -1,11 +1,5 @@
-from typing import Optional, List, Any
+from typing import List
 from pydantic import BaseModel, ConfigDict
-import uuid
-from app.models.enums import Visibility
-
-class PointCoordinates(BaseModel):
-    lon: float
-    lat: float
 
 class GeoJsonPoint(BaseModel):
     type: str = "Point"

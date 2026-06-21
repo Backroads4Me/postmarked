@@ -15,21 +15,7 @@ from typing import Optional, Tuple
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.enums import ApprovalState, MediaProcessingState, PostStatus, StopStatus, TripStatus, UserRole, Visibility
-
-
-# Fields that must NEVER appear in public/anonymous responses
-PRIVATE_STOP_FIELDS = {
-    "reservation_private",
-    "site_number_private",
-    "private_note",
-}
-
-def is_admin(user) -> bool:
-    if not user:
-        return False
-    role = getattr(user, "role", None)
-    return getattr(role, "value", role) == UserRole.ADMIN.value
+from app.models.enums import MediaProcessingState, PostStatus, StopStatus, TripStatus, Visibility
 
 
 def effective_visibility(entity_visibility, parent_visibility) -> str:
@@ -96,33 +82,6 @@ def visible_ready_media(media, user) -> list:
 def visible_ready_cover_media(asset, user):
     """Return a ready visible cover asset, or None for serializers."""
     return asset if is_ready_media_visible_to_user(asset, user) else None
-
-
-def strip_private_fields(data: dict, fields: set) -> dict:
-    """Remove private fields from a response dict."""
-    return {k: v for k, v in data.items() if k not in fields}
-
-
-def extract_lat_lon(location) -> tuple[float | None, float | None]:
-    """
-    Extract lat/lon from a GeoAlchemy2 WKB element.
-    Returns (latitude, longitude) or (None, None).
-    """
-    if location is None:
-        return None, None
-    try:
-        from geoalchemy2.shape import to_shape
-        point = to_shape(location)
-        return point.y, point.x  # lat, lon
-    except Exception:
-        try:
-            s = str(location)
-            if "POINT" in s:
-                coords = s.replace("POINT(", "").replace(")", "").strip().split()
-                return float(coords[1]), float(coords[0])
-        except Exception:
-            pass
-    return None, None
 
 
 # ──────────────────────────────────────────────────────────────────────────

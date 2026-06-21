@@ -120,7 +120,3 @@ export function postmarkSvg(options: PostmarkOptions = {}) {
     </g>
   </svg>`;
 }
-
-export function postmarkDataUrl(options: PostmarkOptions = {}) {
-  return `data:image/svg+xml;utf8,${encodeURIComponent(postmarkSvg(options))}`;
-}
