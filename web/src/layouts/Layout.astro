@@ -21,12 +21,19 @@ const {
   ogType = "website",
   hideNav = false,
 } = Astro.props;
-const canonicalUrl = new URL(canonicalPath, Astro.url.origin).toString();
+// Build absolute URLs against the canonical base so shared previews and
+// canonical tags always point at the primary domain, regardless of which
+// domain served the request. Behind the reverse proxy Astro.url.origin
+// resolves to localhost, which scrapers (iMessage, Facebook) can't fetch.
+const baseUrl =
+  (typeof process !== "undefined" && process.env.APP_BASE_URL) ||
+  Astro.url.origin;
+const canonicalUrl = new URL(canonicalPath, baseUrl).toString();
 // Fall back to the app icon so shared links (iMessage, etc.) show our mark
 // instead of a random photo scraped from the page.
 const fallbackImage = "/icon-512.png";
 const resolvedImage = ogImage ?? fallbackImage;
-const imageUrl = new URL(resolvedImage, Astro.url.origin).toString();
+const imageUrl = new URL(resolvedImage, baseUrl).toString();
 const isLogoImage = resolvedImage === fallbackImage;
 const imageWidth = isLogoImage ? "512" : undefined;
 const imageHeight = isLogoImage ? "512" : undefined;
