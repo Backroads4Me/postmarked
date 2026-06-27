@@ -16,9 +16,11 @@ Postmarked is intentionally simple: run it, sign in, create a trip, post updates
 - Optional privacy policy and terms pages via Markdown files.
 - Docker deployment.
 
-## Screenshot
+## Screenshots
 
-![Postmarked trip page](screenshots/trip.png)
+![Postmarked home page](screenshots/home.png)
+
+[Trip page](screenshots/trip.png) · [Gallery](screenshots/gallery.png) · [Post editor](screenshots/post-editor.png)
 
 ## Install
 

@@ -20,7 +20,11 @@ const {
   hideNav = false,
 } = Astro.props;
 const canonicalUrl = new URL(canonicalPath, Astro.url.origin).toString();
-const imageUrl = ogImage ? new URL(ogImage, Astro.url.origin).toString() : null;
+// Fall back to the square logo so shared links (iMessage, etc.) show our mark
+// instead of a random photo scraped from the page.
+const resolvedImage = ogImage ?? "/icon-512.png";
+const imageUrl = new URL(resolvedImage, Astro.url.origin).toString();
+const twitterCard = ogImage ? "summary_large_image" : "summary";
 ---
 <!doctype html>
 <html lang="en">
@@ -44,11 +48,11 @@ const imageUrl = ogImage ? new URL(ogImage, Astro.url.origin).toString() : null;
     <meta property="og:type" content={ogType} />
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content="Postmarked" />
-    {imageUrl && <meta property="og:image" content={imageUrl} />}
-    <meta name="twitter:card" content={imageUrl ? "summary_large_image" : "summary"} />
+    <meta property="og:image" content={imageUrl} />
+    <meta name="twitter:card" content={twitterCard} />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
-    {imageUrl && <meta name="twitter:image" content={imageUrl} />}
+    <meta name="twitter:image" content={imageUrl} />
     <script is:inline src="/postmarked-config.js"></script>
     <script is:inline>
       (() => {
