@@ -7,6 +7,7 @@ interface Props {
   description?: string;
   canonicalPath?: string;
   ogImage?: string;
+  ogImageAlt?: string;
   ogType?: string;
   hideNav?: boolean;
 }
@@ -16,15 +17,20 @@ const {
   description = "A travel journal for the road. Quick updates, photos, and notes — like sending a postcard from everywhere you go.",
   canonicalPath = Astro.url.pathname,
   ogImage,
+  ogImageAlt = "Postmarked logo",
   ogType = "website",
   hideNav = false,
 } = Astro.props;
 const canonicalUrl = new URL(canonicalPath, Astro.url.origin).toString();
-// Fall back to the square logo so shared links (iMessage, etc.) show our mark
+// Fall back to the app icon so shared links (iMessage, etc.) show our mark
 // instead of a random photo scraped from the page.
-const resolvedImage = ogImage ?? "/icon-512.png";
+const fallbackImage = "/icon-512.png";
+const resolvedImage = ogImage ?? fallbackImage;
 const imageUrl = new URL(resolvedImage, Astro.url.origin).toString();
-const twitterCard = ogImage ? "summary_large_image" : "summary";
+const isLogoImage = resolvedImage === fallbackImage;
+const imageWidth = isLogoImage ? "512" : undefined;
+const imageHeight = isLogoImage ? "512" : undefined;
+const twitterCard = isLogoImage ? "summary" : "summary_large_image";
 ---
 <!doctype html>
 <html lang="en">
@@ -49,10 +55,15 @@ const twitterCard = ogImage ? "summary_large_image" : "summary";
     <meta property="og:url" content={canonicalUrl} />
     <meta property="og:site_name" content="Postmarked" />
     <meta property="og:image" content={imageUrl} />
+    <meta property="og:image:secure_url" content={imageUrl} />
+    <meta property="og:image:alt" content={ogImageAlt} />
+    {imageWidth && <meta property="og:image:width" content={imageWidth} />}
+    {imageHeight && <meta property="og:image:height" content={imageHeight} />}
     <meta name="twitter:card" content={twitterCard} />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={imageUrl} />
+    <meta name="twitter:image:alt" content={ogImageAlt} />
     <script is:inline src="/postmarked-config.js"></script>
     <script is:inline>
       (() => {
