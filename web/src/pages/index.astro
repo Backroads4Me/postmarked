@@ -6,7 +6,10 @@ import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
 import { formatDate } from '../lib/dates.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
-import { fetchWeather } from '../lib/weather.js';
+
+// Kick off the independent site-text fetch up front so it runs concurrently
+// with the home-data fetch instead of serially after it.
+const siteTextPromise = loadSiteText();
 
 // Fetch home data
 let homeData = null;
@@ -27,11 +30,17 @@ const activeTrip = homeData?.active_trip_segment;
 const nextStop = homeData?.next_stop;
 const previousStop = homeData?.previous_stop;
 
-let weather = null;
-if (current?.latitude && current?.longitude) {
-  weather = await fetchWeather(current.latitude, current.longitude);
+// Weather is refreshed out-of-band by the API's scheduled task and served on
+// the home payload, so the page never makes a blocking external call here.
+const weather = homeData?.weather ?? null;
+const siteText = await siteTextPromise;
+
+// Anonymous renders are identical for everyone and safe to cache at the edge.
+// Authenticated (cookied) requests render an admin-aware navbar, so never cache
+// those — let them hit origin.
+if (!(Astro.request.headers.get('cookie') || '').includes('postmarked_session')) {
+  Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
 }
-const siteText = await loadSiteText();
 const currentText = sectionText(siteText, 'home.current', {
   label: 'Currently At',
   heading: 'Current Location',

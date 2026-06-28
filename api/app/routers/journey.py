@@ -1,8 +1,12 @@
+import json
+import logging
 import uuid
 from datetime import datetime, timezone
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+import redis.asyncio as aioredis
+
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -22,9 +26,50 @@ from app.schemas.journey import (
     TimelineOut,
 )
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
+from app.services.weather import REDIS_URL, WEATHER_CACHE_KEY, WEATHER_COORDS_KEY
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["journey"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
+
+_redis_client: Optional[aioredis.Redis] = None
+
+
+def _apply_public_cache(response: Response, user) -> None:
+    """Cache anonymous responses at the edge; never cache authenticated ones.
+
+    These endpoints are also reachable through the public /api proxy, which
+    forwards cookies, so an authenticated request can carry private content.
+    """
+    if user is None:
+        response.headers["Cache-Control"] = "public, max-age=30, stale-while-revalidate=300"
+    else:
+        response.headers["Cache-Control"] = "private, no-store"
+
+
+def _redis() -> aioredis.Redis:
+    global _redis_client
+    if _redis_client is None:
+        _redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    return _redis_client
+
+
+async def _cached_weather_and_publish_coords(current_stop) -> Optional[dict]:
+    """Read cached weather and publish the current coords for the refresh task.
+
+    Never makes an external call and never raises: if Redis is unavailable the
+    homepage simply renders without weather.
+    """
+    try:
+        client = _redis()
+        if current_stop and current_stop.latitude is not None and current_stop.longitude is not None:
+            await client.set(WEATHER_COORDS_KEY, f"{current_stop.latitude},{current_stop.longitude}")
+        cached = await client.get(WEATHER_CACHE_KEY)
+        return json.loads(cached) if cached else None
+    except Exception as exc:  # noqa: BLE001 - cache is best-effort
+        logger.warning("Weather cache read failed: %s", exc)
+        return None
 
 
 def _is_admin(user) -> bool:
@@ -220,9 +265,11 @@ def _stop_to_update(stop: Stop, user) -> RecentUpdate:
 
 @router.get("/home", response_model=HomeOut)
 async def get_home(
+    response: Response,
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
 ):
+    _apply_public_cache(response, user)
     stops_query = (
         select(Stop)
         .join(Trip, Stop.trip_id == Trip.id)
@@ -303,6 +350,8 @@ async def get_home(
     recent_stop_models = sorted(past_stops, key=lambda stop: stop.start_date, reverse=True)[:5]
     has_more = has_more_posts or len(past_stops) > 5
 
+    weather = await _cached_weather_and_publish_coords(current_stop)
+
     return HomeOut(
         current_stop=current_stop,
         next_stop=_stop_out(next_stop_model, coords, user),
@@ -312,11 +361,13 @@ async def get_home(
         active_trip_segment=_trip_summary_out(active_trip, active_trip_stops, user),
         upcoming_stops=[stop_out for s in upcoming_stop_models if (stop_out := _stop_out(s, coords, user))],
         has_more=has_more,
+        weather=weather,
     )
 
 
 @router.get("/timeline", response_model=TimelineOut)
 async def get_timeline(
+    response: Response,
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
     limit: int = Query(default=30, ge=1, le=100),
@@ -324,6 +375,7 @@ async def get_timeline(
     trip_slug: Optional[str] = None,
     include_future_stops: bool = Query(default=False),
 ):
+    _apply_public_cache(response, user)
     fetch_window = limit + offset + 1
     now = datetime.now(timezone.utc)
 

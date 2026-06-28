@@ -118,6 +118,23 @@ class PublicStopDetail(PublicStopSummary):
     next: Optional[PublicStopSibling] = None
 
 
+class WeatherCurrent(BaseModel):
+    temp: int
+    label: str
+
+
+class WeatherDay(BaseModel):
+    day: str
+    high: int
+    low: int
+    label: str
+
+
+class WeatherOut(BaseModel):
+    current: WeatherCurrent
+    forecast: List[WeatherDay] = []
+
+
 class HomeOut(BaseModel):
     current_stop: Optional[PublicStopSummary] = None
     next_stop: Optional[PublicStopSummary] = None
@@ -127,6 +144,7 @@ class HomeOut(BaseModel):
     active_trip_segment: Optional[PublicTripSegmentSummary] = None
     upcoming_stops: List[PublicStopSummary] = []
     has_more: bool = False
+    weather: Optional[WeatherOut] = None
 
 
 class RecentUpdate(BaseModel):

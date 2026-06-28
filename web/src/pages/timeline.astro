@@ -103,6 +103,13 @@ const headerText = sectionText(siteText, 'timeline.header', {
   heading: 'Timeline',
   body: 'Every stop, story, and moment.',
 });
+
+// Anonymous renders are identical for everyone and safe to cache at the edge.
+// Authenticated (cookied) requests render an admin-aware navbar, so never cache
+// those — let them hit origin.
+if (!(Astro.request.headers.get('cookie') || '').includes('postmarked_session')) {
+  Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
+}
 ---
 
 <Layout title="Timeline — Postmarked" description={headerText.body || "Every stop, story, and moment from the road."} canonicalPath="/timeline">

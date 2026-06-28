@@ -43,6 +43,10 @@ celery_app.conf.beat_schedule = {
         "task": "dispatch_weekly_digest",
         "schedule": crontab(hour=8, minute=0, day_of_week="monday"),
     },
+    "refresh-weather-hourly": {
+        "task": "refresh_weather",
+        "schedule": crontab(minute=0),
+    },
     "daily-db-backup": {
         "task": "create_db_backup",
         "schedule": crontab(
@@ -734,6 +738,67 @@ def create_db_backup():
     removed = prune_old_dumps(keep=keep)
     logger.info("DB backup written to %s (pruned %d old dump(s), keeping %d)", path, removed, keep)
     return path
+
+
+@celery_app.task(name="refresh_weather")
+def refresh_weather():
+    """Fetch weather for the current stop and cache it in Redis.
+
+    Runs hourly so public page renders (/api/home) never make a blocking
+    external weather call. Coordinates come from the coords key published by
+    /api/home; if that's unset (e.g. nobody has hit the homepage since boot),
+    fall back to querying the current stop directly.
+    """
+    import redis
+    from geoalchemy2 import Geometry
+    from sqlalchemy import cast, func
+
+    from app.services.weather import (
+        WEATHER_CACHE_KEY,
+        WEATHER_COORDS_KEY,
+        WEATHER_TTL_SECONDS,
+        fetch_weather,
+    )
+
+    client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
+
+    lat = lon = None
+    coords = client.get(WEATHER_COORDS_KEY)
+    if coords:
+        try:
+            lat_s, lon_s = coords.split(",", 1)
+            lat, lon = float(lat_s), float(lon_s)
+        except ValueError:
+            lat = lon = None
+
+    if lat is None or lon is None:
+        db = SessionLocal()
+        try:
+            point = cast(Stop.location, Geometry(geometry_type="POINT", srid=4326))
+            row = db.execute(
+                select(func.ST_Y(point), func.ST_X(point))
+                .where(
+                    Stop.status == StopStatus.PUBLISHED,
+                    Stop.visibility == Visibility.PUBLIC,
+                )
+                .order_by(Stop.is_current.desc(), Stop.start_date.desc())
+                .limit(1)
+            ).first()
+        finally:
+            db.close()
+        if not row:
+            logger.info("[weather] No current stop found; skipping refresh")
+            return "No current stop"
+        lat, lon = float(row[0]), float(row[1])
+
+    data = fetch_weather(lat, lon)
+    if not data:
+        logger.warning("[weather] Fetch returned no data for %s,%s", lat, lon)
+        return "Fetch failed"
+
+    client.set(WEATHER_CACHE_KEY, json.dumps(data), ex=WEATHER_TTL_SECONDS)
+    logger.info("[weather] Cached weather for %s,%s", lat, lon)
+    return f"Cached weather for {lat},{lon}"
 
 
 @celery_app.task(name="dispatch_weekly_digest")
