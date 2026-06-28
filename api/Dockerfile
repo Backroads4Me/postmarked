@@ -31,6 +31,14 @@ COPY pyproject.toml ./
 RUN uv pip install --system .
 
 COPY . .
+
+# Stamp the build version into the image so the running container can report it
+# (the root VERSION file isn't in this build context, so it's passed as an arg).
+ARG VERSION=dev
+LABEL org.opencontainers.image.version="$VERSION"
+ENV APP_VERSION="$VERSION"
+RUN echo "$VERSION" > /app/VERSION
+
 RUN chown -R appuser:appuser /app
 RUN chmod +x /app/docker-entrypoint.sh && cp /app/docker-entrypoint.sh /usr/local/bin/postmarked-entrypoint
 

@@ -32,6 +32,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Read version
+        id: version
+        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+
       - name: Set lowercase owner
         run: echo "OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
@@ -51,6 +55,8 @@ jobs:
         with:
           context: ${{ matrix.image.context }}
           platforms: ${{ matrix.platform.tag }}
+          build-args: |
+            VERSION=${{ steps.version.outputs.version }}
           outputs: type=image,name=${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image.name }},push-by-digest=true,name-canonical=true,push=true
           cache-from: type=gha,scope=${{ matrix.image.name }}-${{ matrix.platform.slug }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image.name }}-${{ matrix.platform.slug }}

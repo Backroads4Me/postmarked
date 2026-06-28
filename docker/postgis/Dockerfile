@@ -11,3 +11,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY init-postgis.sql /docker-entrypoint-initdb.d/10-postgis.sql
+
+# Stamp the build version into the image so the running container can report it.
+ARG VERSION=dev
+LABEL org.opencontainers.image.version="$VERSION"

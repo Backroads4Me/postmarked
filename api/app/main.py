@@ -347,15 +347,20 @@ async def app_config():
 class HealthCheck(BaseModel):
     status: str
     component: str
+    version: str
+
+
+# Stamped into the image at build time (see api/Dockerfile); "dev" for local runs.
+APP_VERSION = os.getenv("APP_VERSION", "dev")
 
 
 @app.get("/api/health", response_model=HealthCheck)
 async def health():
-    return {"status": "ok", "component": "api_liveness"}
+    return {"status": "ok", "component": "api_liveness", "version": APP_VERSION}
 
 
 @app.get("/api/health/ready", response_model=HealthCheck)
 async def health_ready():
     async with async_session_maker() as session:
         await session.execute(text("select 1"))
-    return {"status": "ok", "component": "api_readiness"}
+    return {"status": "ok", "component": "api_readiness", "version": APP_VERSION}
