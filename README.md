@@ -75,27 +75,57 @@ the `pg_dump` files in `backups` instead.
 <details>
 <summary><strong>Serving Behind Cloudflare</strong></summary>
 
-If you proxy Postmarked through Cloudflare, videos may fail to
-play on iOS/Safari while working fine on desktop. To prevent this, you must add these **Cache Rules** in the Cloudflare dashboard (Caching → Cache Rules), in this order:
+If you proxy Postmarked through Cloudflare, add these three **Cache Rules**
+(Caching → Cache Rules → Create rule). For each one, click **Edit expression**
+and paste the expression below verbatim, then set the listed cache options.
+Keep them in this order.
 
-1. **MP4 ETAG** — Match `URI Path` wildcard `/media/*/*.mp4`; set
-   _Eligible for cache_ and enable _Respect strong ETags_.
-2. **MP4** — Match `URI Path` wildcard `/media/*/*.mp4`; set _Bypass cache_.
-3. **Images** — Match `URI Path` wildcards `/media/*/*.webp`, `/media/*/*.avif`,
-   and `/media/*/*.jpg`; set _Eligible for cache_ with Browser TTL and Edge TTL
-   both set to _Respect origin_.
+**1. MP4** — bypass the edge cache so iOS/Safari range requests reach the origin
+(otherwise videos fail to play on iPhone while working on desktop).
 
-Rules 1 and 2 must stay in this order. Rule 1 preserves the strong ETags Safari
-needs for range requests; rule 2 bypasses the shared cache so range requests
-reach the origin. Rule 3 caches images at the edge using the one-year
-`immutable` headers Postmarked sends for processed derivatives.
+```
+(http.request.uri.path strict wildcard r"/media/*/*.mp4")
+```
+
+- Cache eligibility: **Bypass cache**
+
+**2. Images** — cache processed image derivatives at the edge (Postmarked serves
+them with one-year `immutable` headers).
+
+```
+(http.request.uri.path strict wildcard r"/media/*/*.webp") or (http.request.uri.path strict wildcard r"/media/*/*.avif") or (http.request.uri.path strict wildcard r"/media/*/*.jpg")
+```
+
+- Cache eligibility: **Eligible for cache**
+- Edge TTL: **Respect origin TTL**
+- Browser TTL: **Respect origin TTL**
+
+**3. Cache home + timeline** — edge-cache the two server-rendered pages for
+anonymous visitors so concurrent traffic is absorbed by the CDN instead of
+re-rendering at the origin. Authenticated admins (who carry the
+`postmarked_session` cookie) bypass the cache and always hit the origin.
+
+```
+(http.request.uri.path eq "/" or http.request.uri.path eq "/timeline") and not http.cookie contains "postmarked_session"
+```
+
+- Cache eligibility: **Eligible for cache**
+- Edge TTL: **Respect origin TTL**
+- Browser TTL: **Respect origin TTL**
+
+Rule 3 relies on the `Cache-Control: public, max-age=30, stale-while-revalidate=300`
+header Postmarked sends for these pages, so **Respect origin TTL** gives a 30s
+freshness window with background revalidation — new posts appear within ~30s.
+If your zone serves more than one hostname and you want the rule scoped to one,
+prepend `http.host eq "yourdomain.tld" and ` to the expression.
 
 After adding the rules, purge any already-cached MP4s (Caching → Purge) so
 stale responses are evicted.
 
 See Cloudflare's guide: <https://developers.cloudflare.com/cache/troubleshooting/mp4-videos-on-ios-and-safari/>
 
-![Cloudflare Cache Rules](screenshots/Cloudflare-cache-rules.png)
+Verify each rule with `curl -sI https://yourdomain.tld/ | grep -i cf-cache-status`
+(run twice — the second request should report `HIT`).
 
 </details>
 
