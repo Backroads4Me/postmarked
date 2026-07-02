@@ -4,6 +4,7 @@ x-app-base: &app-base
   image: ghcr.io/backroads4me/postmarked-api:${IMAGE_TAG:-latest}
   env_file: .env
   environment:
+    - TZ=${TZ:-UTC}
     - PYTHONPATH=/app
     - MEDIA_DIR=/media
     - DATABASE_URL=postgresql+psycopg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-postmarked}
@@ -29,34 +30,37 @@ x-app-base: &app-base
 services:
   api:
     <<: *app-base
-    container_name: api
+    container_name: postmarked-api
     volumes:
       - ${MEDIA_DIR:-./data}:/media
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
 
   worker:
     <<: *app-base
-    container_name: worker
+    container_name: postmarked-worker
     command: ["celery", "-A", "app.tasks", "worker", "-l", "info"]
     volumes:
       - ${MEDIA_DIR:-./data}:/media
 
   beat:
     <<: *app-base
-    container_name: beat
+    container_name: postmarked-beat
     command: ["celery", "-A", "app.tasks", "beat", "-l", "info"]
 
   web:
     image: ghcr.io/backroads4me/postmarked-web:${IMAGE_TAG:-latest}
-    container_name: web
+    container_name: postmarked-web
     build:
       context: ./web
     env_file: .env
     environment:
+      - TZ=${TZ:-UTC}
       - HOST=0.0.0.0
       - PORT=4321
       - PUBLIC_GOOGLE_MAPS_API_KEY=${PUBLIC_GOOGLE_MAPS_API_KEY:-}
@@ -73,7 +77,7 @@ services:
   flower:
     profiles: ["tools"]
     image: mher/flower
-    container_name: flower
+    container_name: postmarked-flower
     command:
       ["celery", "--broker", "redis://redis:6379/0", "flower", "--port=5555"]
     environment:
@@ -88,9 +92,10 @@ services:
 
   db:
     image: ghcr.io/backroads4me/postmarked-postgis:${IMAGE_TAG:-latest}
-    container_name: postgis_db
+    container_name: postmarked-db
     env_file: .env
     environment:
+      - TZ=${TZ:-UTC}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-changeme}
       - POSTGRES_USER=${POSTGRES_USER:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-postmarked}
@@ -98,17 +103,21 @@ services:
       - ${MEDIA_DIR:-./data}/db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-postgres} -d $${POSTGRES_DB:-postmarked}"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
     restart: unless-stopped
 
   redis:
     image: redis:7-alpine
-    container_name: redis
+    container_name: postmarked-redis
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 30s
       timeout: 5s
-      retries: 5
+      retries: 3
+      start_period: 60s
+      start_interval: 5s
     restart: unless-stopped

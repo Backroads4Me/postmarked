@@ -1,4 +1,4 @@
-const SITE_TZ = import.meta.env.PUBLIC_ADMIN_TIMEZONE || 'America/New_York';
+const SITE_TZ = (typeof process !== 'undefined' && process.env.TZ) || 'America/New_York';
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function isDateOnly(value) {

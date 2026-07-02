@@ -23,7 +23,7 @@ from app.services.visibility import child_visibility_for_parent
 
 router = APIRouter(prefix="/media", tags=["admin-media"])  # tus sub-router lives at /media/tus
 
-ADMIN_TZ = os.getenv("PUBLIC_ADMIN_TIMEZONE", "UTC")
+ADMIN_TZ = os.getenv("TZ", "UTC")
 
 
 def _asset_date_expr():

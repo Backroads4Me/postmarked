@@ -4,10 +4,26 @@ import os
 import time
 from urllib.parse import urlparse
 
+LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
+
 logging.basicConfig(
     level=logging.INFO,
-    format="%(levelname)s [%(name)s] %(message)s",
+    format=LOG_FORMAT,
 )
+
+# Uvicorn configures its own handlers before importing the app; restamp them
+# so access/error lines carry timestamps too.
+for _name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
+    for _handler in logging.getLogger(_name).handlers:
+        _handler.setFormatter(logging.Formatter(LOG_FORMAT))
+
+
+class _HealthCheckFilter(logging.Filter):
+    def filter(self, record: logging.LogRecord) -> bool:
+        return "/api/health" not in record.getMessage()
+
+
+logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware

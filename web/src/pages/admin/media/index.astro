@@ -2,8 +2,7 @@
 import AdminLayout from '../../../layouts/AdminLayout.astro';
 import { apiUrl } from '../../../lib/api.js';
 
-const ADMIN_TZ = (typeof process !== 'undefined' && process.env.PUBLIC_ADMIN_TIMEZONE)
-  || import.meta.env.PUBLIC_ADMIN_TIMEZONE
+const ADMIN_TZ = (typeof process !== 'undefined' && process.env.TZ)
   || 'America/New_York';
 
 const cookie = Astro.request.headers.get('cookie');

@@ -9,7 +9,7 @@ import { formatDate, toDateInput } from '../../../lib/dates.js';
 const { id } = Astro.params;
 const cookie = Astro.request.headers.get('cookie');
 
-const ADMIN_TZ = import.meta.env.PUBLIC_ADMIN_TIMEZONE || 'America/New_York';
+const ADMIN_TZ = (typeof process !== 'undefined' && process.env.TZ) || 'America/New_York';
 const todayInAdminTz = new Intl.DateTimeFormat('en-CA', { timeZone: ADMIN_TZ }).format(new Date());
 
 let post = null;

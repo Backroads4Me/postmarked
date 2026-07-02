@@ -6,7 +6,7 @@ import { apiUrl } from '../lib/api.js';
 import { formatDate } from '../lib/dates.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
 
-const SITE_TZ = import.meta.env.PUBLIC_ADMIN_TIMEZONE || 'America/New_York';
+const SITE_TZ = (typeof process !== 'undefined' && process.env.TZ) || 'America/New_York';
 const PAGE_SIZE = 20;
 let timelineData = null;
 let error = null;
