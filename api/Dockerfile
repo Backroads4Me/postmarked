@@ -26,9 +26,10 @@ ENV PYTHONPATH=/app
 
 RUN pip install uv
 
-COPY pyproject.toml ./
-# Install production dependencies only (excludes [dev] extras)
-RUN uv pip install --system .
+COPY pyproject.toml uv.lock ./
+# Install production dependencies pinned by uv.lock (excludes [dev] extras)
+RUN uv export --frozen --no-emit-project -o requirements.txt \
+    && uv pip install --system -r requirements.txt
 
 COPY . .
 
