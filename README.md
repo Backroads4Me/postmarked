@@ -185,7 +185,7 @@ If unset, the contact section reads "contact the site administrator."
 
 ## License
 
-[GPL v3](LICENSE)
+[AGPL v3](LICENSE)
 
 ## Support
 
