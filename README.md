@@ -57,7 +57,13 @@ Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
 
 ```env
 MEDIA_DIR=./data
+MAX_UPLOAD_FILE_MIB=500
 ```
+
+`MAX_UPLOAD_FILE_MIB` is the per-file media upload limit, measured in MiB.
+The default is 500 MiB, which supports typical phone photos and short videos
+while still bounding disk and processing cost. Raise it for longer or 4K video
+uploads.
 
 | Subdirectory  | Contents                                                  | Back up?           |
 | ------------- | --------------------------------------------------------- | ------------------ |

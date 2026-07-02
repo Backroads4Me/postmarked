@@ -133,8 +133,9 @@ ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"
 os.makedirs(ORIGINALS_PATH, exist_ok=True)
 
 TUS_VERSION = "1.0.0"
-DEFAULT_MAX_UPLOAD_BYTES = 250 * 1024 * 1024
-MAX_UPLOAD_BYTES = int(os.getenv("MAX_UPLOAD_BYTES", str(DEFAULT_MAX_UPLOAD_BYTES)))
+DEFAULT_MAX_UPLOAD_FILE_MIB = 500
+MAX_UPLOAD_FILE_MIB = int(os.getenv("MAX_UPLOAD_FILE_MIB", str(DEFAULT_MAX_UPLOAD_FILE_MIB)))
+MAX_UPLOAD_FILE_BYTES = MAX_UPLOAD_FILE_MIB * 1024 * 1024
 ALLOWED_UPLOAD_MIME_TYPES = {
     "image/jpeg",
     "image/png",
@@ -187,8 +188,11 @@ async def create_upload(
         raise HTTPException(status_code=400, detail="Upload-Length required")
     if upload_length < 1:
         raise HTTPException(status_code=400, detail="Upload-Length must be positive")
-    if upload_length > MAX_UPLOAD_BYTES:
-        raise HTTPException(status_code=413, detail="Upload too large")
+    if upload_length > MAX_UPLOAD_FILE_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Upload too large; maximum is {MAX_UPLOAD_FILE_MIB} MiB",
+        )
 
     file_id = str(uuid.uuid4())
     metadata = get_metadata(request)
