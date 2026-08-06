@@ -161,6 +161,40 @@ For routine **disaster recovery**, the app writes a database dump to `${MEDIA_DI
   (e.g. `rsync`/`restic`/`borg` to external storage) for a complete recovery
   set.
 
+## Upgrades
+
+Pull the new images and recreate the stack:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+<details>
+<summary><strong>Database Collation And Index Integrity</strong></summary>
+
+Postgres sorts text using the system collation library, and its indexes are
+stored in that order. When a new database image ships a different glibc, the
+order can change and existing indexes go stale — a lookup walks to the wrong
+page and returns no rows. Nothing errors. The visible symptom is a published
+post that 404s on its own URL while still appearing in trip and stop listings,
+which looks like a stuck privacy setting.
+
+Postmarked checks for this on every start and rebuilds affected indexes before
+the app serves traffic, so a normal upgrade needs no action. Set
+`REINDEX_ON_COLLATION_CHANGE=false` to opt out on a large database where you
+would rather schedule the rebuild; the startup log then prints the SQL to run.
+
+To inspect the indexes directly — useful if content is missing and you want to
+confirm the cause:
+
+```bash
+./scripts/check-collation.sh
+```
+
+Add `--repair` to rebuild anything it flags.
+
+</details>
+
 ## RV Trip Wizard Import
 
 In the admin UI, use the Import page to upload an RV Trip Wizard `.xlsx` export. Review the preview diff, then apply it.
