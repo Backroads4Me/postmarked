@@ -1,5 +1,22 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import { apiUrl } from '../../lib/api.js';
+
+const nextPath = Astro.url.searchParams.get('next') || '/';
+const errorCode = Astro.url.searchParams.get('error');
+const configRes = await fetch(apiUrl('/api/config'));
+const config = configRes.ok ? await configRes.json() : {};
+const oidcEnabled = config.oidc_enabled ?? false;
+const oidcProviderName = config.oidc_provider_name || 'SSO';
+
+const errorMessages: Record<string, string> = {
+  oauth_pending: 'Your account is pending approval. The site owner will activate your access shortly.',
+  oauth_exists: 'An account with this email already exists. Sign in with your password or contact the site owner.',
+  oauth_no_email: 'Sign-in failed because your identity provider did not return an email address.',
+  oauth_failed: 'Sign-in with SSO failed. Please try again or use email and password.',
+};
+const errorMessage = errorCode ? errorMessages[errorCode] || errorMessages.oauth_failed : null;
+const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(nextPath.startsWith('/') ? nextPath : '/')}`;
 ---
 
 <Layout title="Login">
@@ -10,7 +27,27 @@ import Layout from '../../layouts/Layout.astro';
         <p class="text-sm text-muted">Sign in to your account</p>
       </div>
 
+      {errorMessage && (
+        <div class="alert alert-danger mb-4">{errorMessage}</div>
+      )}
+
       <div id="error-banner" class="alert alert-danger hidden mb-4"></div>
+
+      {oidcEnabled && (
+        <>
+          <a href={ssoStartUrl} class="btn w-full justify-center mb-4">
+            Sign in with {oidcProviderName}
+          </a>
+          <div class="relative mb-6">
+            <div class="absolute inset-0 flex items-center" aria-hidden="true">
+              <div class="w-full border-t border-line"></div>
+            </div>
+            <div class="relative flex justify-center text-xs uppercase">
+              <span class="bg-surface px-2 text-muted">or continue with email</span>
+            </div>
+          </div>
+        </>
+      )}
 
       <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); login(this);">
         <div class="flex flex-col gap-1">

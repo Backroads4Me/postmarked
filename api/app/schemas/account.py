@@ -12,12 +12,13 @@ class AccountOut(BaseModel):
     approval_state: ApprovalState
     email_opted_in: bool = False
     notification_frequency: NotificationFrequency
+    oauth_linked: bool = False
 
 
 class ProfileUpdate(BaseModel):
     email: EmailStr
     display_name: Optional[str] = Field(default=None, max_length=200)
-    current_password: str = Field(min_length=1)
+    current_password: Optional[str] = None
 
 
 class PasswordUpdate(BaseModel):

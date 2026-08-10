@@ -16,6 +16,7 @@ if (!res.ok) {
 const account = await res.json();
 const configData = configRes.ok ? await configRes.json().catch(() => ({})) : {};
 const email_enabled = configData.email_enabled ?? false;
+const oauth_linked = account.oauth_linked ?? false;
 ---
 
 <Layout title="Account — Postmarked">
@@ -30,7 +31,12 @@ const email_enabled = configData.email_enabled ?? false;
 
       <div class="grid gap-6">
         <section class="bg-surface border border-line rounded-lg p-6">
-          <h2 class="display text-2xl mb-4">Profile</h2>
+          <div class="flex flex-wrap items-center gap-3 mb-4">
+            <h2 class="display text-2xl">Profile</h2>
+            {oauth_linked && (
+              <span class="text-xs uppercase tracking-wide text-muted border border-line rounded px-2 py-1">Signed in via SSO</span>
+            )}
+          </div>
           <form class="grid gap-4" onsubmit="event.preventDefault(); updateProfile(this);">
             <div class="grid gap-1">
               <label class="label" for="display_name">Display name</label>
@@ -38,13 +44,16 @@ const email_enabled = configData.email_enabled ?? false;
             </div>
           <div class="grid gap-1">
             <label class="label" for="email">Email address</label>
-            <input id="email" name="email" type="email" value={account.email} required class="form-input" />
+            <input id="email" name="email" type="email" value={account.email} required class="form-input" readonly={oauth_linked} />
+            {oauth_linked && <p class="text-xs text-muted">Email is managed by your SSO provider.</p>}
           </div>
-          <div class="grid gap-1">
-            <label class="label" for="profile_current_password">Current password</label>
-            <input id="profile_current_password" name="current_password" type="password" required class="form-input" autocomplete="current-password" />
-            <p class="text-xs text-muted">Required to save profile or email changes.</p>
-          </div>
+          {!oauth_linked && (
+            <div class="grid gap-1">
+              <label class="label" for="profile_current_password">Current password</label>
+              <input id="profile_current_password" name="current_password" type="password" required class="form-input" autocomplete="current-password" />
+              <p class="text-xs text-muted">Required to save profile or email changes.</p>
+            </div>
+          )}
           <div class="flex flex-wrap items-center gap-3 sm:justify-self-start">
             <button type="submit" class="btn btn-primary justify-center">Save changes</button>
             <button type="button" class="btn justify-center" onclick="signOut()">Sign out</button>
@@ -90,6 +99,13 @@ const email_enabled = configData.email_enabled ?? false;
 
         <section class="bg-surface border border-line rounded-lg p-6">
           <h2 class="display text-2xl mb-4">Password</h2>
+          {oauth_linked && (
+            <p class="text-sm text-muted mb-4">
+              To set a local password for email sign-in, use
+              <a href="/auth/forgot-password" class="underline">forgot password</a>
+              with your account email. If you already have a password, update it below.
+            </p>
+          )}
           <form class="grid gap-4" onsubmit="event.preventDefault(); updatePassword(this);">
             <div class="grid gap-1">
               <label class="label" for="current_password">Current password</label>
@@ -107,14 +123,22 @@ const email_enabled = configData.email_enabled ?? false;
   </main>
 </Layout>
 
+<script is:inline define:vars={{ oauthLinked: oauth_linked }}>
+  window.oauthLinked = oauthLinked;
+</script>
 <script is:inline>
   async function updateProfile(form) {
-    await saveJson('/api/account/profile', {
+    const payload = {
       display_name: form.display_name.value.trim() || null,
       email: form.email.value,
-      current_password: form.current_password.value,
-    }, 'Profile saved.');
-    form.current_password.value = '';
+    };
+    if (!window.oauthLinked) {
+      payload.current_password = form.current_password.value;
+    }
+    await saveJson('/api/account/profile', payload, 'Profile saved.', 'PATCH');
+    if (!window.oauthLinked && form.current_password) {
+      form.current_password.value = '';
+    }
   }
 
     async function updateNotifications(form) {
@@ -131,7 +155,7 @@ const email_enabled = configData.email_enabled ?? false;
     await saveJson('/api/account/password', {
       current_password: form.current_password.value,
       new_password: form.new_password.value,
-    }, 'Password updated.');
+    }, 'Password updated.', 'PATCH');
     form.reset();
   }
 
@@ -146,10 +170,10 @@ const email_enabled = configData.email_enabled ?? false;
     }
   }
 
-  async function saveJson(path, payload, successMessage) {
+  async function saveJson(path, payload, successMessage, method = 'PATCH') {
     try {
       const res = await fetch(path, {
-        method: 'PATCH',
+        method,
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

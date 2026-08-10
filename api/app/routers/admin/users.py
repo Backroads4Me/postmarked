@@ -24,6 +24,7 @@ class UserSummary(BaseModel):
     role: str
     email_opted_in: bool = False
     notification_frequency: NotificationFrequency
+    oauth_linked: bool = False
 
 
 class NotificationPreferenceUpdate(BaseModel):
@@ -47,6 +48,7 @@ async def _summary(session: AsyncSession, user: User) -> UserSummary:
         role=user.role.value,
         email_opted_in=preference.email_opted_in,
         notification_frequency=preference.frequency,
+        oauth_linked=bool(user.oauth_accounts),
     )
 
 
@@ -183,6 +185,11 @@ async def update_user_profile(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     email = payload.email.lower()
+    if user.oauth_accounts and email != user.email.lower():
+        raise HTTPException(
+            status_code=400,
+            detail="Email cannot be changed for SSO-linked accounts",
+        )
     existing = await session.execute(
         select(User).where(func.lower(User.email) == email, User.id != user_id)
     )

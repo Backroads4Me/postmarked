@@ -202,6 +202,23 @@ In the admin UI, use the Import page to upload an RV Trip Wizard `.xlsx` export.
 Imported stops are created as private drafts.
 
 <details>
+<summary><strong>OIDC / SSO Login</strong></summary>
+
+Postmarked supports optional generic OpenID Connect login alongside email/password authentication.
+
+1. Create an OAuth/OIDC client in your identity provider (Keycloak, Authentik, Azure AD, etc.).
+2. Set the redirect URI to `{APP_BASE_URL}/api/auth/oidc/callback` (exact match required).
+3. Enable the `openid` and `email` scopes (`profile` is recommended for display names).
+4. Add the OIDC variables to `.env` (see `.env.example`) and set `OIDC_ENABLED=true`.
+5. Restart the stack.
+
+`OIDC_ASSOCIATE_BY_EMAIL` defaults to `false`. Only set it to `true` when your IdP verifies email addresses. When enabled, a user who signs in via SSO with an email that already has a local password account will have the identities linked automatically.
+
+`OIDC_PROVIDER_NAME` is the label shown on login/register buttons. `OIDC_PROVIDER_KEY` is the stable identifier stored in `oauth_account.oauth_name` (defaults to a slug of the provider name). Set it explicitly if you may repoint discovery at a different IdP later.
+
+</details>
+
+<details>
 <summary><strong>Privacy Policy &amp; Terms of Service Pages</strong></summary>
 
 Postmarked ships built-in privacy and terms pages at `/privacy` and `/terms`. By default they show generic placeholder content. To customize them, place `privacy.md` and/or `terms.md` in your `MEDIA_DIR` on the host. They are picked up automatically — no extra configuration needed.

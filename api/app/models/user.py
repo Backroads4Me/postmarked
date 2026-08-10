@@ -8,17 +8,22 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 from app.models.enums import UserRole, ApprovalState, NotificationFrequency
+from app.models.oauth_account import OAuthAccount
 
 class User(SQLAlchemyBaseUserTableUUID, Base):
     display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     avatar_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     role: Mapped[UserRole] = mapped_column(SqlaEnum(UserRole, name="userrole"), default=UserRole.USER)
     approval_state: Mapped[ApprovalState] = mapped_column(SqlaEnum(ApprovalState, name="approvalstate"), default=ApprovalState.PENDING)
-    
+
     # We can override standard fields if needed, but the base provides email, hashed_password, is_active, etc.
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
+    # selectin (not joined): a joined collection forces .unique() on every User query.
+    oauth_accounts: Mapped[list["OAuthAccount"]] = relationship(
+        "OAuthAccount", lazy="selectin", cascade="all, delete-orphan"
+    )
     notification_preference: Mapped["NotificationPreference"] = relationship("NotificationPreference", back_populates="user", uselist=False)
 
 
