@@ -754,10 +754,10 @@ def refresh_weather():
     from sqlalchemy import cast, func
 
     from app.services.weather import (
-        WEATHER_CACHE_KEY,
         WEATHER_COORDS_KEY,
         WEATHER_TTL_SECONDS,
         fetch_weather,
+        weather_cache_key,
     )
 
     client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
@@ -796,7 +796,7 @@ def refresh_weather():
         logger.warning("[weather] Fetch returned no data for %s,%s", lat, lon)
         return "Fetch failed"
 
-    client.set(WEATHER_CACHE_KEY, json.dumps(data), ex=WEATHER_TTL_SECONDS)
+    client.set(weather_cache_key(), json.dumps(data), ex=WEATHER_TTL_SECONDS)
     logger.info("[weather] Cached weather for %s,%s", lat, lon)
     return f"Cached weather for {lat},{lon}"
 

@@ -133,6 +133,7 @@ class WeatherDay(BaseModel):
 class WeatherOut(BaseModel):
     current: WeatherCurrent
     forecast: List[WeatherDay] = []
+    unit: Literal["fahrenheit", "celsius"] = "fahrenheit"
 
 
 class HomeOut(BaseModel):

@@ -21,6 +21,7 @@ interface WeatherDay {
 interface Weather {
   current: { temp: number; label: string };
   forecast: WeatherDay[];
+  unit?: 'fahrenheit' | 'celsius';
 }
 
 interface Props {
@@ -58,6 +59,10 @@ function stampYear(dateStr?: string) {
   } catch {
     return '';
   }
+}
+
+function weatherTempSuffix(unit?: Weather['unit']) {
+  return unit === 'celsius' ? '°C' : '°F';
 }
 
 function cityStateFromAddress(address?: string): { city: string; state: string; label: string } | null {
@@ -106,7 +111,7 @@ const postmarkState = cityState?.state || '';
         )}
 
         <p class="current-weather-line">
-          {weather ? `${weather.current.label} · ${weather.current.temp}° in ${postmarkCity}` : `Weather updating in ${postmarkCity}`}
+          {weather ? `${weather.current.label} · ${weather.current.temp}${weatherTempSuffix(weather.unit)} in ${postmarkCity}` : `Weather updating in ${postmarkCity}`}
         </p>
 
         <div class="current-meta">
