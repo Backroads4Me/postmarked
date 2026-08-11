@@ -11,6 +11,7 @@ Postmarked is intentionally simple: run it, sign in, create a trip, post updates
 - Subscriber email notifications for new posts.
 - Admin UI for trips, stops, posts, media, users, site text, and settings.
 - Customizable home page and section text via admin.
+- Current-stop weather on the home page, in Fahrenheit or Celsius.
 - Backup and instance migration.
 - RV Trip Wizard `.xlsx` import for RV travelers.
 - Optional privacy policy and terms pages via Markdown files.
