@@ -21,9 +21,9 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 # Coordinates of the current stop, written by /api/home so the scheduled task
 # knows where to fetch weather for without re-deriving the current stop.
 WEATHER_COORDS_KEY = "weather:coords"
-# TTL is longer than the refresh interval so a single missed run doesn't blank
-# the homepage; a stale-but-present reading beats no reading.
-WEATHER_TTL_SECONDS = int(os.getenv("WEATHER_TTL_SECONDS", str(3 * 60 * 60)))
+# TTL is longer than the hourly refresh interval so a single missed run doesn't
+# blank the homepage; a stale-but-present reading beats no reading.
+WEATHER_TTL_SECONDS = 3 * 60 * 60
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "contact@example.com")
 _NWS_USER_AGENT = f"postmarked-app/1.0 ({ADMIN_EMAIL})"
