@@ -8,10 +8,9 @@ request. See api/app/tasks.py for the scheduler entry.
 
 from __future__ import annotations
 
-import json
 import logging
 import os
-from typing import Optional
+from typing import Any, Literal, Optional
 
 import httpx
 
@@ -19,8 +18,6 @@ logger = logging.getLogger(__name__)
 
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 
-# Cached, ready-to-serve weather payload for the current stop.
-WEATHER_CACHE_KEY = "weather:current"
 # Coordinates of the current stop, written by /api/home so the scheduled task
 # knows where to fetch weather for without re-deriving the current stop.
 WEATHER_COORDS_KEY = "weather:coords"
@@ -30,6 +27,8 @@ WEATHER_TTL_SECONDS = int(os.getenv("WEATHER_TTL_SECONDS", str(3 * 60 * 60)))
 
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL", "contact@example.com")
 _NWS_USER_AGENT = f"postmarked-app/1.0 ({ADMIN_EMAIL})"
+
+WeatherTemperatureUnit = Literal["fahrenheit", "celsius"]
 
 # WMO weather interpretation codes -> human labels (mirrors web/src/lib/weather.js)
 WMO_CODES = {
@@ -46,6 +45,21 @@ WMO_CODES = {
 }
 
 
+def weather_temperature_unit() -> WeatherTemperatureUnit:
+    """Read the configured temperature unit from the environment."""
+    raw = os.getenv("WEATHER_TEMPERATURE_UNIT", "fahrenheit").strip().lower()
+    if raw == "celsius":
+        return "celsius"
+    if raw != "fahrenheit":
+        logger.warning("Invalid WEATHER_TEMPERATURE_UNIT %r; using fahrenheit", raw)
+    return "fahrenheit"
+
+
+def weather_cache_key() -> str:
+    """Redis key for the cached current-stop weather payload."""
+    return f"weather:current:{weather_temperature_unit()}"
+
+
 def _round(value, default=0) -> int:
     try:
         return round(float(value))
@@ -53,13 +67,24 @@ def _round(value, default=0) -> int:
         return default
 
 
+def _fahrenheit_to_unit(temp_f: Any, unit: str, default: int = 0) -> int:
+    try:
+        fahrenheit = float(temp_f)
+    except (TypeError, ValueError):
+        return default
+    if unit == "celsius":
+        return round((fahrenheit - 32) * 5 / 9)
+    return _round(fahrenheit, default)
+
+
 def _fetch_open_meteo(lat: float, lon: float) -> Optional[dict]:
+    unit = weather_temperature_unit()
     url = (
         "https://api.open-meteo.com/v1/forecast"
         f"?latitude={lat}&longitude={lon}"
         "&current=temperature_2m,weather_code,is_day"
         "&daily=weather_code,temperature_2m_max,temperature_2m_min"
-        "&timezone=auto&forecast_days=3&temperature_unit=fahrenheit"
+        f"&timezone=auto&forecast_days=3&temperature_unit={unit}"
     )
     try:
         with httpx.Client(timeout=10.0) as client:
@@ -99,6 +124,7 @@ def _fetch_open_meteo(lat: float, lon: float) -> Optional[dict]:
 
 def _fetch_nws(lat: float, lon: float) -> Optional[dict]:
     headers = {"User-Agent": _NWS_USER_AGENT}
+    unit = weather_temperature_unit()
     try:
         with httpx.Client(timeout=10.0, headers=headers) as client:
             points = client.get(f"https://api.weather.gov/points/{lat},{lon}")
@@ -130,18 +156,20 @@ def _fetch_nws(lat: float, lon: float) -> Optional[dict]:
             (n for n in daily_periods if not n.get("isDaytime") and n.get("number") == p.get("number", 0) + 1),
             None,
         )
+        high_f = p.get("temperature", 0)
+        low_f = (night or {}).get("temperature", p.get("temperature", 0) - 15)
         forecast.append(
             {
                 "day": _weekday_iso(p.get("startTime")),
-                "high": p.get("temperature", 0),
-                "low": (night or {}).get("temperature", p.get("temperature", 0) - 15),
+                "high": _fahrenheit_to_unit(high_f, unit),
+                "low": _fahrenheit_to_unit(low_f, unit),
                 "label": p.get("shortForecast", ""),
             }
         )
 
     return {
         "current": {
-            "temp": current_period.get("temperature", 0),
+            "temp": _fahrenheit_to_unit(current_period.get("temperature", 0), unit),
             "label": current_period.get("shortForecast", ""),
         },
         "forecast": forecast,
@@ -172,4 +200,7 @@ def _weekday_iso(iso_str: Optional[str]) -> str:
 
 def fetch_weather(lat: float, lon: float) -> Optional[dict]:
     """Fetch weather for a coordinate, Open-Meteo first with NWS as fallback."""
-    return _fetch_open_meteo(lat, lon) or _fetch_nws(lat, lon)
+    result = _fetch_open_meteo(lat, lon) or _fetch_nws(lat, lon)
+    if result:
+        result["unit"] = weather_temperature_unit()
+    return result

@@ -26,7 +26,7 @@ from app.schemas.journey import (
     TimelineOut,
 )
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
-from app.services.weather import REDIS_URL, WEATHER_CACHE_KEY, WEATHER_COORDS_KEY
+from app.services.weather import REDIS_URL, WEATHER_COORDS_KEY, weather_cache_key
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,7 @@ async def _cached_weather_and_publish_coords(current_stop) -> Optional[dict]:
         client = _redis()
         if current_stop and current_stop.latitude is not None and current_stop.longitude is not None:
             await client.set(WEATHER_COORDS_KEY, f"{current_stop.latitude},{current_stop.longitude}")
-        cached = await client.get(WEATHER_CACHE_KEY)
+        cached = await client.get(weather_cache_key())
         return json.loads(cached) if cached else None
     except Exception as exc:  # noqa: BLE001 - cache is best-effort
         logger.warning("Weather cache read failed: %s", exc)
