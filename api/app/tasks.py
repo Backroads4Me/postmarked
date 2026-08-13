@@ -20,7 +20,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.models.content import MediaAsset, Post, SiteTextSection, Stop
-from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, UserRole, Visibility
+from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, StopStatus, UserRole, Visibility
 from app.models.system import NotificationLog
 from app.models.user import NotificationPreference, User
 from app.services.mailer import send_email
