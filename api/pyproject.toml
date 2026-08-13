@@ -47,6 +47,8 @@ include = ["app*"]
 
 [tool.pytest.ini_options]
 addopts = "-m 'not live'"
+# The project is not installed into the venv, so `app` is imported from the source tree.
+pythonpath = ["."]
 markers = [
     "live: tests that call external APIs (opt-in via -m live)",
 ]
