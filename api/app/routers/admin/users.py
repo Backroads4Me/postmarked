@@ -5,11 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.enums import ApprovalState, NotificationFrequency, UserRole
-from app.models.user import User
+from app.models.user import NotificationPreference, User
 from app.services.notification_preferences import get_or_create_notification_preference
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
@@ -37,8 +38,8 @@ class AdminProfileUpdate(BaseModel):
     display_name: Optional[str] = Field(default=None, max_length=200)
 
 
-async def _summary(session: AsyncSession, user: User) -> UserSummary:
-    preference = await get_or_create_notification_preference(session, user.id)
+def _summary_from(user: User, preference: Optional[NotificationPreference]) -> UserSummary:
+    """Build a summary from an already-loaded preference, which may not exist yet."""
     return UserSummary(
         id=user.id,
         email=user.email,
@@ -46,10 +47,17 @@ async def _summary(session: AsyncSession, user: User) -> UserSummary:
         approval_state=user.approval_state,
         is_active=user.is_active,
         role=user.role.value,
-        email_opted_in=preference.email_opted_in,
-        notification_frequency=preference.frequency,
+        email_opted_in=preference.email_opted_in if preference else False,
+        notification_frequency=(
+            preference.frequency if preference else NotificationFrequency.ALL_UPDATES
+        ),
         oauth_linked=bool(user.oauth_accounts),
     )
+
+
+async def _summary(session: AsyncSession, user: User) -> UserSummary:
+    preference = await get_or_create_notification_preference(session, user.id)
+    return _summary_from(user, preference)
 
 
 @router.get("", response_model=List[UserSummary])
@@ -58,15 +66,15 @@ async def list_users(
     session: AsyncSession = Depends(get_async_session),
     _admin=Depends(current_admin_user),
 ):
-    query = select(User)
+    # Eager-load the preference: listing users is a read, so it must not create
+    # the rows a per-user get_or_create would.
+    query = select(User).options(selectinload(User.notification_preference))
     if status == "pending":
         query = query.where(User.approval_state == ApprovalState.PENDING)
     elif status == "approved":
         query = query.where(User.approval_state == ApprovalState.APPROVED)
     rows = (await session.execute(query.order_by(User.created_at.asc()))).scalars().all()
-    summaries = [await _summary(session, u) for u in rows]
-    await session.commit()
-    return summaries
+    return [_summary_from(u, u.notification_preference) for u in rows]
 
 
 @router.post("/{user_id}/approve", response_model=UserSummary)
