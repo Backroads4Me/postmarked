@@ -70,6 +70,19 @@ def _copy_response_cookies(source, target: RedirectResponse) -> None:
         target.headers.append("set-cookie", cookie)
 
 
+def _parse_email_verified(raw: object) -> bool | None:
+    """Read the OIDC email_verified claim, which some providers send as a string."""
+    if isinstance(raw, bool):
+        return raw
+    if isinstance(raw, str):
+        value = raw.strip().lower()
+        if value in ("1", "true", "yes"):
+            return True
+        if value in ("0", "false", "no"):
+            return False
+    return None
+
+
 def _detail_to_error_code(detail: str | None) -> str:
     if detail == ErrorCode.LOGIN_BAD_CREDENTIALS:
         return "oauth_pending"
@@ -178,13 +191,30 @@ async def oidc_callback(
         return RedirectResponse(url=_login_error_url("oauth_no_email"), status_code=status.HTTP_302_FOUND)
 
     display_name: str | None = None
+    email_verified: bool | None = None
     try:
         profile = await oidc_client.get_profile(token["access_token"])
         display_name = profile.get("name") or profile.get("preferred_username")
         if display_name is not None:
             display_name = str(display_name).strip() or None
+        email_verified = _parse_email_verified(profile.get("email_verified"))
     except Exception:
         logger.debug("OIDC profile fetch failed; continuing without display_name", exc_info=True)
+
+    # Linking by email hands an existing local account to whoever controls the
+    # address at the IdP, so an explicit denial from the provider overrides the
+    # operator's opt-in.
+    associate_by_email = _settings.associate_by_email
+    if associate_by_email and email_verified is False:
+        logger.warning(
+            "OIDC provider reports email_verified=false for %s; refusing to associate by email",
+            account_email,
+        )
+        associate_by_email = False
+    elif associate_by_email and email_verified is None:
+        logger.warning(
+            "OIDC provider returned no email_verified claim; associating by email on trust"
+        )
 
     try:
         user = await user_manager.oauth_callback(
@@ -195,7 +225,7 @@ async def oidc_callback(
             token.get("expires_at"),
             token.get("refresh_token"),
             request,
-            associate_by_email=_settings.associate_by_email,
+            associate_by_email=associate_by_email,
             is_verified_by_default=True,
             display_name=display_name,
         )

@@ -192,7 +192,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         )
         admins = (await session.execute(
             select(User).where(User.role == UserRole.ADMIN, User.is_active == True)
-        )).unique().scalars().all()
+        )).scalars().all()
         for admin in admins:
             send_email(admin.email, subject, text, html)
 

@@ -7,7 +7,7 @@ from fastapi_users.exceptions import UserNotExists
 
 from app.auth.auth_config import UserManager, apply_new_user_policies
 from app.auth.oidc import load_oidc_settings, validate_oidc_settings
-from app.auth.oidc_router import _ensure_oidc_client, _safe_next_path
+from app.auth.oidc_router import _ensure_oidc_client, _parse_email_verified, _safe_next_path
 from app.models.enums import ApprovalState
 from app.routers.admin.users import AdminProfileUpdate, update_user_profile
 
@@ -31,7 +31,8 @@ def test_load_oidc_settings_enabled(monkeypatch):
     settings = load_oidc_settings()
     assert settings.enabled is True
     assert settings.provider_name == "Company SSO"
-    assert settings.provider_key == "company-sso"
+    # The stored key must not track the display name, which operators reword.
+    assert settings.provider_key == "openid"
     assert settings.associate_by_email is False
 
 
@@ -40,6 +41,23 @@ def test_load_oidc_settings_provider_key_override(monkeypatch):
     monkeypatch.setenv("OIDC_PROVIDER_KEY", "azure-ad")
     settings = load_oidc_settings()
     assert settings.provider_key == "azure-ad"
+
+
+@pytest.mark.parametrize(
+    "raw,expected",
+    [
+        (True, True),
+        (False, False),
+        ("true", True),
+        ("false", False),
+        ("True", True),
+        (None, None),
+        ("maybe", None),
+        (1, None),
+    ],
+)
+def test_parse_email_verified(raw, expected):
+    assert _parse_email_verified(raw) is expected
 
 
 def test_load_oidc_settings_associate_by_email_opt_in(monkeypatch):

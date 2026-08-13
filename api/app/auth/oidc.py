@@ -1,5 +1,4 @@
 import os
-import re
 from dataclasses import dataclass
 from functools import lru_cache
 from typing import TYPE_CHECKING
@@ -20,9 +19,10 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return raw.strip().lower() in ("1", "true", "yes", "on")
 
 
-def _slug_provider_key(name: str) -> str:
-    slug = re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
-    return slug or "openid"
+# Stored as oauth_account.oauth_name, so it must not change once accounts are
+# linked. It is deliberately independent of OIDC_PROVIDER_NAME, which is a
+# display string an operator may reword at any time.
+DEFAULT_PROVIDER_KEY = "openid"
 
 
 @dataclass(frozen=True)
@@ -42,7 +42,7 @@ def load_oidc_settings() -> OidcSettings:
     scopes = [s.strip() for s in scopes_raw.split() if s.strip()]
     provider_name = os.getenv("OIDC_PROVIDER_NAME", "SSO").strip() or "SSO"
     provider_key_raw = os.getenv("OIDC_PROVIDER_KEY", "").strip()
-    provider_key = provider_key_raw or _slug_provider_key(provider_name)
+    provider_key = provider_key_raw or DEFAULT_PROVIDER_KEY
     return OidcSettings(
         enabled=_env_bool("OIDC_ENABLED"),
         client_id=os.getenv("OIDC_CLIENT_ID", "").strip(),
