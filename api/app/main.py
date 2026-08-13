@@ -25,18 +25,18 @@ class _HealthCheckFilter(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import text
 
-from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
+from app.auth.auth_config import APP_ENV, auth_backend, current_active_user, fastapi_users_app
 from app.auth.oidc import load_oidc_settings
 from app.db import async_session_maker
 from app.routers import account, journey, media, search, site_text, social, stops, trips
-from app.schemas.user import UserCreate, UserRead, UserUpdate
+from app.schemas.user import UserCreate, UserRead
 from app.services.mailer import is_email_configured
 from app.services.original_retention import cleanup_processed_originals
 
@@ -299,12 +299,16 @@ app.include_router(
     prefix="/api/auth",
     tags=["auth"],
 )
-# /api/users/me — lets the frontend check auth state without a custom endpoint
-app.include_router(
-    fastapi_users_app.get_users_router(UserRead, UserUpdate),
-    prefix="/api/users",
-    tags=["users"],
-)
+
+# Lets the frontend check auth state. Deliberately not fastapi-users' users
+# router: that also exposes PATCH /me, which rewrites email and password with
+# no re-authentication and no SSO email lock, bypassing the rules account.py
+# enforces for those same fields.
+@app.get("/api/users/me", response_model=UserRead, tags=["users"])
+async def read_current_user(user=Depends(current_active_user)):
+    return user
+
+
 app.include_router(account.router, prefix="/api")
 
 _oidc_settings = load_oidc_settings()
