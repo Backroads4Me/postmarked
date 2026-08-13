@@ -4,7 +4,7 @@ from typing import List, Literal, Optional
 
 from pydantic import BaseModel
 
-from app.models.enums import ActivityType, PostType, StopStatus, TripStatus, Visibility
+from app.models.enums import ActivityType, PostType, StopStatus, TripStatus
 from app.schemas.common import BaseResponse
 from app.schemas.media import MediaAssetOut
 

@@ -1,9 +1,8 @@
 import uuid
 from typing import Optional
 from datetime import datetime
-from pydantic import Field
 
-from app.schemas.common import BaseResponse, GeoJsonPoint
+from app.schemas.common import BaseResponse
 from app.models.enums import MediaKind, MediaProcessingState, Visibility
 
 class MediaAssetBase(BaseResponse):

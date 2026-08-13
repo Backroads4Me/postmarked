@@ -38,6 +38,18 @@ dev = [
 line-length = 100
 target-version = "py312"
 
+[tool.ruff.lint.per-file-ignores]
+# Importing every model class is what registers it on Base.metadata, so
+# SQLAlchemy can resolve relationships and alembic autogenerate can see the
+# full schema. The names are unused by design.
+"app/models/__init__.py" = ["F401", "F403"]
+# Logging is configured before the application imports so uvicorn's handlers
+# are restamped at import time, and the admin routers are mounted at the end
+# of the module after the app object exists.
+"app/main.py" = ["E402"]
+# register_heif_opener() must run before any code path decodes a HEIC file.
+"app/tasks.py" = ["E402"]
+
 [tool.mypy]
 python_version = "3.12"
 strict = true

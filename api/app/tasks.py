@@ -10,7 +10,7 @@ from celery import Celery
 from celery.schedules import crontab
 import subprocess
 from datetime import datetime, timedelta, timezone
-from PIL import Image, ExifTags
+from PIL import Image
 import blurhash
 from pillow_heif import register_heif_opener
 
@@ -80,9 +80,9 @@ def _approved_notification_users(db, frequency: NotificationFrequency):
             select(User, NotificationPreference)
             .join(NotificationPreference, NotificationPreference.user_id == User.id)
             .where(
-                User.is_active == True,
+                User.is_active.is_(True),
                 User.approval_state == ApprovalState.APPROVED,
-                NotificationPreference.email_opted_in == True,
+                NotificationPreference.email_opted_in.is_(True),
                 NotificationPreference.frequency == frequency,
             )
         )
@@ -332,9 +332,12 @@ def process_media_asset(asset_id: str):
                     exif = img.getexif()
                     if exif:
                         orientation = exif.get(274)
-                        if orientation == 3:   img = img.rotate(180, expand=True)
-                        elif orientation == 6: img = img.rotate(270, expand=True)
-                        elif orientation == 8: img = img.rotate(90, expand=True)
+                        if orientation == 3:
+                            img = img.rotate(180, expand=True)
+                        elif orientation == 6:
+                            img = img.rotate(270, expand=True)
+                        elif orientation == 8:
+                            img = img.rotate(90, expand=True)
 
                         gps_info = exif.get_ifd(0x8825)  # GPSInfo IFD
                         if gps_info:
@@ -527,7 +530,7 @@ def dispatch_comment_notification(comment_id: str):
 
         admins = db.execute(
             select(User).where(
-                User.is_active == True,
+                User.is_active.is_(True),
                 User.role == UserRole.ADMIN,
             )
         ).scalars().all()
@@ -547,7 +550,7 @@ def dispatch_comment_notification(comment_id: str):
         prior_commenters = (
             db.execute(
                 select(User).where(
-                    User.is_active == True,
+                    User.is_active.is_(True),
                     User.id.in_(prior_author_ids),
                 )
             ).scalars().all()
@@ -667,7 +670,8 @@ def scan_filesystem():
             if os.path.commonpath([PROCESSED_INGEST_PATH, root]) == PROCESSED_INGEST_PATH:
                 continue
             for file in files:
-                if file.startswith('.'): continue
+                if file.startswith('.'):
+                    continue
                 
                 filepath = os.path.join(root, file)
                 file_ext = os.path.splitext(file)[1].lower()

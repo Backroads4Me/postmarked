@@ -3,7 +3,7 @@ from typing import Optional, List
 from datetime import datetime
 from pydantic import BaseModel, Field
 
-from app.schemas.common import BaseResponse, GeoJsonPoint
+from app.schemas.common import BaseResponse
 from app.schemas.media import MediaAssetOut
 from app.models.enums import StopStatus, Visibility
 

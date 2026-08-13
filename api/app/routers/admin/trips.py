@@ -6,7 +6,6 @@ from typing import List
 
 from app.db import get_async_session
 from app.models.content import MediaAsset, Trip, Stop
-from app.models.enums import Visibility
 from app.schemas.trip import TripOut, TripCreate, TripUpdate
 from app.auth.dependencies import current_admin_user
 from app.models.user import User

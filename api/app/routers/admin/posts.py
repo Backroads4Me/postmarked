@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.content import MediaAsset, PointOfInterest, Post, Stop, Trip
-from app.models.enums import PostStatus, PostType, StopStatus, TripStatus, Visibility
+from app.models.enums import PostStatus, StopStatus, TripStatus, Visibility
 from app.models.user import User
 from app.schemas.post import PostCreate, PostOut, PostUpdate
 from app.services.audit import log_audit_event
@@ -327,7 +327,7 @@ async def set_current_stop(
 
     await session.execute(
         update(Stop)
-        .where(Stop.is_current == True)
+        .where(Stop.is_current.is_(True))
         .values(is_current=False)
     )
     stop.is_current = True
@@ -354,7 +354,7 @@ async def get_current_stop(
 ):
     """Get the marked current stop, or infer it from today's published itinerary."""
     result = await session.execute(
-        select(Stop).where(Stop.is_current == True)
+        select(Stop).where(Stop.is_current.is_(True))
     )
     stop = result.scalars().first()
     if not stop:

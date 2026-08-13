@@ -191,7 +191,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             f'<p><a href="{approval_url}">Manage users</a></p>'
         )
         admins = (await session.execute(
-            select(User).where(User.role == UserRole.ADMIN, User.is_active == True)
+            select(User).where(User.role == UserRole.ADMIN, User.is_active.is_(True))
         )).scalars().all()
         for admin in admins:
             send_email(admin.email, subject, text, html)

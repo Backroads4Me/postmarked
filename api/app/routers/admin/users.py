@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.enums import ApprovalState, NotificationFrequency, UserRole
-from app.models.user import NotificationPreference, User
+from app.models.user import User
 from app.services.notification_preferences import get_or_create_notification_preference
 
 router = APIRouter(prefix="/users", tags=["admin-users"])
