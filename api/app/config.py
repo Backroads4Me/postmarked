@@ -44,6 +44,11 @@ def validate_env() -> None:
     if not db_url or "changeme" in db_url:
         errors.append("DATABASE_URL is missing or contains a placeholder password")
 
+    from app.auth.oidc import load_oidc_settings, validate_oidc_settings
+
+    oidc_errors = validate_oidc_settings(load_oidc_settings())
+    errors.extend(oidc_errors)
+
     if errors:
         print("\n[postmarked] FATAL: Production configuration is incomplete:\n", file=sys.stderr)
         for e in errors:

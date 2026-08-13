@@ -33,6 +33,7 @@ from pydantic import BaseModel
 from sqlalchemy import text
 
 from app.auth.auth_config import APP_ENV, auth_backend, fastapi_users_app
+from app.auth.oidc import load_oidc_settings
 from app.db import async_session_maker
 from app.routers import account, journey, media, search, site_text, social, stops, trips
 from app.schemas.user import UserCreate, UserRead, UserUpdate
@@ -182,6 +183,7 @@ class RateLimitMiddleware:
         "/api/auth/jwt/login": (10, 60),
         "/api/auth/register": (5, 300),
         "/api/auth/forgot-password": (5, 300),
+        "/api/auth/oidc/start": (10, 60),
     }
 
     def __init__(self, app):
@@ -222,13 +224,19 @@ class RateLimitMiddleware:
                 del self._buckets[key]
 
     async def __call__(self, scope, receive, send):
-        if scope["type"] != "http" or scope["method"] != "POST":
+        if scope["type"] != "http":
             await self.app(scope, receive, send)
             return
 
         path = scope["path"]
+        method = scope["method"]
         limit_config = self.LIMITS.get(path)
         if limit_config is None:
+            await self.app(scope, receive, send)
+            return
+        if method == "POST" or (method == "GET" and path == "/api/auth/oidc/start"):
+            pass
+        else:
             await self.app(scope, receive, send)
             return
 
@@ -299,6 +307,12 @@ app.include_router(
 )
 app.include_router(account.router, prefix="/api")
 
+_oidc_settings = load_oidc_settings()
+if _oidc_settings.enabled:
+    from app.auth.oidc_router import router as oidc_router
+
+    app.include_router(oidc_router, prefix="/api/auth/oidc", tags=["auth"])
+
 
 # Public read API
 app.include_router(trips.router, prefix="/api")
@@ -343,6 +357,8 @@ class AppConfig(BaseModel):
     email_enabled: bool
     require_user_approval: bool
     app_env: str
+    oidc_enabled: bool
+    oidc_provider_name: str | None = None
 
 
 @app.get("/api/config", response_model=AppConfig)
@@ -357,7 +373,14 @@ async def app_config():
         config = (await session.execute(select(SiteConfig).limit(1))).scalar_one_or_none()
         if config is not None:
             require_approval = config.require_user_approval
-    return {"email_enabled": is_email_configured(), "require_user_approval": require_approval, "app_env": APP_ENV}
+    oidc = load_oidc_settings()
+    return {
+        "email_enabled": is_email_configured(),
+        "require_user_approval": require_approval,
+        "app_env": APP_ENV,
+        "oidc_enabled": oidc.enabled,
+        "oidc_provider_name": oidc.provider_name if oidc.enabled else None,
+    }
 
 
 class HealthCheck(BaseModel):

@@ -4,7 +4,12 @@ import { apiUrl } from '../../lib/api.js';
 
 const isSubscribeIntent = Astro.url.searchParams.get('subscribe') === '1';
 const configRes = await fetch(apiUrl('/api/config'));
-const { email_enabled, require_user_approval } = await configRes.json();
+const config = configRes.ok ? await configRes.json() : {};
+const { email_enabled, require_user_approval } = config;
+const oidcEnabled = config.oidc_enabled ?? false;
+const oidcProviderName = config.oidc_provider_name || 'SSO';
+const registerNext = isSubscribeIntent ? '/?subscribe=1' : '/';
+const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(registerNext)}`;
 ---
 
 <Layout title="Register">
@@ -37,6 +42,22 @@ const { email_enabled, require_user_approval } = await configRes.json();
         </div>
 
         <div id="error-banner" class="alert alert-danger hidden mb-4"></div>
+
+        {oidcEnabled && (
+          <>
+            <a href={ssoStartUrl} class="btn w-full justify-center mb-4">
+              Sign up with {oidcProviderName}
+            </a>
+            <div class="relative mb-6">
+              <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                <div class="w-full border-t border-line"></div>
+              </div>
+              <div class="relative flex justify-center text-xs uppercase">
+                <span class="bg-surface px-2 text-muted">or create with email</span>
+              </div>
+            </div>
+          </>
+        )}
 
         <form class="flex flex-col gap-4" onsubmit="event.preventDefault(); register(this);">
           <div class="flex flex-col gap-1">

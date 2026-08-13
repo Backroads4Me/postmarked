@@ -153,6 +153,9 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               <div class="flex-1"></div>
+              {u.oauth_linked && (
+                <span class="text-xs uppercase tracking-wide text-muted border border-line rounded px-2 py-1">SSO</span>
+              )}
               <button class="btn btn-sm"
                 onclick={`approveUser('${u.id}', this)`}>Approve</button>
               <button class="btn btn-sm btn-primary"
@@ -218,6 +221,9 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               <div class="flex-1"></div>
+              {u.oauth_linked && (
+                <span class="text-xs uppercase tracking-wide text-muted border border-line rounded px-2 py-1">SSO</span>
+              )}
               <span class="badge badge-active badge-sm">approved</span>
               {u.id !== currentUserId && (
                 <button class="btn btn-sm text-ember"
@@ -276,6 +282,9 @@ const rejected = users.filter(u => u.approval_state === 'rejected');
                 </select>
               )}
               <div class="flex-1"></div>
+              {u.oauth_linked && (
+                <span class="text-xs uppercase tracking-wide text-muted border border-line rounded px-2 py-1">SSO</span>
+              )}
               <button class="btn btn-sm"
                 onclick={`approveUser('${u.id}', this)`}>Re-approve</button>
               {u.id !== currentUserId && (
