@@ -212,9 +212,29 @@ Postmarked supports optional generic OpenID Connect login alongside email/passwo
 4. Add the OIDC variables to `.env` (see `.env.example`) and set `OIDC_ENABLED=true`.
 5. Restart the stack.
 
-`OIDC_ASSOCIATE_BY_EMAIL` defaults to `false`. Only set it to `true` when your IdP verifies email addresses. When enabled, a user who signs in via SSO with an email that already has a local password account will have the identities linked automatically.
+`OIDC_ASSOCIATE_BY_EMAIL` defaults to `false`. Only set it to `true` when your IdP verifies email addresses. When enabled, a user who signs in via SSO with an email that already has a local password account will have the identities linked automatically. If the provider explicitly reports the address as unverified, Postmarked refuses to link and the sign-in fails with an "account already exists" message.
 
-`OIDC_PROVIDER_NAME` is the label shown on login/register buttons. `OIDC_PROVIDER_KEY` is the stable identifier stored in `oauth_account.oauth_name` (defaults to a slug of the provider name). Set it explicitly if you may repoint discovery at a different IdP later.
+`OIDC_PROVIDER_NAME` is the label shown on login/register buttons and is safe to reword at any time. `OIDC_PROVIDER_KEY` is the stable identifier stored in `oauth_account.oauth_name`. Changing it after accounts are linked orphans those links, so set it once and leave it alone.
+
+Postmarked issues its own seven-day session cookie after a successful SSO login and does not re-check the provider afterwards. Disabling a user at the identity provider prevents future logins but does not end sessions already in progress; deactivate the user in the admin UI to cut off access immediately.
+
+### Sign in with Google
+
+Google is a standard OpenID Connect provider, so it works through the same settings with no Google-specific configuration.
+
+1. In the [Google Cloud Console](https://console.cloud.google.com/), create a project and open **APIs & Services → Credentials**.
+2. Configure the **OAuth consent screen**. Choose **External**, and supply your privacy policy and terms URLs — Postmarked serves these at `/privacy` and `/terms`.
+3. Create an **OAuth client ID** of type **Web application**.
+4. Add `{APP_BASE_URL}/api/auth/oidc/callback` as an authorized redirect URI (exact match required).
+5. Set `OIDC_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration`, along with the client ID and secret, in `.env`.
+6. Publish the consent screen. While it is in **Testing**, only accounts listed as test users can sign in, capped at 100.
+7. Restart the stack.
+
+Keeping the default `openid email profile` scopes stays within Google's non-sensitive scope tier, which does not require a verification review.
+
+Existing subscribers can move to Google sign-in by setting `OIDC_ASSOCIATE_BY_EMAIL=true`, which is safe with Google because it verifies the addresses it returns. Linking adds a sign-in method rather than replacing one, so their password continues to work. Without that setting they cannot link at all, and see an "account already exists" message instead.
+
+Note that SSO signups follow the same approval rules as password signups. If `require_user_approval` is enabled, someone signing in with Google still lands in the pending queue rather than reaching the site.
 
 </details>
 
