@@ -17,6 +17,17 @@ const account = await res.json();
 const configData = configRes.ok ? await configRes.json().catch(() => ({})) : {};
 const email_enabled = configData.email_enabled ?? false;
 const oauth_linked = account.oauth_linked ?? false;
+const oidc_enabled = configData.oidc_enabled ?? false;
+const oidc_provider_name = configData.oidc_provider_name || 'SSO';
+
+const linkMessages = {
+  link_mismatch: 'Sign-in did not match the account you are signed in as. Please try again.',
+  link_taken: `That ${oidc_provider_name} account is already linked to a different Postmarked account.`,
+  link_failed: `Could not connect your ${oidc_provider_name} account. Please try again.`,
+};
+const linkError = Astro.url.searchParams.get('error');
+const linkErrorMessage = linkError ? linkMessages[linkError] || linkMessages.link_failed : null;
+const linkSucceeded = Astro.url.searchParams.get('linked') === '1';
 ---
 
 <Layout title="Account — Postmarked">
@@ -26,6 +37,11 @@ const oauth_linked = account.oauth_linked ?? false;
         <h1 class="display text-4xl mb-2">Account</h1>
         <p class="text-muted">Manage your profile, password, and notification preferences.</p>
       </div>
+
+      {linkErrorMessage && <div class="alert alert-danger mb-6">{linkErrorMessage}</div>}
+      {linkSucceeded && (
+        <div class="alert mb-6">{oidc_provider_name} account connected. You can now sign in with it.</div>
+      )}
 
       <div id="message-banner" class="alert hidden mb-6"></div>
 
@@ -118,6 +134,37 @@ const oauth_linked = account.oauth_linked ?? false;
             <button type="submit" class="btn btn-primary justify-center sm:justify-self-start">Update password</button>
           </form>
         </section>
+
+        {oidc_enabled && (
+          <section class="bg-surface border border-line rounded-lg p-6">
+            <h2 class="display text-2xl mb-4">Single sign-on</h2>
+            {oauth_linked ? (
+              <>
+                <p class="text-sm text-muted mb-4">
+                  Your {oidc_provider_name} account is connected, so you can sign in with it instead of a password.
+                  Disconnecting requires your password, which keeps a way back in.
+                </p>
+                <form class="grid gap-4" onsubmit="event.preventDefault(); unlinkSso(this);">
+                  <div class="grid gap-1">
+                    <label class="label" for="unlink_password">Current password</label>
+                    <input id="unlink_password" name="current_password" type="password" required class="form-input" autocomplete="current-password" />
+                  </div>
+                  <button type="submit" class="btn justify-center sm:justify-self-start">Disconnect {oidc_provider_name}</button>
+                </form>
+              </>
+            ) : (
+              <>
+                <p class="text-sm text-muted mb-4">
+                  Connect your {oidc_provider_name} account to sign in with it instead of typing a password.
+                  Your existing password keeps working.
+                </p>
+                <a href="/api/auth/oidc/link/start" class="btn justify-center sm:justify-self-start inline-flex">
+                  Connect {oidc_provider_name}
+                </a>
+              </>
+            )}
+          </section>
+        )}
       </div>
     </section>
   </main>
@@ -127,6 +174,14 @@ const oauth_linked = account.oauth_linked ?? false;
   window.oauthLinked = oauthLinked;
 </script>
 <script is:inline>
+  async function unlinkSso(form) {
+    await saveJson('/api/account/sso/unlink', {
+      current_password: form.current_password.value,
+    }, 'SSO disconnected.', 'POST');
+    form.reset();
+    window.location.reload();
+  }
+
   async function updateProfile(form) {
     const payload = {
       display_name: form.display_name.value.trim() || null,

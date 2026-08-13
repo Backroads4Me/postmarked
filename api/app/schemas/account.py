@@ -26,6 +26,10 @@ class PasswordUpdate(BaseModel):
     new_password: str = Field(min_length=8)
 
 
+class PasswordConfirm(BaseModel):
+    current_password: str = Field(min_length=1)
+
+
 class NotificationUpdate(BaseModel):
     email_opted_in: bool = False
     notification_frequency: NotificationFrequency = NotificationFrequency.ALL_UPDATES

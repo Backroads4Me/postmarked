@@ -379,3 +379,80 @@ async def test_oidc_callback_pending_user_redirects_without_session(monkeypatch)
     assert "error=oauth_pending" in resp.headers["location"]
     assert login_called is False
     assert "postmarked_session" not in (resp.headers.get("set-cookie") or "")
+
+
+def _link_client(account_id="idp-account-1"):
+    client = MagicMock()
+    client.name = "openid"
+    client.get_id_email = AsyncMock(return_value=(account_id, "person@example.com"))
+    return client
+
+
+def _link_manager(existing=None):
+    manager = MagicMock()
+    if existing is None:
+        manager.get_by_oauth_account = AsyncMock(side_effect=UserNotExists())
+    else:
+        manager.get_by_oauth_account = AsyncMock(return_value=existing)
+    manager.user_db = MagicMock()
+    manager.user_db.add_oauth_account = AsyncMock()
+    return manager
+
+
+@pytest.mark.asyncio
+async def test_link_requires_a_session_for_the_linking_account():
+    from app.auth.oidc_router import _complete_link
+
+    manager = _link_manager()
+    response = await _complete_link(
+        _link_client(), {"access_token": "t"}, str(uuid.uuid4()), None, manager
+    )
+    assert "error=link_mismatch" in response.headers["location"]
+    manager.user_db.add_oauth_account.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_rejects_a_session_for_a_different_account():
+    from app.auth.oidc_router import _complete_link
+
+    signed_in = MagicMock(id=uuid.uuid4())
+    manager = _link_manager()
+    response = await _complete_link(
+        _link_client(), {"access_token": "t"}, str(uuid.uuid4()), signed_in, manager
+    )
+    assert "error=link_mismatch" in response.headers["location"]
+    manager.user_db.add_oauth_account.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_refuses_an_identity_already_held_by_another_user():
+    from app.auth.oidc_router import _complete_link
+
+    signed_in = MagicMock(id=uuid.uuid4(), email="me@example.com")
+    other = MagicMock(id=uuid.uuid4())
+    manager = _link_manager(existing=other)
+    response = await _complete_link(
+        _link_client(), {"access_token": "t"}, str(signed_in.id), signed_in, manager
+    )
+    assert "error=link_taken" in response.headers["location"]
+    manager.user_db.add_oauth_account.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_link_attaches_the_identity_to_the_signed_in_account():
+    from app.auth.oidc_router import _complete_link
+
+    signed_in = MagicMock(id=uuid.uuid4(), email="me@example.com")
+    manager = _link_manager()
+    response = await _complete_link(
+        _link_client(),
+        {"access_token": "t", "expires_at": 123, "refresh_token": "r"},
+        str(signed_in.id),
+        signed_in,
+        manager,
+    )
+    assert "linked=1" in response.headers["location"]
+    manager.user_db.add_oauth_account.assert_awaited_once()
+    create_dict = manager.user_db.add_oauth_account.await_args.args[1]
+    assert create_dict["account_id"] == "idp-account-1"
+    assert create_dict["oauth_name"] == "openid"

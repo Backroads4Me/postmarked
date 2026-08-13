@@ -9,7 +9,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi_users import BaseUserManager
 from fastapi_users.authentication import Strategy
-from fastapi_users.exceptions import UserAlreadyExists
+from fastapi_users.exceptions import UserAlreadyExists, UserNotExists
 from fastapi_users.jwt import decode_jwt
 from fastapi_users.router.common import ErrorCode
 from fastapi_users.router.oauth import (
@@ -21,7 +21,13 @@ from fastapi_users.router.oauth import (
 )
 from httpx_oauth.integrations.fastapi import OAuth2AuthorizeCallback, OAuth2AuthorizeCallbackError
 
-from app.auth.auth_config import SECRET, auth_backend, get_user_manager
+from app.auth.auth_config import (
+    SECRET,
+    auth_backend,
+    current_active_user,
+    fastapi_users_app,
+    get_user_manager,
+)
 from app.config import APP_ENV
 from app.auth.oidc import OIDC_CALLBACK_URL, get_oidc_client, load_oidc_settings
 from app.models.user import User
@@ -30,6 +36,11 @@ logger = logging.getLogger(__name__)
 
 _COOKIE_SECURE = APP_ENV != "dev"
 _NEXT_STATE_KEY = "next"
+# Set when the flow was started from the account page by a signed-in user, who
+# is linking an IdP identity to the account they already control.
+_LINK_STATE_KEY = "link"
+
+current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
 
 router = APIRouter()
 
@@ -55,6 +66,33 @@ def _ensure_oidc_client():
 def _login_error_url(error_code: str) -> str:
     base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
     return f"{base_url}/auth/login?{urlencode({'error': error_code})}"
+
+
+def _account_url(**params: str) -> str:
+    base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
+    return f"{base_url}/account?{urlencode(params)}"
+
+
+async def _authorize_redirect(oidc_client, state_data: dict) -> RedirectResponse:
+    """Send the browser to the IdP with a signed state and a CSRF cookie."""
+    csrf_token = generate_csrf_token()
+    state = generate_state_token({CSRF_TOKEN_KEY: csrf_token, **state_data}, SECRET)
+    authorization_url = await oidc_client.get_authorization_url(
+        OIDC_CALLBACK_URL,
+        state,
+        _settings.scopes,
+    )
+    response = RedirectResponse(url=authorization_url, status_code=status.HTTP_302_FOUND)
+    response.set_cookie(
+        CSRF_TOKEN_COOKIE_NAME,
+        csrf_token,
+        max_age=3600,
+        path="/",
+        secure=_COOKIE_SECURE,
+        httponly=True,
+        samesite="lax",
+    )
+    return response
 
 
 def _safe_next_path(raw: str | None) -> str:
@@ -107,26 +145,87 @@ async def oidc_start(
     if oidc_client is None:
         raise HTTPException(status_code=404, detail="OIDC is not enabled")
 
-    next_path = _safe_next_path(next)
-    csrf_token = generate_csrf_token()
-    state_data = {CSRF_TOKEN_KEY: csrf_token, _NEXT_STATE_KEY: next_path}
-    state = generate_state_token(state_data, SECRET)
-    authorization_url = await oidc_client.get_authorization_url(
-        OIDC_CALLBACK_URL,
-        state,
-        _settings.scopes,
+    return await _authorize_redirect(
+        oidc_client, {_NEXT_STATE_KEY: _safe_next_path(next)}
     )
 
-    response = RedirectResponse(url=authorization_url, status_code=status.HTTP_302_FOUND)
-    response.set_cookie(
-        CSRF_TOKEN_COOKIE_NAME,
-        csrf_token,
-        max_age=3600,
-        path="/",
-        secure=_COOKIE_SECURE,
-        httponly=True,
-        samesite="lax",
+
+@router.get("/link/start")
+async def oidc_link_start(user: User = Depends(current_active_user)):
+    """Begin linking an IdP identity to the account the caller is signed in as.
+
+    Ownership of the local account is proved by the session, so no trust is
+    placed in the email address the IdP returns.
+    """
+    try:
+        oidc_client, _ = _ensure_oidc_client()
+    except Exception:
+        logger.exception("OIDC client initialization failed")
+        return RedirectResponse(
+            url=_account_url(error="link_failed"), status_code=status.HTTP_302_FOUND
+        )
+
+    if oidc_client is None:
+        raise HTTPException(status_code=404, detail="OIDC is not enabled")
+
+    return await _authorize_redirect(oidc_client, {_LINK_STATE_KEY: str(user.id)})
+
+
+async def _complete_link(
+    oidc_client,
+    token: dict,
+    link_user_id: str,
+    linking_user: User | None,
+    user_manager: BaseUserManager[User, uuid.UUID],
+) -> RedirectResponse:
+    """Attach an IdP identity to the signed-in account that started the flow."""
+    # The state is signed, but it is replayable by anyone who obtains the URL.
+    # Requiring a live session for that exact user is what makes the link safe.
+    if linking_user is None or str(linking_user.id) != link_user_id:
+        logger.warning("OIDC link rejected: session does not match the linking account")
+        return RedirectResponse(
+            url=_account_url(error="link_mismatch"), status_code=status.HTTP_302_FOUND
+        )
+
+    try:
+        account_id, account_email = await oidc_client.get_id_email(token["access_token"])
+    except Exception:
+        logger.exception("OIDC get_id_email failed during link")
+        return RedirectResponse(
+            url=_account_url(error="link_failed"), status_code=status.HTTP_302_FOUND
+        )
+
+    if account_id is None:
+        return RedirectResponse(
+            url=_account_url(error="link_failed"), status_code=status.HTTP_302_FOUND
+        )
+
+    try:
+        existing = await user_manager.get_by_oauth_account(oidc_client.name, account_id)
+    except UserNotExists:
+        existing = None
+    if existing is not None and existing.id != linking_user.id:
+        return RedirectResponse(
+            url=_account_url(error="link_taken"), status_code=status.HTTP_302_FOUND
+        )
+
+    if existing is None:
+        await user_manager.user_db.add_oauth_account(
+            linking_user,
+            {
+                "oauth_name": oidc_client.name,
+                "access_token": token["access_token"],
+                "account_id": account_id,
+                "account_email": account_email or linking_user.email,
+                "expires_at": token.get("expires_at"),
+                "refresh_token": token.get("refresh_token"),
+            },
+        )
+
+    response = RedirectResponse(
+        url=_account_url(linked="1"), status_code=status.HTTP_302_FOUND
     )
+    response.delete_cookie(CSRF_TOKEN_COOKIE_NAME, path="/")
     return response
 
 
@@ -135,6 +234,7 @@ async def oidc_callback(
     request: Request,
     user_manager: BaseUserManager[User, uuid.UUID] = Depends(get_user_manager),
     strategy: Strategy[User, uuid.UUID] = Depends(auth_backend.get_strategy),
+    linking_user: User | None = Depends(current_user_optional),
 ):
     try:
         oidc_client, oauth2_authorize_callback = _ensure_oidc_client()
@@ -176,6 +276,12 @@ async def oidc_callback(
         or not secrets.compare_digest(cookie_csrf_token, state_csrf_token)
     ):
         return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
+
+    link_user_id = state_data.get(_LINK_STATE_KEY)
+    if link_user_id is not None:
+        return await _complete_link(
+            oidc_client, token, link_user_id, linking_user, user_manager
+        )
 
     next_path = _safe_next_path(state_data.get(_NEXT_STATE_KEY))
     base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")

@@ -9,6 +9,7 @@ from app.models.user import NotificationPreference, User
 from app.schemas.account import (
     AccountOut,
     NotificationUpdate,
+    PasswordConfirm,
     PasswordUpdate,
     ProfileUpdate,
 )
@@ -119,6 +120,38 @@ async def update_password(
         raise HTTPException(status_code=404, detail="User not found")
 
     db_user.hashed_password = password_helper.hash(payload.new_password)
+    await session.commit()
+    return {"ok": True}
+
+
+@router.post("/sso/unlink")
+async def unlink_sso(
+    payload: PasswordConfirm,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_active_user),
+):
+    if not _oauth_linked(user):
+        raise HTTPException(status_code=400, detail="No SSO account is linked")
+
+    # Requiring the password proves a working way back in; an account created
+    # through SSO holds a random hash its owner has never seen, and unlinking
+    # without this check would lock them out.
+    verified, _updated_hash = password_helper.verify_and_update(
+        payload.current_password,
+        user.hashed_password,
+    )
+    if not verified:
+        raise HTTPException(
+            status_code=400,
+            detail="Current password is incorrect. Use forgot password to set one first.",
+        )
+
+    db_user = await session.get(User, user.id)
+    if not db_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    for account in list(db_user.oauth_accounts):
+        await session.delete(account)
     await session.commit()
     return {"ok": True}
 

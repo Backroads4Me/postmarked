@@ -212,7 +212,9 @@ Postmarked supports optional generic OpenID Connect login alongside email/passwo
 4. Add the OIDC variables to `.env` (see `.env.example`) and set `OIDC_ENABLED=true`.
 5. Restart the stack.
 
-`OIDC_ASSOCIATE_BY_EMAIL` defaults to `false`. Only set it to `true` when your IdP verifies email addresses. When enabled, a user who signs in via SSO with an email that already has a local password account will have the identities linked automatically. If the provider explicitly reports the address as unverified, Postmarked refuses to link and the sign-in fails with an "account already exists" message.
+Signed-in users can connect and disconnect an SSO identity from their account page. That is the recommended way to link an existing password account, because ownership is proved by the session rather than by an email address.
+
+`OIDC_ASSOCIATE_BY_EMAIL` links automatically instead, on first SSO sign-in, for any local account with a matching address. It defaults to `false` and should stay there unless registration is closed and your IdP verifies email addresses — Postmarked does not verify them itself, so an address can be claimed by someone who does not own it. If the provider explicitly reports an address as unverified, Postmarked refuses to link regardless.
 
 `OIDC_PROVIDER_NAME` is the label shown on login/register buttons and is safe to reword at any time. `OIDC_PROVIDER_KEY` is the stable identifier stored in `oauth_account.oauth_name`. Changing it after accounts are linked orphans those links, so set it once and leave it alone.
 
@@ -232,7 +234,9 @@ Google is a standard OpenID Connect provider, so it works through the same setti
 
 Keeping the default `openid email profile` scopes stays within Google's non-sensitive scope tier, which does not require a verification review.
 
-Existing subscribers can move to Google sign-in by setting `OIDC_ASSOCIATE_BY_EMAIL=true`, which is safe with Google because it verifies the addresses it returns. Linking adds a sign-in method rather than replacing one, so their password continues to work. Without that setting they cannot link at all, and see an "account already exists" message instead.
+Existing subscribers move to Google sign-in from their own account page: sign in with the password as usual, then use **Connect** under Single sign-on. Linking adds a sign-in method rather than replacing one, so the password keeps working, and disconnecting later asks for it to confirm there is still a way back in.
+
+Prefer this over `OIDC_ASSOCIATE_BY_EMAIL`. Postmarked has no email verification of its own, so anyone can register an account claiming an address they do not own; linking by email would then attach the real owner's Google identity to that account. Linking from the account page proves ownership with the session instead of trusting the address.
 
 Note that SSO signups follow the same approval rules as password signups. If `require_user_approval` is enabled, someone signing in with Google still lands in the pending queue rather than reaching the site.
 
