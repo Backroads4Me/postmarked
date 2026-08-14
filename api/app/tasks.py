@@ -1,6 +1,5 @@
 import hashlib
 import os
-import shutil
 import uuid
 import logging
 import json
@@ -16,7 +15,6 @@ from pillow_heif import register_heif_opener
 
 register_heif_opener()
 from sqlalchemy import create_engine, select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import sessionmaker
 
 from app.models.content import MediaAsset, Post, SiteTextSection, Stop
@@ -682,111 +680,6 @@ def dispatch_like_notification(like_id: str):
     finally:
         db.close()
 
-
-INGEST_PATH = os.getenv("INGEST_PATH", os.path.join(MEDIA_DIR, "ingest"))
-PROCESSED_INGEST_PATH = os.path.join(INGEST_PATH, "processed")
-os.makedirs(INGEST_PATH, exist_ok=True)
-
-def hash_file(filepath: str) -> str:
-    hasher = hashlib.sha256()
-    with open(filepath, 'rb') as f:
-        while chunk := f.read(8192):
-            hasher.update(chunk)
-    return hasher.hexdigest()
-
-
-def _processed_ingest_path(filepath: str) -> str:
-    rel_path = os.path.relpath(filepath, INGEST_PATH)
-    dest_path = os.path.join(PROCESSED_INGEST_PATH, rel_path)
-    base, ext = os.path.splitext(dest_path)
-    candidate = dest_path
-    counter = 1
-    while os.path.exists(candidate):
-        candidate = f"{base}-{counter}{ext}"
-        counter += 1
-    os.makedirs(os.path.dirname(candidate), exist_ok=True)
-    return candidate
-
-
-def _move_to_processed(filepath: str) -> str:
-    dest_path = _processed_ingest_path(filepath)
-    shutil.move(filepath, dest_path)
-    return dest_path
-
-
-@celery_app.task(name="scan_filesystem")
-def scan_filesystem():
-    """
-    Recursively scans INGEST_PATH for new media files and hashes them. 
-    If unique, it copies them to ORIGINALS_PATH and fires processing logic.
-    Handled files are moved to INGEST_PATH/processed so ingest stays a queue.
-    """
-    db = SessionLocal()
-    try:
-        if not os.path.exists(INGEST_PATH):
-            return "Ingest path missing"
-            
-        for root, dirs, files in os.walk(INGEST_PATH):
-            if os.path.commonpath([PROCESSED_INGEST_PATH, root]) == PROCESSED_INGEST_PATH:
-                continue
-            for file in files:
-                if file.startswith('.'):
-                    continue
-                
-                filepath = os.path.join(root, file)
-                file_ext = os.path.splitext(file)[1].lower()
-                if file_ext not in ['.jpg', '.jpeg', '.png', '.webp', '.mp4', '.mov']:
-                    continue
-                
-                fhash = hash_file(filepath)
-                
-                # Check DB mapping
-                query = select(MediaAsset).where(MediaAsset.original_sha256 == fhash)
-                existing = db.execute(query).scalar_one_or_none()
-                if existing:
-                    _move_to_processed(filepath)
-                    continue # Skip deduplicated
-                
-                # Register new asset
-                new_id = uuid.uuid4()
-                dest_path = os.path.join(ORIGINALS_PATH, f"{new_id}.bin")
-                shutil.copy2(filepath, dest_path)
-                
-                # Write to DB
-                kind = MediaKind.VIDEO if file_ext in ['.mp4', '.mov'] else MediaKind.PHOTO
-                asset = MediaAsset(
-                    id=new_id,
-                    kind=kind,
-                    original_path=dest_path,
-                    original_sha256=fhash,
-                    original_filename=file,
-                    original_size_bytes=os.path.getsize(dest_path),
-                    mime_type=(
-                        "video/quicktime" if file_ext == ".mov"
-                        else "video/mp4" if kind == MediaKind.VIDEO
-                        else "image/png" if file_ext == ".png"
-                        else "image/webp" if file_ext == ".webp"
-                        else "image/jpeg"
-                    ),
-                    visibility=Visibility.PRIVATE, # Private until manually assigned by admin
-                    processing_state=MediaProcessingState.PENDING,
-                    featured=False,
-                    sort_order=0,
-                )
-                db.add(asset)
-                try:
-                    db.commit()
-                except IntegrityError:
-                    # Another worker raced and inserted the same SHA-256 first.
-                    db.rollback()
-                    _move_to_processed(filepath)
-                    continue
-                _move_to_processed(filepath)
-
-                # Delegate
-                process_media_asset.delay(str(new_id))
-    finally:
-        db.close()
 
 @celery_app.task(name="create_db_backup")
 def create_db_backup():

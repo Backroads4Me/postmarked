@@ -71,7 +71,6 @@ uploads.
 | `derivatives` | Processed media served to the site                        | **Yes**            |
 | `backups`     | Scheduled/on-demand `pg_dump` database dumps              | **Yes**            |
 | `originals`   | Source uploads (empty unless `MEDIA_KEEP_ORIGINALS=true`) | Optional           |
-| `ingest`      | Transient processing input                                | No                 |
 | `db_data`     | **Live** PostgreSQL data directory                        | **No** — see below |
 
 For disaster recovery, copy `derivatives` and `backups` (and `originals` if you
