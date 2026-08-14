@@ -1,13 +1,26 @@
 import os
+import secrets
 import sys
 
 APP_ENV = os.getenv("APP_ENV", "dev").lower()
-_DEV_SECRET_FALLBACK = "dev-only-change-me-not-for-production-use"
 _PLACEHOLDERS = frozenset({"changeme", "change-me", ""})
+_MIN_SECRET_LENGTH = 32
 
 
 def _is_placeholder(v: str | None) -> bool:
     return not v or v.strip().lower() in _PLACEHOLDERS
+
+
+def _is_weak_secret(v: str | None) -> bool:
+    """Stricter than _is_placeholder, for values that sign tokens.
+
+    Applied only to SECRET_KEY. Identifiers such as OIDC_CLIENT_ID are public
+    by design and carry no entropy requirement.
+    """
+    if _is_placeholder(v):
+        return True
+    stripped = v.strip()
+    return len(stripped) < _MIN_SECRET_LENGTH or len(set(stripped)) < 8
 
 
 def validate_env() -> None:
@@ -27,9 +40,9 @@ def validate_env() -> None:
 
     errors: list[str] = []
 
-    if _is_placeholder(os.getenv("SECRET_KEY")):
+    if _is_weak_secret(os.getenv("SECRET_KEY")):
         errors.append(
-            "SECRET_KEY is missing or a placeholder — "
+            "SECRET_KEY is missing, a placeholder, or too weak — "
             "generate: python3 -c 'import secrets; print(secrets.token_urlsafe(64))'"
         )
 
@@ -58,6 +71,10 @@ def validate_env() -> None:
 
 
 _raw_secret = os.getenv("SECRET_KEY")
+# Generated per process rather than a shared constant: a dev instance that ends
+# up reachable must not sign session cookies, reset tokens, and OIDC state with
+# a value anybody can read out of the source. The cost is that sessions do not
+# survive a restart without a real SECRET_KEY, which is the intended nudge.
 SECRET: str = (
-    _raw_secret if (_raw_secret and not _is_placeholder(_raw_secret)) else _DEV_SECRET_FALLBACK
+    _raw_secret if not _is_weak_secret(_raw_secret) else secrets.token_urlsafe(64)
 )

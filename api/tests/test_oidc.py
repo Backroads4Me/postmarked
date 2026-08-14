@@ -456,3 +456,48 @@ async def test_link_attaches_the_identity_to_the_signed_in_account():
     create_dict = manager.user_db.add_oauth_account.await_args.args[1]
     assert create_dict["account_id"] == "idp-account-1"
     assert create_dict["oauth_name"] == "openid"
+
+
+@pytest.mark.asyncio
+async def test_oauth_callback_applies_approval_even_if_preference_already_exists():
+    """A concurrent callback for the same new account may create the preference
+    row first. The approval gate must still be applied to the new user."""
+    manager = UserManager(MagicMock())
+    manager.user_db = MagicMock()
+    manager.user_db.session = AsyncMock()
+    manager.get_by_oauth_account = AsyncMock(side_effect=UserNotExists())
+    manager.get_by_email = AsyncMock(side_effect=UserNotExists())
+    manager.user_db.session.execute = AsyncMock(
+        side_effect=[
+            # the racing request already inserted the preference row
+            MagicMock(scalar_one_or_none=MagicMock(return_value=MagicMock())),
+            # not pre-approved
+            MagicMock(scalar_one_or_none=MagicMock(return_value=None)),
+            # approval is required
+            MagicMock(
+                scalar_one_or_none=MagicMock(
+                    return_value=MagicMock(require_user_approval=True)
+                )
+            ),
+        ]
+    )
+    manager.user_db.session.commit = AsyncMock()
+    manager.user_db.session.refresh = AsyncMock()
+
+    created = MagicMock()
+    created.id = uuid.uuid4()
+    created.email = "new@example.com"
+    created.display_name = None
+    created.is_active = True
+    created.approval_state = ApprovalState.PENDING
+
+    with patch(
+        "fastapi_users.manager.BaseUserManager.oauth_callback", new_callable=AsyncMock
+    ) as super_cb:
+        super_cb.return_value = created
+        await UserManager.oauth_callback(
+            manager, "openid", "token", "sub-new", "new@example.com"
+        )
+
+    assert created.is_active is False
+    manager.user_db.session.commit.assert_awaited()

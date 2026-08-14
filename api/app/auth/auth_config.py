@@ -34,23 +34,17 @@ from app.config import APP_ENV, SECRET  # noqa: E402
 _COOKIE_SECURE = APP_ENV != "dev"
 
 
-async def apply_new_user_policies(
+async def apply_new_user_approval(
     session: AsyncSession,
     user: User,
     email_lower: str,
-    *,
-    email_opted_in: bool = False,
-    frequency: NotificationFrequency = NotificationFrequency.ALL_UPDATES,
 ) -> None:
-    if frequency not in PUBLIC_NOTIFICATION_FREQUENCIES:
-        frequency = NotificationFrequency.ALL_UPDATES
+    """Put a newly created user on the right side of the approval gate.
 
-    session.add(NotificationPreference(
-        user_id=user.id,
-        email_opted_in=email_opted_in,
-        frequency=frequency,
-    ))
-
+    Kept separate from preference creation so callers can apply it based on
+    having created the user, rather than on a side effect that a concurrent
+    request may already have produced.
+    """
     pre_approved = (await session.execute(
         select(PreApprovedEmail).where(PreApprovedEmail.email == email_lower)
     )).scalar_one_or_none()
@@ -63,6 +57,20 @@ async def apply_new_user_policies(
             user.approval_state = ApprovalState.APPROVED
         else:
             user.is_active = False
+
+
+async def apply_new_user_policies(
+    session: AsyncSession,
+    user: User,
+    email_lower: str,
+    *,
+    email_opted_in: bool = False,
+    frequency: NotificationFrequency = NotificationFrequency.ALL_UPDATES,
+) -> None:
+    backfill_notification_preference(
+        session, user.id, email_opted_in=email_opted_in, frequency=frequency
+    )
+    await apply_new_user_approval(session, user, email_lower)
 
 
 def backfill_notification_preference(
@@ -145,12 +153,15 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             )
         ).scalar_one_or_none()
         dirty = False
+        # Keyed on having created the user, not on the preference row: a
+        # concurrent callback for the same new account can create that row
+        # first, and gating on it would skip the approval decision entirely
+        # and leave the account active.
+        if existing_user is None:
+            await apply_new_user_approval(session, user, account_email.lower().strip())
+            dirty = True
         if preference is None:
-            if existing_user is None:
-                email_lower = account_email.lower().strip()
-                await apply_new_user_policies(session, user, email_lower)
-            else:
-                backfill_notification_preference(session, user.id)
+            backfill_notification_preference(session, user.id)
             dirty = True
         if display_name and not user.display_name:
             user.display_name = display_name

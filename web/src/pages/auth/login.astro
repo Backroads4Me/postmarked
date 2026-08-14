@@ -16,7 +16,8 @@ const errorMessages: Record<string, string> = {
   oauth_failed: 'Sign-in with SSO failed. Please try again or use email and password.',
 };
 const errorMessage = errorCode ? errorMessages[errorCode] || errorMessages.oauth_failed : null;
-const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(nextPath.startsWith('/') ? nextPath : '/')}`;
+const safeNext = nextPath.startsWith('/') && !nextPath.startsWith('//') && nextPath[1] !== '\\' ? nextPath : '/';
+const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(safeNext)}`;
 ---
 
 <Layout title="Login">
@@ -73,7 +74,16 @@ const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(nextPath.sta
 </Layout>
 
 <script is:inline>
-  const nextPath = new URLSearchParams(window.location.search).get('next') || '/';
+  // Mirrors _safe_next_path on the API. startsWith('/') alone is not enough:
+  // '//evil.com' is protocol-relative, and browsers normalise '/\' to '//',
+  // so both would navigate off-origin.
+  function safeNextPath(raw) {
+    if (!raw || raw[0] !== '/') return '/';
+    if (raw[1] === '/' || raw[1] === '\\') return '/';
+    return raw;
+  }
+
+  const nextPath = safeNextPath(new URLSearchParams(window.location.search).get('next'));
 
   async function login(form) {
     const btn = document.getElementById('submit-btn');
@@ -95,7 +105,7 @@ const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(nextPath.sta
       });
 
       if (res.ok) {
-        window.location.href = nextPath.startsWith('/') ? nextPath : '/';
+        window.location.href = nextPath;
       } else {
         const data = await res.json().catch(() => ({}));
         showError(data.detail || 'Invalid email or password.');

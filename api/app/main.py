@@ -201,9 +201,19 @@ class RateLimitMiddleware:
         if any(peer_ip in network for network in TRUSTED_PROXY_CIDRS):
             forwarded_for = dict(scope.get("headers") or []).get(b"x-forwarded-for")
             if forwarded_for:
-                first_hop = forwarded_for.decode("latin1").split(",", 1)[0].strip()
-                if first_hop:
-                    return first_hop
+                hops = [h.strip() for h in forwarded_for.decode("latin1").split(",")]
+                # Walk right to left: entries to the left of our own proxies are
+                # supplied by the client, so the left-most is attacker-chosen and
+                # the right-most untrusted hop is the real peer.
+                for hop in reversed(hops):
+                    if not hop:
+                        continue
+                    try:
+                        hop_ip = ipaddress.ip_address(hop)
+                    except ValueError:
+                        continue
+                    if not any(hop_ip in network for network in TRUSTED_PROXY_CIDRS):
+                        return hop
         return peer_host
 
     def _prune(self, now: float) -> None:
