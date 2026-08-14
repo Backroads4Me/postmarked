@@ -22,7 +22,7 @@ from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset
 from app.services.media_storage import is_managed_media_path
-from app.models.enums import MediaKind
+from app.models.enums import MediaKind, UserRole
 from app.services.visibility import effective_visibility, is_visible_to_user, resolve_media_parent_visibility
 
 MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
@@ -199,6 +199,12 @@ def _media_cache_headers(mime_type: str, cache_control: str) -> dict[str, str]:
     return {"Cache-Control": cache_control}
 
 
+def _is_admin(user) -> bool:
+    return bool(user) and (
+        getattr(user, "role", None) == UserRole.ADMIN or getattr(user, "is_superuser", False)
+    )
+
+
 async def _check_asset_access(
     asset_id: uuid.UUID,
     session: AsyncSession,
@@ -211,7 +217,11 @@ async def _check_asset_access(
         raise HTTPException(status_code=404, detail="Not found")
 
     parent_vis, parent_published = await resolve_media_parent_visibility(session, asset)
-    if not parent_published and not user:
+    # An unpublished parent means a draft, and a draft is not yet meant for
+    # subscribers. Only admins see media whose parent has not been published,
+    # which matches load_target_with_visibility — the two read paths previously
+    # disagreed about drafts.
+    if not parent_published and not _is_admin(user):
         raise HTTPException(status_code=404, detail="Not found")
     eff_vis = effective_visibility(asset.visibility, parent_vis)
     if not is_visible_to_user(eff_vis, None, user):

@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import logging
 import base64
 import hashlib
 from fastapi import APIRouter, Depends, Query, Request, Response, Header, HTTPException, status
@@ -18,8 +19,10 @@ from app.models.content import MediaAsset, Stop, Trip
 from app.models.enums import MediaKind, MediaProcessingState, Visibility
 from app.tasks import process_media_asset
 from app.schemas.media import MediaAssetOut
-from app.services.media_storage import delete_media_asset_files
+from app.services.media_storage import delete_media_asset_files, is_managed_media_path
 from app.services.visibility import child_visibility_for_parent
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/media", tags=["admin-media"])  # tus sub-router lives at /media/tus
 
@@ -365,7 +368,17 @@ async def patch_upload(
                 return Response(status_code=status.HTTP_204_NO_CONTENT, headers=response_headers)
             raise
 
-        process_media_asset.delay(str(file_id))
+        # The row is already committed. If the broker is down, failing the
+        # request would leave a PENDING asset that the client's retry then
+        # dedups onto by SHA, so the upload could never succeed. Report the
+        # asset and let the stale-PENDING sweep pick it up.
+        try:
+            process_media_asset.delay(str(file_id))
+        except Exception:
+            logger.exception(
+                "Could not queue processing for asset %s; left PENDING for the sweep",
+                file_id,
+            )
         response_headers["X-Postmarked-Asset-Id"] = str(asset.id)
         response_headers["Access-Control-Expose-Headers"] = (
             "Tus-Resumable, Upload-Offset, X-Postmarked-Asset-Id"
@@ -434,9 +447,41 @@ async def requeue_media_asset(
     asset = await session.get(MediaAsset, asset_id)
     if not asset:
         raise HTTPException(status_code=404, detail="Asset not found")
+
+    # MEDIA_KEEP_ORIGINALS defaults to false, so a successfully processed asset
+    # usually has no source bytes left. Reprocessing it would only move it to
+    # FAILED, which hides it everywhere because serializers require READY —
+    # with no way back through the UI. Refuse instead of destroying it.
+    original = (
+        asset.original_path
+        if is_managed_media_path(asset.original_path)
+        else os.path.join(ORIGINALS_PATH, f"{asset.id}.bin")
+    )
+    if not os.path.exists(original):
+        if asset.processing_state == MediaProcessingState.READY:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    "This asset is already processed and its original was not retained, "
+                    "so there is nothing to reprocess. Set MEDIA_KEEP_ORIGINALS=true to "
+                    "keep sources for future reprocessing."
+                ),
+            )
+        raise HTTPException(
+            status_code=409,
+            detail="The original file for this asset is no longer available.",
+        )
+
     asset.processing_state = MediaProcessingState.PENDING
     await session.commit()
-    process_media_asset.delay(str(asset_id))
+    try:
+        process_media_asset.delay(str(asset_id))
+    except Exception:
+        logger.exception("Could not queue reprocessing for asset %s", asset_id)
+        raise HTTPException(
+            status_code=503,
+            detail="The processing queue is unreachable; try again once it is back.",
+        )
     return {"ok": True}
 
 

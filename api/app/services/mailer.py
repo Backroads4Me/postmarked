@@ -63,3 +63,25 @@ def _send(smtp: smtplib.SMTP, message: EmailMessage) -> None:
     if SMTP_USERNAME:
         smtp.login(SMTP_USERNAME, SMTP_PASSWORD)
     smtp.send_message(message)
+
+
+def enqueue_admin_emails(recipients: list[str], subject: str, text: str, html: str) -> bool:
+    """Queue an admin notification, returning whether it was accepted.
+
+    Imported lazily: app.tasks pulls in Celery and the sync engine, and the
+    request path should not carry that at import time.
+
+    A broker outage must not fail the action that triggered the notification —
+    a registration that succeeded should not report an error because the admin
+    could not be emailed about it.
+    """
+    if not recipients:
+        return False
+    try:
+        from app.tasks import send_admin_emails
+
+        send_admin_emails.delay(recipients, subject, text, html)
+        return True
+    except Exception:
+        logger.exception("Could not queue admin notification; skipping send")
+        return False

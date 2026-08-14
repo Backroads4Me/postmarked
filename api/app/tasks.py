@@ -65,6 +65,10 @@ celery_app.conf.beat_schedule = {
         "task": "refresh_weather",
         "schedule": crontab(minute=0),
     },
+    "sweep-stale-media-hourly": {
+        "task": "sweep_stale_media",
+        "schedule": crontab(minute=30),
+    },
     "daily-db-backup": {
         "task": "create_db_backup",
         "schedule": crontab(
@@ -480,6 +484,24 @@ def process_media_asset(asset_id: str):
         delete_original_after_success(asset)
     finally:
         db.close()
+
+
+@celery_app.task(name="send_admin_emails")
+def send_admin_emails(recipients: list[str], subject: str, text: str, html: str):
+    """Deliver an already-rendered admin notification.
+
+    The content is rendered by the caller rather than re-derived here: the
+    registration hook runs before the approval state is committed, so a worker
+    reading the row back could describe the account incorrectly.
+    """
+    sent = 0
+    for address in recipients:
+        try:
+            send_email(address, subject, text, html)
+            sent += 1
+        except Exception:
+            logger.exception("Failed to send admin notification to %s", address)
+    return f"Sent {sent}/{len(recipients)}"
 
 
 @celery_app.task(name="dispatch_post_notification")
@@ -899,3 +921,58 @@ def dispatch_weekly_digest():
         return f"Sent {sent_count} weekly digests"
     finally:
         db.close()
+
+@celery_app.task(name="sweep_stale_media")
+def sweep_stale_media():
+    """Requeue assets stuck in PENDING and remove orphaned upload artifacts.
+
+    Covers three ways work goes missing: a broker outage at upload time, a
+    worker killed mid-task, and tus uploads or derivative temp files abandoned
+    with no row referencing them.
+    """
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    requeued = 0
+    db = SessionLocal()
+    try:
+        stale = db.execute(
+            select(MediaAsset).where(
+                MediaAsset.processing_state == MediaProcessingState.PENDING,
+                MediaAsset.created_at < cutoff,
+            )
+        ).scalars().all()
+        for asset in stale:
+            try:
+                process_media_asset.delay(str(asset.id))
+                requeued += 1
+            except Exception:
+                logger.exception("Could not requeue stale asset %s", asset.id)
+
+        known = {str(row[0]) for row in db.execute(select(MediaAsset.id)).all()}
+    finally:
+        db.close()
+
+    removed = 0
+    cutoff_ts = cutoff.timestamp()
+    for directory, predicate in (
+        (ORIGINALS_PATH, lambda n: n.endswith((".bin", ".json"))),
+        (DERIVATIVES_PATH, lambda n: ".tmp" in n),
+    ):
+        if not os.path.isdir(directory):
+            continue
+        for entry in os.scandir(directory):
+            if not entry.is_file() or not predicate(entry.name):
+                continue
+            # An id-named artifact with a live row is in use; anything else is
+            # from an upload that never completed.
+            stem = entry.name.split(".", 1)[0]
+            if stem in known:
+                continue
+            try:
+                if entry.stat().st_mtime < cutoff_ts:
+                    os.remove(entry.path)
+                    removed += 1
+            except OSError:
+                logger.exception("Could not remove orphaned file %s", entry.path)
+
+    return f"Requeued {requeued} pending assets, removed {removed} orphaned files"
+

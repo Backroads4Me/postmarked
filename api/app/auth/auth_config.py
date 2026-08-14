@@ -24,7 +24,7 @@ from app.models.oauth_account import OAuthAccount
 from app.models.system import PreApprovedEmail, SiteConfig
 from app.models.user import NotificationPreference, User
 from app.schemas.user import PUBLIC_NOTIFICATION_FREQUENCIES
-from app.services.mailer import send_email
+from app.services.mailer import enqueue_admin_emails, send_email
 
 logger = logging.getLogger(__name__)
 
@@ -204,8 +204,10 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         admins = (await session.execute(
             select(User).where(User.role == UserRole.ADMIN, User.is_active.is_(True))
         )).scalars().all()
-        for admin in admins:
-            send_email(admin.email, subject, text, html)
+        # Hand the delivery to the worker: sending inline blocked the single
+        # event loop for a full SMTP round trip per admin, inside the
+        # registration request.
+        enqueue_admin_emails([a.email for a in admins], subject, text, html)
 
     async def on_after_forgot_password(
         self, user: User, token: str, request: Optional[Request] = None
