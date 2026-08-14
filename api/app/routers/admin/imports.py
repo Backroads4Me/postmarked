@@ -28,6 +28,12 @@ from app.schemas.imports import (
 from app.services.audit import log_audit_event
 from app.services.timezone import timezone_for_coords
 
+# Spreadsheets are far smaller than media; cap them independently so a large
+# media limit does not also permit a huge workbook.
+MAX_IMPORT_FILE_MIB = int(os.getenv("MAX_IMPORT_FILE_MIB", "25"))
+MAX_IMPORT_FILE_BYTES = MAX_IMPORT_FILE_MIB * 1024 * 1024
+
+
 router = APIRouter(prefix="/imports", tags=["admin-imports"])
 
 
@@ -160,13 +166,24 @@ async def preview_import(
     if not file.filename or not file.filename.endswith(".xlsx"):
         raise HTTPException(status_code=400, detail="Only .xlsx files are supported")
 
-    # Save to temp file
-    content = await file.read()
-    file_hash = hashlib.sha256(content).hexdigest()
-
+    # Stream to a temp file in bounded chunks, hashing as we go: reading the
+    # whole upload into memory put an unbounded POST body into the RSS of the
+    # process that also serves every page.
+    digest = hashlib.sha256()
+    written = 0
     with tempfile.NamedTemporaryFile(suffix=".xlsx", delete=False) as tmp:
-        tmp.write(content)
         tmp_path = tmp.name
+        while chunk := await file.read(1024 * 1024):
+            written += len(chunk)
+            if written > MAX_IMPORT_FILE_BYTES:
+                os.unlink(tmp_path)
+                raise HTTPException(
+                    status_code=413,
+                    detail=f"Spreadsheet exceeds {MAX_IMPORT_FILE_MIB} MiB",
+                )
+            digest.update(chunk)
+            tmp.write(chunk)
+    file_hash = digest.hexdigest()
 
     try:
         # Parse. openpyxl raises a family of exceptions for a file that is not a

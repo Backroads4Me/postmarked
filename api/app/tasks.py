@@ -28,6 +28,17 @@ from app.services.original_retention import delete_original_after_success
 
 logger = logging.getLogger(__name__)
 
+# Every ffmpeg/ffprobe call is bounded: an unkillable transcode otherwise pins a
+# prefork worker child forever, and the same default queue carries notifications
+# and the nightly backup.
+FFPROBE_TIMEOUT_SECONDS = int(os.getenv("FFPROBE_TIMEOUT_SECONDS", "60"))
+FFMPEG_TIMEOUT_SECONDS = int(os.getenv("FFMPEG_TIMEOUT_SECONDS", "3600"))
+
+# Pillow warns but does not raise between 89M and 178M pixels. A 12000x12000 PNG
+# is ~150 KB on the wire and ~430 MB decoded, and the task holds several copies,
+# so cap well below that and fail cleanly instead of being OOM-killed.
+Image.MAX_IMAGE_PIXELS = int(os.getenv("MAX_IMAGE_PIXELS", str(50_000_000)))
+
 REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 _DATABASE_URL_RAW = os.getenv("DATABASE_URL", "postgresql+psycopg://postgres:postgres@db:5432/postmarked")
 DATABASE_URL_SYNC = _DATABASE_URL_RAW.replace("postgresql://", "postgresql+psycopg://", 1)
@@ -38,6 +49,13 @@ DERIVATIVES_PATH = os.getenv("DERIVATIVES_PATH", os.path.join(MEDIA_DIR, "deriva
 
 celery_app = Celery("postmarked_tasks", broker=REDIS_URL)
 celery_app.conf.timezone = os.getenv("CELERY_TIMEZONE", "UTC")
+# Bound every task, and redeliver rather than drop when a worker child dies:
+# with the defaults a message is acked on receipt, so an OOM-killed transcode
+# left its asset PENDING forever with nothing to retry it.
+celery_app.conf.task_time_limit = int(os.getenv("CELERY_TASK_TIME_LIMIT", "5400"))
+celery_app.conf.task_soft_time_limit = int(os.getenv("CELERY_TASK_SOFT_TIME_LIMIT", "5100"))
+celery_app.conf.task_acks_late = True
+celery_app.conf.task_reject_on_worker_lost = True
 celery_app.conf.beat_schedule = {
     "weekly-digest-monday-morning": {
         "task": "dispatch_weekly_digest",
@@ -211,7 +229,7 @@ def _probe_video_dimensions(file_path: str) -> tuple[int, int]:
         "json",
         file_path,
     ]
-    raw = subprocess.check_output(dim_cmd).decode("utf-8")
+    raw = subprocess.check_output(dim_cmd, timeout=FFPROBE_TIMEOUT_SECONDS).decode("utf-8")
     data = json.loads(raw or "{}")
     for stream in data.get("streams", []):
         width = stream.get("width")
@@ -229,7 +247,9 @@ def _probe_duration(file_path: str) -> float:
         "-of", "default=noprint_wrappers=1:nokey=1",
         file_path,
     ]
-    out = subprocess.check_output(cmd, stderr=subprocess.STDOUT).decode("utf-8").strip()
+    out = subprocess.check_output(
+        cmd, stderr=subprocess.STDOUT, timeout=FFPROBE_TIMEOUT_SECONDS
+    ).decode("utf-8").strip()
     return float(out)
 
 
@@ -275,7 +295,7 @@ def _transcode_video_to_mp4(file_path: str, mp4_path: str) -> None:
             "format=yuv420p"
         ),
         mp4_path,
-    ], check=True)
+    ], check=True, timeout=FFMPEG_TIMEOUT_SECONDS)
 
 
 def _derivative_hash(path: str) -> str:
@@ -412,13 +432,15 @@ def process_media_asset(asset_id: str):
             try:
                 # Get duration using ffprobe
                 probe_cmd = ["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "default=noprint_wrappers=1:nokey=1", file_path]
-                duration_str = subprocess.check_output(probe_cmd).decode('utf-8').strip()
+                duration_str = subprocess.check_output(
+                    probe_cmd, timeout=FFPROBE_TIMEOUT_SECONDS
+                ).decode('utf-8').strip()
                 asset.duration_seconds = float(duration_str)
 
                 # Extract poster image
                 tmp_poster = os.path.join(DERIVATIVES_PATH, f"{asset.id}.tmp-poster.jpg")
                 ffmpeg_cmd = ["ffmpeg", "-y", "-i", file_path, "-map", "0:v:0", "-frames:v", "1", "-update", "1", "-q:v", "2", tmp_poster]
-                subprocess.run(ffmpeg_cmd, check=True)
+                subprocess.run(ffmpeg_cmd, check=True, timeout=FFMPEG_TIMEOUT_SECONDS)
 
                 # Transcode to H.264/AAC MP4 for universal browser compatibility.
                 # iPhone HEVC (.mov) originals won't play in Safari's <video> tag,

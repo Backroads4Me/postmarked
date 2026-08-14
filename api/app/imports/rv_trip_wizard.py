@@ -192,7 +192,9 @@ def parse_excel(file_path: str) -> ParsedTrip:
     Returns:
         ParsedTrip with title, start_date, stops, and any warnings.
     """
-    wb = openpyxl.load_workbook(file_path, data_only=True)
+    # read_only streams rows rather than materialising a sheet that declares a
+    # huge dimension.
+    wb = openpyxl.load_workbook(file_path, data_only=True, read_only=True)
     result = ParsedTrip()
 
     if "Trip Summary" not in wb.sheetnames:

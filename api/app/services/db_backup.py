@@ -16,6 +16,7 @@ from app.services.media_storage import BACKUPS_PATH
 # Same exclusions as the migration export — these tables are owned by the
 # target's own migrations/extensions, not by application data.
 _EXCLUDE_TABLES = ("spatial_ref_sys", "alembic_version")
+PG_DUMP_TIMEOUT_SECONDS = int(os.getenv("PG_DUMP_TIMEOUT_SECONDS", "1800"))
 _DUMP_PREFIX = "postmarked-"
 _DUMP_SUFFIX = ".dump"
 
@@ -53,12 +54,20 @@ def create_db_dump(dest_dir: str = BACKUPS_PATH) -> str:
     stamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
     dest = os.path.join(dest_dir, f"{_DUMP_PREFIX}{stamp}{_DUMP_SUFFIX}")
     conn_args, env = pg_conn_args()
-    result = subprocess.run(
-        ["pg_dump", *conn_args, *_dump_args(), "-f", dest],
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+    try:
+        result = subprocess.run(
+            ["pg_dump", *conn_args, *_dump_args(), "-f", dest],
+            env=env,
+            capture_output=True,
+            text=True,
+            timeout=PG_DUMP_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        if os.path.exists(dest):
+            os.remove(dest)
+        raise RuntimeError(
+            f"pg_dump timed out after {PG_DUMP_TIMEOUT_SECONDS}s"
+        ) from None
     if result.returncode != 0:
         # Don't leave a partial/empty file behind.
         if os.path.exists(dest):

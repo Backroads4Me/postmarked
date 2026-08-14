@@ -22,6 +22,9 @@ dependencies = [
     "watchdog>=4.0.0",
     "blurhash-python>=1.2.2",
     "openpyxl>=3.1.5",
+    # openpyxl auto-detects defusedxml and then refuses DTDs; without it the
+    # stdlib parser expands internal entities inside the API process.
+    "defusedxml>=0.7.1",
     "timezonefinder>=6.5.0",
 ]
 
