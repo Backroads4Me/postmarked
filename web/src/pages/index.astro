@@ -44,6 +44,9 @@ const siteText = await siteTextPromise;
 // private content the reader is entitled to — so never cache those.
 if (!(Astro.request.headers.get('cookie') || '').includes('postmarked_session')) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
+  // Without Vary, a shared cache keyed on URL alone can hand this stored
+  // anonymous copy to a later cookied request.
+  Astro.response.headers.set('Vary', 'Cookie');
 }
 const currentText = sectionText(siteText, 'home.current', {
   label: 'Currently At',
