@@ -9,6 +9,7 @@ Reads the 'Trip Summary' sheet and extracts:
 """
 import hashlib
 import re
+import math
 from datetime import date, datetime
 from typing import Optional
 from dataclasses import dataclass, field, asdict
@@ -129,9 +130,23 @@ def parse_float(val) -> Optional[float]:
         return None
     try:
         f = float(val)
-        return f if f != 0 else 0.0
     except (ValueError, TypeError):
         return None
+    # float() accepts "1e400" and "nan"; both reach PostGIS as a POINT literal
+    # and nan additionally serialises to non-conformant JSON.
+    if not math.isfinite(f):
+        return None
+    return f if f != 0 else 0.0
+
+
+def parse_latitude(val) -> Optional[float]:
+    f = parse_float(val)
+    return f if f is not None and -90 <= f <= 90 else None
+
+
+def parse_longitude(val) -> Optional[float]:
+    f = parse_float(val)
+    return f if f is not None and -180 <= f <= 180 else None
 
 
 def parse_int(val) -> Optional[int]:
@@ -247,8 +262,8 @@ def parse_excel(file_path: str) -> ParsedTrip:
             arrival_date=parse_date_value(row_data.get("arrival_date")),
             departure_date=parse_date_value(row_data.get("departure_date")),
             nights=parse_int(row_data.get("nights")),
-            latitude=parse_float(row_data.get("latitude")),
-            longitude=parse_float(row_data.get("longitude")),
+            latitude=parse_latitude(row_data.get("latitude")),
+            longitude=parse_longitude(row_data.get("longitude")),
             address=str(row_data.get("address", "")).strip() if row_data.get("address") else None,
             url=str(row_data.get("url", "")).strip() if row_data.get("url") else None,
             phone=str(row_data.get("phone", "")).strip() if row_data.get("phone") else None,

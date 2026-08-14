@@ -184,7 +184,11 @@ class RateLimitMiddleware:
         "/api/auth/register": (5, 300),
         "/api/auth/forgot-password": (5, 300),
         "/api/auth/oidc/start": (10, 60),
+        "/api/auth/oidc/callback": (20, 60),
     }
+
+    # Limited paths reached by GET rather than POST.
+    GET_LIMITED_PATHS = {"/api/auth/oidc/start", "/api/auth/oidc/callback"}
 
     def __init__(self, app):
         self.app = app
@@ -244,9 +248,7 @@ class RateLimitMiddleware:
         if limit_config is None:
             await self.app(scope, receive, send)
             return
-        if method == "POST" or (method == "GET" and path == "/api/auth/oidc/start"):
-            pass
-        else:
+        if not (method == "POST" or (method == "GET" and path in self.GET_LIMITED_PATHS)):
             await self.app(scope, receive, send)
             return
 

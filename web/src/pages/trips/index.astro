@@ -66,12 +66,14 @@ const headerText = sectionText(siteText, 'trips.header', {
               )}
             </div>
             <div class="trip-cover-container relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft">
-              <img
-                src={coverSrc(trip)}
-                alt={trip.cover_media?.alt_text || ''}
-                class="trip-cover-img w-full h-auto transition-transform duration-300 group-hover:scale-[1.03]"
-                loading="lazy"
-              />
+              {coverSrc(trip) && (
+                <img
+                  src={coverSrc(trip)}
+                  alt={trip.cover_media?.alt_text || ''}
+                  class="trip-cover-img w-full h-auto transition-transform duration-300 group-hover:scale-[1.03]"
+                  loading="lazy"
+                />
+              )}
               {trip.stops_total > 0 && (
                 <div class="absolute bottom-2 right-2">
                   <span class="badge badge-sm">{trip.stops_completed}/{trip.stops_total} stops</span>

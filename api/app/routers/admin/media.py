@@ -200,6 +200,10 @@ async def create_upload(
     if mime not in ALLOWED_UPLOAD_MIME_TYPES:
         raise HTTPException(status_code=415, detail=f"Unsupported media type: {mime}")
 
+    # Store the normalized type: completion classifies photo vs video with a
+    # case-sensitive check, and this value is served back as Content-Type.
+    metadata["filetype"] = mime
+
     state = {
         "upload_length": upload_length,
         "offset": 0,

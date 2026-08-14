@@ -68,6 +68,19 @@ def _login_error_url(error_code: str) -> str:
     return f"{base_url}/auth/login?{urlencode({'error': error_code})}"
 
 
+def _login_error_redirect(error_code: str) -> RedirectResponse:
+    """End a failed OIDC attempt: redirect and clear the CSRF cookie.
+
+    The cookie otherwise outlives every failed attempt for its full hour,
+    leaving a still-valid (cookie, state) pair in the browser.
+    """
+    response = RedirectResponse(
+        url=_login_error_url(error_code), status_code=status.HTTP_302_FOUND
+    )
+    response.delete_cookie(CSRF_TOKEN_COOKIE_NAME, path="/")
+    return response
+
+
 def _account_url(**params: str) -> str:
     base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
     return f"{base_url}/account?{urlencode(params)}"
@@ -140,7 +153,7 @@ async def oidc_start(
         oidc_client, _ = _ensure_oidc_client()
     except Exception:
         logger.exception("OIDC client initialization failed")
-        return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_failed")
 
     if oidc_client is None:
         raise HTTPException(status_code=404, detail="OIDC is not enabled")
@@ -240,7 +253,7 @@ async def oidc_callback(
         oidc_client, oauth2_authorize_callback = _ensure_oidc_client()
     except Exception:
         logger.exception("OIDC client initialization failed")
-        return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_failed")
 
     if oidc_client is None or oauth2_authorize_callback is None:
         raise HTTPException(status_code=404, detail="OIDC is not enabled")
@@ -253,20 +266,18 @@ async def oidc_callback(
             request, code=code, state=state_param, error=error
         )
     except OAuth2AuthorizeCallbackError:
-        return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_failed")
     except HTTPException as exc:
         detail = exc.detail if isinstance(exc.detail, str) else None
-        return RedirectResponse(
-            url=_login_error_url(_detail_to_error_code(detail)),
-            status_code=status.HTTP_302_FOUND,
-        )
+        return _login_error_redirect(_detail_to_error_code(detail))
 
     try:
+        # PyJWTError is the common base: a token signed with the same secret but
+        # a different audience raises InvalidAudienceError, and the app mints
+        # session and reset tokens with that secret.
         state_data = decode_jwt(state, SECRET, [STATE_TOKEN_AUDIENCE])
-    except jwt.DecodeError:
-        return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
-    except jwt.ExpiredSignatureError:
-        return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
+    except jwt.PyJWTError:
+        return _login_error_redirect("oauth_failed")
 
     cookie_csrf_token = request.cookies.get(CSRF_TOKEN_COOKIE_NAME)
     state_csrf_token = state_data.get(CSRF_TOKEN_KEY)
@@ -275,7 +286,7 @@ async def oidc_callback(
         or not state_csrf_token
         or not secrets.compare_digest(cookie_csrf_token, state_csrf_token)
     ):
-        return RedirectResponse(url=_login_error_url("oauth_failed"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_failed")
 
     link_user_id = state_data.get(_LINK_STATE_KEY)
     if link_user_id is not None:
@@ -291,10 +302,10 @@ async def oidc_callback(
         account_id, account_email = await oidc_client.get_id_email(token["access_token"])
     except Exception:
         logger.exception("OIDC get_id_email failed")
-        return RedirectResponse(url=_login_error_url("oauth_no_email"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_no_email")
 
     if account_email is None:
-        return RedirectResponse(url=_login_error_url("oauth_no_email"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_no_email")
 
     display_name: str | None = None
     email_verified: bool | None = None
@@ -336,16 +347,13 @@ async def oidc_callback(
             display_name=display_name,
         )
     except UserAlreadyExists:
-        return RedirectResponse(url=_login_error_url("oauth_exists"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_exists")
     except HTTPException as exc:
         detail = exc.detail if isinstance(exc.detail, str) else None
-        return RedirectResponse(
-            url=_login_error_url(_detail_to_error_code(detail)),
-            status_code=status.HTTP_302_FOUND,
-        )
+        return _login_error_redirect(_detail_to_error_code(detail))
 
     if not user.is_active:
-        return RedirectResponse(url=_login_error_url("oauth_pending"), status_code=status.HTTP_302_FOUND)
+        return _login_error_redirect("oauth_pending")
 
     login_response = await auth_backend.login(strategy, user)
     await user_manager.on_after_login(user, request, login_response)

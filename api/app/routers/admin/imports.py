@@ -169,8 +169,18 @@ async def preview_import(
         tmp_path = tmp.name
 
     try:
-        # Parse
-        parsed = parse_excel(tmp_path)
+        # Parse. openpyxl raises a family of exceptions for a file that is not a
+        # readable workbook (BadZipFile, KeyError, ParseError); the admin picked
+        # this file by hand, so report it rather than returning a 500.
+        try:
+            parsed = parse_excel(tmp_path)
+        except HTTPException:
+            raise
+        except Exception as exc:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Could not read the spreadsheet: {exc}",
+            ) from exc
 
         if not parsed.stops:
             raise HTTPException(status_code=400, detail="No stops found in file")
