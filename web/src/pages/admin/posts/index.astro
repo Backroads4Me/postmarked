@@ -4,11 +4,17 @@ import { apiUrl } from '../../../lib/api.js';
 import { formatDate as fmtDate } from '../../../lib/dates.js';
 
 let posts = [];
+let truncated = false;
+// The endpoint defaults to 100 rows and this page has no pagination, so ask
+// for a large page and say so plainly if it still fills up, rather than
+// dropping older posts with no indication.
+const POST_PAGE_LIMIT = 500;
 try {
-  const res = await fetch(apiUrl('/api/admin/posts'), {
+  const res = await fetch(apiUrl(`/api/admin/posts?limit=${POST_PAGE_LIMIT}`), {
     headers: { 'Cookie': Astro.request.headers.get('cookie') || '' }
   });
   if (res.ok) posts = await res.json();
+  truncated = posts.length >= POST_PAGE_LIMIT;
 } catch (e) {
   console.error(e);
 }
@@ -30,6 +36,13 @@ function statusBadge(status) {
   <div class="mb-8 flex justify-end">
     <a href="/admin/posts/new" class="btn btn-sm">New Post</a>
   </div>
+
+  {truncated && (
+    <div class="alert mb-6">
+      Showing the {POST_PAGE_LIMIT} most recent posts. Older posts are not listed here,
+      but remain published and can still be opened directly by URL.
+    </div>
+  )}
 
   {posts.length > 0 ? (
     <div class="grid gap-4">

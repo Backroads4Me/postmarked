@@ -15,14 +15,15 @@ const todayInAdminTz = new Intl.DateTimeFormat('en-CA', { timeZone: ADMIN_TZ }).
 let post = null;
 let stops = [];
 try {
+  // Resolve the post directly. Scanning /api/admin/posts made every post
+  // beyond the endpoint's 100-row cap unreachable through the editor.
   const [postsRes, stopsRes] = await Promise.all([
-    fetch(apiUrl('/api/admin/posts'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl(`/api/admin/posts/${id}`), { headers: cookie ? { cookie } : {} }),
     fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
   ]);
   if (postsRes.status === 401 || postsRes.status === 403) return Astro.redirect('/auth/login');
   if (postsRes.ok) {
-    const all = await postsRes.json();
-    post = all.find(p => p.id === id);
+    post = await postsRes.json();
   }
   if (stopsRes.ok) stops = await stopsRes.json();
 } catch (e) {}

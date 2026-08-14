@@ -10,20 +10,19 @@ let trip = null;
 let stop = null;
 
 try {
+  // Resolve both directly: the list endpoints are capped, so scanning them
+  // made older trips and stops unreachable through the editor.
   const [tripsRes, stopsRes] = await Promise.all([
-    fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} }),
-    fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl(`/api/admin/trips/${trip_id}`), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl(`/api/admin/stops/${stop_id}`), { headers: cookie ? { cookie } : {} }),
   ]);
 
   if (tripsRes.status === 401 || tripsRes.status === 403) return Astro.redirect('/auth/login');
 
-  if (tripsRes.ok) {
-    const all = await tripsRes.json();
-    trip = all.find(t => t.id === trip_id);
-  }
+  if (tripsRes.ok) trip = await tripsRes.json();
   if (stopsRes.ok) {
-    const all = await stopsRes.json();
-    stop = all.find(s => s.id === stop_id && s.trip_id === trip_id);
+    const candidate = await stopsRes.json();
+    if (candidate && candidate.trip_id === trip_id) stop = candidate;
   }
 } catch (e) {
   console.error(e);

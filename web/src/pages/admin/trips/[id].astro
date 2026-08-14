@@ -8,18 +8,22 @@ const cookie = Astro.request.headers.get('cookie');
 
 let trip = null;
 try {
-  // First verify authorization via trips list or detail endpoint
-  const authRes = await fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} });
-  if (authRes.status === 401 || authRes.status === 403) return Astro.redirect('/auth/login');
+  // Read admin data throughout. The public reader endpoint filters by
+  // published status even for admins, so a draft trip 404d and a published
+  // trip hid its draft stops — the editor showed "No stops added yet" for a
+  // trip that had just been imported with stops.
+  const [tripRes, stopsRes] = await Promise.all([
+    fetch(apiUrl(`/api/admin/trips/${id}`), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
+  ]);
+  if (tripRes.status === 401 || tripRes.status === 403) return Astro.redirect('/auth/login');
 
-  // Lookup all admin trips to find by ID, then fetch detail through the regular reader endpoint.
-  const allTrips = await authRes.json();
-  trip = allTrips.find(t => t.id === id);
-  
-  if (trip) {
-    const dRes = await fetch(apiUrl(`/api/trips/${trip.slug}`), { headers: cookie ? { cookie } : {} });
-    if (dRes.ok) trip = await dRes.json();
-
+  if (tripRes.ok) {
+    trip = await tripRes.json();
+    const allStops = stopsRes.ok ? await stopsRes.json() : [];
+    trip.stops = allStops
+      .filter(s => s.trip_id === id)
+      .sort((a, b) => new Date(a.start_date) - new Date(b.start_date));
   }
 } catch(e) {}
 

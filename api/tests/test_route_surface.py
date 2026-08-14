@@ -35,3 +35,14 @@ def test_no_writable_user_routes_are_exposed(paths):
 def test_account_router_still_owns_credential_changes(paths):
     assert "PATCH" in {m.upper() for m in paths["/api/account/password"]}
     assert "PATCH" in {m.upper() for m in paths["/api/account/profile"]}
+
+
+def test_admin_editors_can_resolve_a_single_record(paths):
+    """Editors resolve by id rather than scanning a capped list.
+
+    /api/admin/posts and /api/admin/trips default to 100 rows, so scanning them
+    made every older record unreachable through the admin UI.
+    """
+    for path in ("/api/admin/posts/{post_id}", "/api/admin/trips/{id}", "/api/admin/stops/{id}"):
+        assert path in paths, f"{path} is missing"
+        assert "get" in paths[path], f"{path} has no GET"

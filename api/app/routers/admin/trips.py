@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import delete, or_, select, update
@@ -47,6 +48,19 @@ async def create_trip_admin(
         await session.execute(select(Trip).where(Trip.id == trip.id).options(selectinload(Trip.cover_media)))
     ).scalars().first()
     return trip
+
+@router.get("/{id}", response_model=TripOut)
+async def get_trip(
+    id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    """Resolve one trip directly, instead of scanning the capped list."""
+    obj = await session.get(Trip, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Trip not found")
+    return obj
+
 
 @router.patch("/{id}", response_model=TripOut)
 async def update_trip_admin(

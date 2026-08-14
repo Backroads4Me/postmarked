@@ -1,3 +1,4 @@
+import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -97,6 +98,19 @@ async def bulk_update_stops_admin(
 
     await session.commit()
     return {"ok": True, "updated": len(stops), "deleted": 0}
+
+
+@router.get("/{id}", response_model=StopOut)
+async def get_stop(
+    id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    """Resolve one stop directly, instead of scanning the capped list."""
+    obj = await session.get(Stop, id)
+    if not obj:
+        raise HTTPException(status_code=404, detail="Stop not found")
+    return obj
 
 
 @router.patch("/{id}", response_model=StopOut)

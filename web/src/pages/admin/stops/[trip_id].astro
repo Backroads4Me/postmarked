@@ -11,7 +11,7 @@ let stops = [];
 
 try {
   const [tripsRes, stopsRes] = await Promise.all([
-    fetch(apiUrl('/api/admin/trips'), { headers: cookie ? { cookie } : {} }),
+    fetch(apiUrl(`/api/admin/trips/${trip_id}`), { headers: cookie ? { cookie } : {} }),
     fetch(apiUrl('/api/admin/stops'), { headers: cookie ? { cookie } : {} }),
   ]);
 
@@ -19,7 +19,7 @@ try {
 
   if (tripsRes.ok) {
     const all = await tripsRes.json();
-    trip = all.find(t => t.id === trip_id);
+    trip = all;
   }
   if (stopsRes.ok) {
     const all = await stopsRes.json();

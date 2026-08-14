@@ -44,6 +44,28 @@ async def list_posts(
     return result.scalars().all()
 
 
+@router.get("/posts/{post_id}", response_model=PostOut)
+async def get_post(
+    post_id: uuid.UUID,
+    session: AsyncSession = Depends(get_async_session),
+    user: User = Depends(current_admin_user),
+):
+    """Resolve one post directly.
+
+    The editor previously scanned the list endpoint, which is capped at 100
+    rows, so any older post became unreachable through the UI.
+    """
+    result = await session.execute(
+        select(Post)
+        .options(selectinload(Post.media), selectinload(Post.poi))
+        .where(Post.id == post_id)
+    )
+    post = result.scalars().first()
+    if not post:
+        raise HTTPException(status_code=404, detail="Post not found")
+    return post
+
+
 def _slugify(title: str) -> str:
     base = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-")
     return base or "post"
