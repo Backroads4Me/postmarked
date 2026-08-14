@@ -272,15 +272,33 @@ async def patch_upload(
     if state["offset"] != upload_offset:
         raise HTTPException(status_code=409, detail="Conflict in offset")
 
-    with open(bin_path, "ab") as f:
-        async for chunk in request.stream():
-            if state["offset"] + len(chunk) > state["upload_length"]:
-                raise HTTPException(status_code=413, detail="Upload exceeds declared length")
-            f.write(chunk)
-            state["offset"] += len(chunk)
+    # An interrupted stream can leave more bytes on disk than the sidecar
+    # recorded, so refuse to resume past what was actually written.
+    on_disk = os.path.getsize(bin_path) if os.path.exists(bin_path) else 0
+    if on_disk < upload_offset:
+        raise HTTPException(status_code=409, detail="Conflict in offset")
 
-    with open(info_path, "w") as f:
-        json.dump(state, f)
+    written = upload_offset
+    try:
+        with open(bin_path, "r+b" if on_disk else "wb") as f:
+            # Write at the offset the client resumed from and drop anything a
+            # previous attempt left beyond it; appending would duplicate ranges
+            # and let the declared length be exceeded indefinitely.
+            f.seek(upload_offset)
+            f.truncate()
+            async for chunk in request.stream():
+                if written + len(chunk) > state["upload_length"]:
+                    raise HTTPException(
+                        status_code=413, detail="Upload exceeds declared length"
+                    )
+                f.write(chunk)
+                written += len(chunk)
+    finally:
+        # Record what actually landed, on the failure path too, so the sidecar
+        # and the file agree and the client can resume from the truth.
+        state["offset"] = written
+        with open(info_path, "w") as f:
+            json.dump(state, f)
 
     response_headers = {
         "Tus-Resumable": TUS_VERSION,
