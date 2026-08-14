@@ -167,6 +167,10 @@ def _email_body_html(body: str) -> str:
     )
 
 
+def _fill_post_template(template: str, post_title: str) -> str:
+    return (template or "").replace("{post_title}", post_title)
+
+
 def _post_email_bodies(post: Post, db) -> tuple[str, str, str]:
     url = _post_url(post)
     body = _post_email_text(post.body)
@@ -182,8 +186,12 @@ def _post_email_bodies(post: Post, db) -> tuple[str, str, str]:
     default_cta = "See the photos"
 
     if config:
-        subject = (config.heading or default_subject).format(post_title=post.title)
-        intro = (config.body or "").format(post_title=post.title) if config.body else None
+        # Plain substitution, not str.format: site text is admin-editable prose,
+        # and any stray brace — "{post_tittle}", "{0}", or a literal "{" — raised
+        # out of here before the recipient loop, so nobody was emailed and
+        # nothing was logged.
+        subject = _fill_post_template(config.heading or default_subject, post.title)
+        intro = _fill_post_template(config.body, post.title) if config.body else None
         cta = config.cta_label or default_cta
     else:
         subject = default_subject

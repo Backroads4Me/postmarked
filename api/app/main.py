@@ -274,7 +274,16 @@ class RateLimitMiddleware:
         await self.app(scope, receive, send)
 
 
-app = FastAPI(title="Postmarked API", description="Self-hosted travel journal API")
+# The schema describes the whole admin surface, so publish it only outside
+# production, where it is a convenience rather than a map for a scanner.
+_docs_enabled = APP_ENV != "prod"
+app = FastAPI(
+    title="Postmarked API",
+    description="Self-hosted travel journal API",
+    docs_url="/docs" if _docs_enabled else None,
+    redoc_url="/redoc" if _docs_enabled else None,
+    openapi_url="/openapi.json" if _docs_enabled else None,
+)
 
 app.add_middleware(
     CORSMiddleware,

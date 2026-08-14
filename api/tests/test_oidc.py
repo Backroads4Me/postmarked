@@ -117,15 +117,41 @@ def test_safe_next_path(raw, expected):
     assert _safe_next_path(raw) == expected
 
 
-def test_ensure_oidc_client_skips_when_disabled(monkeypatch):
+@pytest.mark.asyncio
+async def test_ensure_oidc_client_skips_when_disabled(monkeypatch):
     import app.auth.oidc_router as oidc_router
 
     monkeypatch.setattr(oidc_router, "_settings", MagicMock(enabled=False))
     monkeypatch.setattr(oidc_router, "_oidc_client", None)
     monkeypatch.setattr(oidc_router, "_oauth2_authorize_callback", None)
-    client, callback = _ensure_oidc_client()
+    client, callback = await _ensure_oidc_client()
     assert client is None
     assert callback is None
+
+
+@pytest.mark.asyncio
+async def test_failed_discovery_is_not_retried_on_every_request(monkeypatch):
+    """A dead IdP must cost one fetch per interval, not one per request."""
+    import app.auth.oidc_router as oidc_router
+
+    monkeypatch.setattr(oidc_router, "_settings", MagicMock(enabled=True))
+    monkeypatch.setattr(oidc_router, "_oidc_client", None)
+    monkeypatch.setattr(oidc_router, "_oauth2_authorize_callback", None)
+    monkeypatch.setattr(oidc_router, "_discovery_failed_at", None)
+
+    calls = []
+
+    def _boom():
+        calls.append(1)
+        raise RuntimeError("idp down")
+
+    monkeypatch.setattr(oidc_router, "get_oidc_client", _boom)
+
+    for _ in range(5):
+        with pytest.raises(RuntimeError):
+            await oidc_router._ensure_oidc_client()
+
+    assert len(calls) == 1, f"discovery was retried {len(calls)} times"
 
 
 @pytest.mark.asyncio
@@ -322,7 +348,7 @@ async def test_oidc_callback_pending_user_redirects_without_session(monkeypatch)
     client.get_profile = AsyncMock(return_value={"name": "Pending"})
     oauth_cb = AsyncMock(return_value=({"access_token": "tok", "expires_at": None}, "state-token"))
 
-    def fake_ensure():
+    async def fake_ensure():
         return client, oauth_cb
 
     monkeypatch.setattr(

@@ -39,3 +39,20 @@ def test_parse_latitude_range(raw, expected):
 @pytest.mark.parametrize("raw,expected", [(181, None), (-181, None), (180, 180.0), (-45.5, -45.5)])
 def test_parse_longitude_range(raw, expected):
     assert parse_longitude(raw) == expected
+
+
+@pytest.mark.parametrize(
+    "template,expected",
+    [
+        ("New: {post_title}", "New: A Post"),
+        ("Braces {0} and {oops}", "Braces {0} and {oops}"),
+        ("A literal { brace", "A literal { brace"),
+        ("", ""),
+    ],
+)
+def test_site_text_templates_tolerate_stray_braces(template, expected):
+    """A stray brace used to raise before the recipient loop, so a whole post's
+    notification was silently never sent."""
+    from app.tasks import _fill_post_template
+
+    assert _fill_post_template(template, "A Post") == expected

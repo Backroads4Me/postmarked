@@ -1,5 +1,7 @@
+import asyncio
 import os
 import secrets
+import time
 import uuid
 import logging
 from urllib.parse import urlencode
@@ -49,17 +51,43 @@ _oidc_client = None
 _oauth2_authorize_callback = None
 
 
-def _ensure_oidc_client():
-    """Lazy-init so a down IdP cannot block API process import/startup."""
-    global _oidc_client, _oauth2_authorize_callback
+# A failed discovery fetch is remembered for this long. Without it every
+# request retried the fetch, because the client is only cached on success.
+_DISCOVERY_RETRY_SECONDS = 60
+_discovery_failed_at: float | None = None
+
+
+async def _ensure_oidc_client():
+    """Build the client once, off the event loop, and back off after a failure.
+
+    Constructing the client fetches the IdP's discovery document over
+    synchronous HTTP, so doing it inline blocked the single event loop for the
+    connect timeout on every request while the IdP was unreachable.
+    """
+    global _oidc_client, _oauth2_authorize_callback, _discovery_failed_at
     if not _settings.enabled:
         return None, None
-    if _oidc_client is None:
-        _oidc_client = get_oidc_client()
-        _oauth2_authorize_callback = OAuth2AuthorizeCallback(
-            _oidc_client,
-            redirect_url=OIDC_CALLBACK_URL,
-        )
+    if _oidc_client is not None:
+        return _oidc_client, _oauth2_authorize_callback
+
+    if (
+        _discovery_failed_at is not None
+        and time.monotonic() - _discovery_failed_at < _DISCOVERY_RETRY_SECONDS
+    ):
+        raise RuntimeError("OIDC discovery is failing; backing off")
+
+    try:
+        client = await asyncio.to_thread(get_oidc_client)
+    except Exception:
+        _discovery_failed_at = time.monotonic()
+        raise
+
+    _discovery_failed_at = None
+    _oidc_client = client
+    _oauth2_authorize_callback = OAuth2AuthorizeCallback(
+        _oidc_client,
+        redirect_url=OIDC_CALLBACK_URL,
+    )
     return _oidc_client, _oauth2_authorize_callback
 
 
@@ -150,7 +178,7 @@ async def oidc_start(
     next: str = Query("/", alias="next"),
 ):
     try:
-        oidc_client, _ = _ensure_oidc_client()
+        oidc_client, _ = await _ensure_oidc_client()
     except Exception:
         logger.exception("OIDC client initialization failed")
         return _login_error_redirect("oauth_failed")
@@ -171,7 +199,7 @@ async def oidc_link_start(user: User = Depends(current_active_user)):
     placed in the email address the IdP returns.
     """
     try:
-        oidc_client, _ = _ensure_oidc_client()
+        oidc_client, _ = await _ensure_oidc_client()
     except Exception:
         logger.exception("OIDC client initialization failed")
         return RedirectResponse(
@@ -250,7 +278,7 @@ async def oidc_callback(
     linking_user: User | None = Depends(current_user_optional),
 ):
     try:
-        oidc_client, oauth2_authorize_callback = _ensure_oidc_client()
+        oidc_client, oauth2_authorize_callback = await _ensure_oidc_client()
     except Exception:
         logger.exception("OIDC client initialization failed")
         return _login_error_redirect("oauth_failed")
@@ -343,7 +371,9 @@ async def oidc_callback(
             token.get("refresh_token"),
             request,
             associate_by_email=associate_by_email,
-            is_verified_by_default=True,
+            # Record what the provider actually asserted, rather than marking
+            # every SSO account verified including ones it flagged otherwise.
+            is_verified_by_default=email_verified is not False,
             display_name=display_name,
         )
     except UserAlreadyExists:

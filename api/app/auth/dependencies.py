@@ -3,7 +3,9 @@ from app.models.enums import UserRole, ApprovalState
 from app.models.user import User
 from app.auth.auth_config import fastapi_users_app
 
-current_user = fastapi_users_app.current_user()
+# Deliberately no current_user() without active=True: it authenticates
+# accounts an admin has deactivated or rejected, and sits one character away
+# from the correct name.
 current_active_user = fastapi_users_app.current_user(active=True)
 
 async def current_approved_user(user: User = Depends(current_active_user)):

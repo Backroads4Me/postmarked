@@ -98,8 +98,13 @@ async def approve_user(
 async def reject_user(
     user_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),
-    _admin=Depends(current_admin_user),
+    admin=Depends(current_admin_user),
 ):
+    # The demote and delete siblings already refuse this. Without it an admin
+    # could deactivate their own account, and a promoted admin has no seed
+    # script to restore them on the next start.
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="You cannot reject yourself")
     user = await session.get(User, user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
