@@ -3,6 +3,7 @@ Admin backup endpoints — export and import a full ZIP archive for migration.
 """
 import asyncio
 import json
+import logging
 import os
 import shutil
 import tempfile
@@ -25,8 +26,11 @@ from app.db import get_async_session
 from app.models.user import User
 from app.schemas.backup import BackupManifest, ImportResult
 from app.services.audit import log_audit_event
-from app.services.db_backup import pg_conn_args
+from app.services.db_backup import create_db_dump, pg_conn_args
+from app.routers.admin.media import ALLOWED_UPLOAD_MIME_TYPES
 from app.services.media_storage import DERIVATIVES_PATH, ORIGINALS_PATH
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/backup", tags=["admin-backup"])
 
@@ -63,26 +67,95 @@ async def _run_pg_tool(tool: str, *tool_args: str, env: dict[str, str]) -> None:
         )
 
 
+MAX_MEMBER_BYTES = 4 * 1024**3
+MAX_TOTAL_BYTES = 40 * 1024**3
+MAX_COMPRESSION_RATIO = 200
+
+
+def _check_archive_member(info: zipfile.ZipInfo) -> None:
+    """Reject a member that would expand far beyond its stored size."""
+    if info.file_size > MAX_MEMBER_BYTES:
+        raise HTTPException(
+            status_code=413,
+            detail=f"Archive member {info.filename} is too large to restore",
+        )
+    if info.compress_size > 0 and info.file_size / info.compress_size > MAX_COMPRESSION_RATIO:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Archive member {info.filename} has an implausible compression ratio",
+        )
+
+
 def _restore_media_files(zf: zipfile.ZipFile, zip_names: set[str]) -> int:
-    """Wipe and repopulate the derivatives directory from the archive."""
-    for media_dir in (ORIGINALS_PATH, DERIVATIVES_PATH):
-        if os.path.exists(media_dir):
-            for entry in os.scandir(media_dir):
-                if entry.is_dir(follow_symlinks=False):
-                    shutil.rmtree(entry.path)
-                else:
-                    os.remove(entry.path)
-        else:
-            os.makedirs(media_dir)
+    """Repopulate the derivatives directory from the archive.
+
+    Members are staged into a scratch directory and swapped in only once every
+    one has been written, so a failure part-way through leaves the existing
+    media untouched rather than half-deleted.
+
+    Originals are deliberately left alone: the export never carries them, so
+    wiping them here would destroy source bytes that nothing can restore.
+    """
+    members = [
+        name
+        for name in sorted(zip_names)
+        # A directory entry such as "media/derivatives/" has an empty basename
+        # and would otherwise be opened as a file, raising IsADirectoryError.
+        if name.startswith("media/derivatives/") and os.path.basename(name)
+    ]
+
+    total = 0
+    for name in members:
+        info = zf.getinfo(name)
+        _check_archive_member(info)
+        total += info.file_size
+        if total > MAX_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=413, detail="Archive media exceeds the restore size budget"
+            )
+
+    staging = f"{DERIVATIVES_PATH}.restore-staging"
+    shutil.rmtree(staging, ignore_errors=True)
+    os.makedirs(staging, exist_ok=True)
 
     copied = 0
-    for zip_path in zip_names:
-        if zip_path.startswith("media/derivatives/"):
-            dest = os.path.join(DERIVATIVES_PATH, os.path.basename(zip_path))
-            with open(dest, "wb") as fh:
-                fh.write(zf.read(zip_path))
+    try:
+        for name in members:
+            dest = os.path.join(staging, os.path.basename(name))
+            with zf.open(name) as src, open(dest, "wb") as fh:
+                # Stream rather than zf.read(): a declared-huge member would
+                # otherwise be materialised whole in the API process.
+                shutil.copyfileobj(src, fh, 1024 * 1024)
             copied += 1
+    except Exception:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
+
+    previous = f"{DERIVATIVES_PATH}.restore-previous"
+    shutil.rmtree(previous, ignore_errors=True)
+    if os.path.exists(DERIVATIVES_PATH):
+        os.rename(DERIVATIVES_PATH, previous)
+    os.rename(staging, DERIVATIVES_PATH)
+    shutil.rmtree(previous, ignore_errors=True)
+    os.makedirs(ORIGINALS_PATH, exist_ok=True)
     return copied
+
+
+def _sanitize_restored_row(archive_name: str, data: dict[str, Any]) -> None:
+    """Drop archive-supplied values that the app would later trust.
+
+    Media rows carry original_path, a free-form filesystem path that is served,
+    deleted and handed to ffmpeg, and mime_type, which is echoed as the response
+    Content-Type. Neither is safe to take from an archive, so recompute the path
+    from the asset id and hold the type to the upload whitelist.
+    """
+    if archive_name != "media_assets":
+        return
+    asset_id = data.get("id")
+    if asset_id is not None:
+        data["original_path"] = os.path.join(ORIGINALS_PATH, f"{asset_id}.bin")
+    mime = (data.get("mime_type") or "").lower()
+    data["mime_type"] = mime if mime in ALLOWED_UPLOAD_MIME_TYPES else "application/octet-stream"
 
 
 def _serialize_value(value: Any) -> Any:
@@ -137,6 +210,12 @@ def _geo_col_keys(model_class) -> set[str]:
         if isinstance(a.columns[0].type, (Geography, Geometry))
     }
 
+
+# Tables counted back after a restore, to report what actually landed.
+_RESTORE_COUNT_TABLES = (
+    "trip", "stop", "post", "media_asset", '"user"', "comment", '"like"',
+    "point_of_interest", "site_text_section",
+)
 
 # Reverse-dependency order for TRUNCATE — CASCADE handles FK edges.
 _TRUNCATE_TABLES = ", ".join([
@@ -339,7 +418,18 @@ async def _import_pgdump(
         session, user.id, "IMPORT_BACKUP", "backup", uuid.uuid4(), manifest.entity_counts
     )
     await session.commit()
-    return ImportResult(entity_counts=manifest.entity_counts, media_files_copied=media_files_copied)
+    # Count what is actually in the database. Reporting manifest.entity_counts
+    # would echo the archive's own claims, so an empty dump paired with an
+    # inflated manifest reads as a successful restore.
+    actual_counts: dict[str, int] = {}
+    for table in _RESTORE_COUNT_TABLES:
+        try:
+            result = await session.execute(text(f'SELECT count(*) FROM {table}'))
+            actual_counts[table.strip('"')] = int(result.scalar() or 0)
+        except Exception:
+            logger.exception("Could not count restored rows in %s", table)
+
+    return ImportResult(entity_counts=actual_counts, media_files_copied=media_files_copied)
 
 
 @router.post("/import", response_model=ImportResult)
@@ -369,6 +459,36 @@ async def import_backup(
                     manifest = BackupManifest(**json.loads(zf.read("manifest.json")))
                 except Exception:
                     raise HTTPException(status_code=400, detail="manifest.json is malformed.")
+
+                # Nothing below this point is reversible, so establish that the
+                # archive can actually replace what it is about to destroy. A ZIP
+                # carrying only a manifest would otherwise truncate every table,
+                # restore nothing, and report success.
+                has_payload = "db.dump" in zip_names or any(
+                    name.startswith("data/") and name.endswith(".json")
+                    for name in zip_names
+                )
+                if not has_payload:
+                    raise HTTPException(
+                        status_code=400,
+                        detail="Archive contains no database payload (db.dump or data/*.json).",
+                    )
+                for name in zip_names:
+                    if not name.endswith("/"):
+                        _check_archive_member(zf.getinfo(name))
+
+                # Take a snapshot first: pg_restore --single-transaction can roll
+                # back its own load but not the TRUNCATE that precedes it, so
+                # without this a corrupt dump leaves nothing behind.
+                try:
+                    safety_dump = await asyncio.to_thread(create_db_dump)
+                except Exception:
+                    logger.exception("Pre-restore snapshot failed")
+                    raise HTTPException(
+                        status_code=500,
+                        detail="Could not take a pre-restore snapshot; refusing to restore.",
+                    )
+                logger.warning("Pre-restore snapshot written to %s", safety_dump)
 
                 # New-format backups carry a pg_dump archive — restore via pg_restore.
                 if "db.dump" in zip_names:
@@ -416,6 +536,7 @@ async def import_backup(
                                     data[key] = val
                             else:
                                 data[key] = val
+                        _sanitize_restored_row(archive_name, data)
                         session.add(model_class(**data))
                     await session.flush()
                     entity_counts[archive_name] = len(rows)

@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset
+from app.services.media_storage import is_managed_media_path
 from app.models.enums import MediaKind
 from app.services.visibility import effective_visibility, is_visible_to_user, resolve_media_parent_visibility
 
@@ -46,6 +47,10 @@ def _resolve_legacy_path(asset: MediaAsset, variant: str) -> Optional[tuple[str,
     Used only for the legacy fallback when derivative_paths has no hashed entry.
     """
     if variant == "original":
+        # original_path is attacker-controllable on a restored asset, so refuse
+        # anything that does not resolve inside the managed media directories.
+        if not is_managed_media_path(asset.original_path):
+            return None
         return asset.original_path, asset.mime_type or "application/octet-stream"
 
     if variant == "webp":

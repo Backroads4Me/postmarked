@@ -315,7 +315,15 @@ def process_media_asset(asset_id: str):
         if not asset:
             return "Asset not found"
 
-        file_path = asset.original_path or os.path.join(ORIGINALS_PATH, f"{asset.id}.bin")
+        # Ignore an original_path that escapes the managed directories: a
+        # restored archive supplies it verbatim and it is fed to Pillow/ffmpeg.
+        from app.services.media_storage import is_managed_media_path
+
+        file_path = (
+            asset.original_path
+            if is_managed_media_path(asset.original_path)
+            else os.path.join(ORIGINALS_PATH, f"{asset.id}.bin")
+        )
         if not os.path.exists(file_path):
             asset.processing_state = MediaProcessingState.FAILED
             asset.error_message = f"Original file not found: {file_path}"
