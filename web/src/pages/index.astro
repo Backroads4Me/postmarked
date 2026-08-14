@@ -15,7 +15,11 @@ const siteTextPromise = loadSiteText();
 let homeData = null;
 let error = null;
 try {
-  const res = await fetch(apiUrl('/api/home'));
+  // Forward the session cookie: /api/home widens its results for an
+  // authenticated caller, so without this a private trip stayed invisible on
+  // the home feed to the very subscribers it was made private for.
+  const cookie = Astro.request.headers.get('cookie') || '';
+  const res = await fetch(apiUrl('/api/home'), cookie ? { headers: { cookie } } : {});
   if (res.ok) {
     homeData = await res.json();
   } else {
@@ -36,8 +40,8 @@ const weather = homeData?.weather ?? null;
 const siteText = await siteTextPromise;
 
 // Anonymous renders are identical for everyone and safe to cache at the edge.
-// Authenticated (cookied) requests render an admin-aware navbar, so never cache
-// those — let them hit origin.
+// Cookied requests are per-user — they carry an admin-aware navbar and any
+// private content the reader is entitled to — so never cache those.
 if (!(Astro.request.headers.get('cookie') || '').includes('postmarked_session')) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
 }

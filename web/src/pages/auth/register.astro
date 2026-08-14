@@ -3,8 +3,13 @@ import Layout from '../../layouts/Layout.astro';
 import { apiUrl } from '../../lib/api.js';
 
 const isSubscribeIntent = Astro.url.searchParams.get('subscribe') === '1';
-const configRes = await fetch(apiUrl('/api/config'));
-const config = configRes.ok ? await configRes.json() : {};
+// Degrade rather than 500 when the API is unreachable; the registration form
+// itself does not depend on any of these values.
+let config = {};
+try {
+  const configRes = await fetch(apiUrl('/api/config'));
+  if (configRes.ok) config = await configRes.json();
+} catch {}
 const { email_enabled, require_user_approval } = config;
 const oidcEnabled = config.oidc_enabled ?? false;
 const oidcProviderName = config.oidc_provider_name || 'SSO';

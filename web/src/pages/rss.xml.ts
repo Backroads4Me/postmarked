@@ -22,8 +22,13 @@ function itemLink(origin: string, item: any): string {
 }
 
 export async function GET({ url }: { url: URL }) {
-  const res = await fetch(apiUrl('/api/timeline?limit=50&offset=0'));
-  const data = res.ok ? await res.json() : { updates: [] };
+  // Serve a valid, empty feed when the API is unreachable: readers poll this
+  // on a schedule, and a 500 is worse for them than an empty channel.
+  let data: any = { updates: [] };
+  try {
+    const res = await fetch(apiUrl('/api/timeline?limit=50&offset=0'));
+    if (res.ok) data = await res.json();
+  } catch {}
   const origin = url.origin;
   const items = (data.updates ?? []).map((item: any) => {
     const link = itemLink(origin, item);

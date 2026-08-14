@@ -156,14 +156,33 @@ form.addEventListener('submit', async (e) => {
       const fd = new FormData(form);
       const id = fd.get('id');
 
+      // The API applies exclude_unset, so an omitted key leaves the old value
+      // in place. Emptied fields have to be sent as an explicit null or the
+      // save silently does nothing and still reports success.
+      // Only columns that are actually nullable: slug, title and start_date are
+      // NOT NULL, so clearing them would fail at the database.
+      const CLEARABLE = new Set(['summary', 'body', 'place_name', 'end_date']);
+
       const body: Record<string, any> = {};
       for (const [k, v] of fd.entries()) {
-    if (k === 'id') continue;
-    if (v === '') continue;
-    body[k] = k === 'start_date' || k === 'end_date' ? normalizeStopDate(v) : v;
-  }
-      if (body.latitude) body.latitude = parseFloat(body.latitude);
-      if (body.longitude) body.longitude = parseFloat(body.longitude);
+        if (k === 'id') continue;
+        if (v === '') {
+          if (CLEARABLE.has(k)) body[k] = null;
+          continue;
+        }
+        body[k] = k === 'start_date' || k === 'end_date' ? normalizeStopDate(v) : v;
+      }
+
+      // The API rejects one coordinate without the other, so only send the pair.
+      const lat = parseFloat(body.latitude);
+      const lon = parseFloat(body.longitude);
+      if (Number.isFinite(lat) && Number.isFinite(lon)) {
+        body.latitude = lat;
+        body.longitude = lon;
+      } else {
+        delete body.latitude;
+        delete body.longitude;
+      }
 
       errorDiv?.classList.add('hidden');
       successDiv?.classList.add('hidden');

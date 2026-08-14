@@ -4,8 +4,13 @@ import { apiUrl } from '../../lib/api.js';
 
 const nextPath = Astro.url.searchParams.get('next') || '/';
 const errorCode = Astro.url.searchParams.get('error');
-const configRes = await fetch(apiUrl('/api/config'));
-const config = configRes.ok ? await configRes.json() : {};
+// The API being down must not take the sign-in form with it: every value
+// here has a safe default, so fall back rather than 500 the page.
+let config = {};
+try {
+  const configRes = await fetch(apiUrl('/api/config'));
+  if (configRes.ok) config = await configRes.json();
+} catch {}
 const oidcEnabled = config.oidc_enabled ?? false;
 const oidcProviderName = config.oidc_provider_name || 'SSO';
 

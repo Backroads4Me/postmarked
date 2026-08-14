@@ -25,7 +25,14 @@ function buildPageUrl(p: number) {
 try {
   const params = new URLSearchParams({ limit: String(PAGE_SIZE), offset: String(offset) });
   if (showUpcoming) params.set('include_future_stops', 'true');
-  const res = await fetch(apiUrl(`/api/timeline?${params.toString()}`));
+  // Forward the session cookie; /api/timeline widens for an authenticated
+  // caller. The Cache-Control below still only marks cookieless responses
+  // public, so edge caching is unaffected.
+  const cookie = Astro.request.headers.get('cookie') || '';
+  const res = await fetch(
+    apiUrl(`/api/timeline?${params.toString()}`),
+    cookie ? { headers: { cookie } } : {},
+  );
   if (res.ok) {
     timelineData = await res.json();
   } else {
@@ -105,8 +112,8 @@ const headerText = sectionText(siteText, 'timeline.header', {
 });
 
 // Anonymous renders are identical for everyone and safe to cache at the edge.
-// Authenticated (cookied) requests render an admin-aware navbar, so never cache
-// those — let them hit origin.
+// Cookied requests are per-user — they carry an admin-aware navbar and any
+// private content the reader is entitled to — so never cache those.
 if (!(Astro.request.headers.get('cookie') || '').includes('postmarked_session')) {
   Astro.response.headers.set('Cache-Control', 'public, max-age=30, stale-while-revalidate=300');
 }
