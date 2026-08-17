@@ -120,12 +120,26 @@ def _is_visible_stop_status(stop: Stop) -> bool:
 
 def _contains_today(stop: Stop, today) -> bool:
     start = stop.start_date.date() if stop.start_date else None
-    end = stop.end_date.date() if stop.end_date else start
     if not start:
         return False
-    if end is None:
-        end = start
+    if not stop.end_date:
+        return start <= today
+    end = stop.end_date.date()
     return start <= today <= end
+
+
+def _is_live_current_stop(stop: Stop, today) -> bool:
+    if _contains_today(stop, today):
+        return True
+    # Honor stale is_current only when the stop hasn't clearly ended.
+    if stop.is_current:
+        start = stop.start_date.date() if stop.start_date else None
+        if start and start > today:
+            return False
+        end = stop.end_date.date() if stop.end_date else None
+        if end is None or end >= today:
+            return True
+    return False
 
 
 async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID, tuple[float, float]]:
@@ -351,9 +365,13 @@ async def get_home(
     has_more = has_more_posts or len(past_stops) > 5
 
     weather = await _cached_weather_and_publish_coords(current_stop)
+    current_stop_is_live = (
+        _is_live_current_stop(current_stop_model, today) if current_stop_model else False
+    )
 
     return HomeOut(
         current_stop=current_stop,
+        current_stop_is_live=current_stop_is_live,
         next_stop=_stop_out(next_stop_model, coords, user),
         previous_stop=_stop_out(previous_stop_model, coords, user),
         recent_stops=[stop_out for s in recent_stop_models if (stop_out := _stop_out(s, coords, user))],

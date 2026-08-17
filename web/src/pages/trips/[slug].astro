@@ -2,6 +2,7 @@
 import Layout from '../../layouts/Layout.astro';
 import { apiUrl } from '../../lib/api.js';
 import { formatDateRange } from '../../lib/dates.js';
+import { stopContainsToday, stopIsLive } from '../../lib/stopLive.js';
 import MapIsland from '../../components/MapIsland.jsx';
 import StopIdentity from '../../components/ui/StopIdentity.astro';
 import Breadcrumb from '../../components/ui/Breadcrumb.astro';
@@ -34,14 +35,7 @@ const stops = trip.stops || [];
 const posts = trip.posts || [];
 
 // Identify current stop by date range (mirrors home page API logic)
-const todayMs = Date.now();
-function containsToday(stop) {
-  if (!stop.start_date) return false;
-  const start = new Date(stop.start_date).setHours(0, 0, 0, 0);
-  const end = stop.end_date ? new Date(stop.end_date).setHours(23, 59, 59, 999) : Infinity;
-  return start <= todayMs && todayMs <= end;
-}
-const todayStops = stops.filter(containsToday);
+const todayStops = stops.filter(stopContainsToday);
 const currentStopId = todayStops.length === 1
   ? todayStops[0].id
   : todayStops.length > 1
@@ -53,7 +47,7 @@ const tripOgImage = trip.cover_media?.id ? `/media/${trip.cover_media.id}/webp` 
 
 const stopsWithCoords = stops
   .filter(s => s.latitude != null && s.longitude != null)
-  .map(s => ({ ...s, is_current: s.is_current || String(s.id) === String(currentStopId) }));
+  .map(s => ({ ...s, is_current: stopIsLive(s) || String(s.id) === String(currentStopId) }));
 
 const photoCount = posts.reduce((n, p) => n + (p.media?.length || 0), 0);
 const milesTotal = stops.reduce((n, s) => n + (s.miles_from_previous || 0), 0);
@@ -176,7 +170,7 @@ const hasMapKey = Boolean(
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                       {stop.start_date && <span class="label stop-meta">{fmtRange(stop.start_date, stop.end_date)}</span>}
                       {stop.nights && <span class="label stop-meta">{stop.nights} night{stop.nights !== 1 ? 's' : ''}</span>}
-                      {stop.is_current && <span class="badge badge-active badge-sm">currently here</span>}
+                      {stopIsLive(stop) && <span class="badge badge-active badge-sm">currently here</span>}
                     </div>
                     <StopIdentity stop={stop} heading />
                   </div>

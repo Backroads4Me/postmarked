@@ -2,6 +2,7 @@
 import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
 import { formatDateRange } from '../../../../lib/dates.js';
+import { stopIsLive } from '../../../../lib/stopLive.js';
 import { cityStateFromAddress } from '../../../../lib/location.js';
 import { mediaOgImage, plainText } from '../../../../lib/og.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
@@ -61,6 +62,7 @@ function stopSiblingLabel(stop) {
 }
 
 const stopTitle = cityStateFromAddress(detail.address_label) || detail.place_name || detail.title;
+const stopIsLiveNow = stopIsLive(detail);
 const stopDescription = plainText(
   detail.summary
   || detail.public_note
@@ -96,7 +98,7 @@ const hasMapKey = Boolean(
     {/* ── Hero ─────────────────────────────────────────────── */}
     <section class="mb-12 frame-narrow">
       <div class="flex items-center gap-2 mb-3 flex-wrap">
-        {detail.is_current && <span class="badge badge-active badge-sm">currently here</span>}
+        {stopIsLiveNow && <span class="badge badge-active badge-sm">currently here</span>}
         {detail.start_date && <span class="label">{fmtRange(detail.start_date, detail.end_date)}</span>}
         {detail.nights && <span class="label">{detail.nights} night{detail.nights !== 1 ? 's' : ''}</span>}
       </div>
