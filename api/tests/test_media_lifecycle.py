@@ -83,8 +83,9 @@ def test_sweep_keeps_artifacts_belonging_to_a_known_asset(tmp_path, monkeypatch)
     old = (datetime.now(timezone.utc) - timedelta(days=2)).timestamp()
 
     live = os.path.join(tasks.ORIGINALS_PATH, f"{live_id}.bin")
+    live_info = os.path.join(tasks.ORIGINALS_PATH, f"{live_id}.json")
     orphan = os.path.join(tasks.ORIGINALS_PATH, f"{uuid.uuid4()}.bin")
-    for path in (live, orphan):
+    for path in (live, live_info, orphan):
         with open(path, "wb") as fh:
             fh.write(b"x")
         os.utime(path, (old, old))
@@ -97,6 +98,7 @@ def test_sweep_keeps_artifacts_belonging_to_a_known_asset(tmp_path, monkeypatch)
     tasks.sweep_stale_media()
 
     assert os.path.exists(live), "an artifact with a live row must survive"
+    assert os.path.exists(live_info)
     assert not os.path.exists(orphan)
 
 
@@ -121,6 +123,94 @@ def test_sweep_leaves_recent_orphans_alone(tmp_path, monkeypatch):
     tasks.sweep_stale_media()
 
     assert os.path.exists(in_flight)
+
+
+def _write_tus_upload(directory, file_id, state, content, age):
+    info = directory / f"{file_id}.json"
+    binary = directory / f"{file_id}.bin"
+    info.write_text(state)
+    binary.write_bytes(content)
+    modified = (datetime.now(timezone.utc) - age).timestamp()
+    os.utime(info, (modified, modified))
+    os.utime(binary, (modified, modified))
+    return info, binary
+
+
+def _empty_sweep_db():
+    stale_result = MagicMock()
+    stale_result.scalars.return_value.all.return_value = []
+    known_result = MagicMock()
+    known_result.all.return_value = []
+    db = MagicMock()
+    db.execute.side_effect = [stale_result, known_result]
+    return db
+
+
+def test_sweep_preserves_a_valid_paused_tus_upload(tmp_path, monkeypatch):
+    from app import tasks
+
+    originals = tmp_path / "originals"
+    derivatives = tmp_path / "derivatives"
+    originals.mkdir()
+    derivatives.mkdir()
+    monkeypatch.setattr(tasks, "ORIGINALS_PATH", str(originals))
+    monkeypatch.setattr(tasks, "DERIVATIVES_PATH", str(derivatives))
+    monkeypatch.setattr(tasks, "TUS_UPLOAD_RETENTION_SECONDS", 7 * 24 * 60 * 60)
+    file_id = uuid.uuid4()
+    state = '{"upload_length": 10, "offset": 7, "metadata": {}}'
+    info, binary = _write_tus_upload(
+        originals, file_id, state, b"partial", timedelta(days=2)
+    )
+    monkeypatch.setattr(tasks, "SessionLocal", _empty_sweep_db)
+
+    tasks.sweep_stale_media()
+
+    assert info.exists()
+    assert binary.exists()
+
+
+def test_sweep_expires_an_abandoned_tus_upload(tmp_path, monkeypatch):
+    from app import tasks
+
+    originals = tmp_path / "originals"
+    derivatives = tmp_path / "derivatives"
+    originals.mkdir()
+    derivatives.mkdir()
+    monkeypatch.setattr(tasks, "ORIGINALS_PATH", str(originals))
+    monkeypatch.setattr(tasks, "DERIVATIVES_PATH", str(derivatives))
+    monkeypatch.setattr(tasks, "TUS_UPLOAD_RETENTION_SECONDS", 7 * 24 * 60 * 60)
+    file_id = uuid.uuid4()
+    state = '{"upload_length": 10, "offset": 7, "metadata": {}}'
+    info, binary = _write_tus_upload(
+        originals, file_id, state, b"partial", timedelta(days=8)
+    )
+    monkeypatch.setattr(tasks, "SessionLocal", _empty_sweep_db)
+
+    tasks.sweep_stale_media()
+
+    assert not info.exists()
+    assert not binary.exists()
+
+
+def test_sweep_removes_corrupt_tus_state_after_orphan_grace(tmp_path, monkeypatch):
+    from app import tasks
+
+    originals = tmp_path / "originals"
+    derivatives = tmp_path / "derivatives"
+    originals.mkdir()
+    derivatives.mkdir()
+    monkeypatch.setattr(tasks, "ORIGINALS_PATH", str(originals))
+    monkeypatch.setattr(tasks, "DERIVATIVES_PATH", str(derivatives))
+    file_id = uuid.uuid4()
+    info, binary = _write_tus_upload(
+        originals, file_id, "not-json", b"partial", timedelta(hours=2)
+    )
+    monkeypatch.setattr(tasks, "SessionLocal", _empty_sweep_db)
+
+    tasks.sweep_stale_media()
+
+    assert not info.exists()
+    assert not binary.exists()
 
 
 def test_processing_claim_has_one_winner_for_concurrent_workers():

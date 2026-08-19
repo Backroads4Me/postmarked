@@ -35,6 +35,8 @@ MEDIA_PENDING_REQUEUE_SECONDS = int(os.getenv("MEDIA_PENDING_REQUEUE_SECONDS", "
 # Longer than the global Celery hard limit so an active task is never treated
 # as abandoned while it can still be running normally.
 MEDIA_PROCESSING_LEASE_SECONDS = int(os.getenv("MEDIA_PROCESSING_LEASE_SECONDS", "7200"))
+TUS_UPLOAD_RETENTION_SECONDS = int(os.getenv("TUS_UPLOAD_RETENTION_SECONDS", "604800"))
+TUS_SIDECAR_MAX_BYTES = 64 * 1024
 
 # Pillow warns but does not raise between 89M and 178M pixels. A 12000x12000 PNG
 # is ~150 KB on the wire and ~430 MB decoded, and the task holds several copies,
@@ -385,6 +387,80 @@ def _claim_media_asset(db, asset_id: uuid.UUID, *, now: datetime | None = None) 
     if claimed:
         db.commit()
     return claimed
+
+
+def _paused_tus_upload_activity(file_id: str) -> float | None:
+    """Return the latest activity time for a structurally valid paused upload."""
+    try:
+        uuid.UUID(file_id)
+    except ValueError:
+        return None
+
+    info_path = os.path.join(ORIGINALS_PATH, f"{file_id}.json")
+    bin_path = os.path.join(ORIGINALS_PATH, f"{file_id}.bin")
+    try:
+        info_stat = os.stat(info_path)
+        bin_stat = os.stat(bin_path)
+        if info_stat.st_size > TUS_SIDECAR_MAX_BYTES:
+            return None
+        with open(info_path, encoding="utf-8") as fh:
+            state = json.load(fh)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+
+    if not isinstance(state, dict) or not isinstance(state.get("metadata"), dict):
+        return None
+    offset = state.get("offset")
+    upload_length = state.get("upload_length")
+    if (
+        not isinstance(offset, int)
+        or isinstance(offset, bool)
+        or not isinstance(upload_length, int)
+        or isinstance(upload_length, bool)
+        or offset < 0
+        or upload_length < 1
+        or offset >= upload_length
+        or bin_stat.st_size < offset
+        or bin_stat.st_size > upload_length
+    ):
+        return None
+    return max(info_stat.st_mtime, bin_stat.st_mtime)
+
+
+def _remove_stale_upload_artifacts(known: set[str], *, now: datetime) -> int:
+    """Expire upload pairs by validity and last activity, never by age alone."""
+    if not os.path.isdir(ORIGINALS_PATH):
+        return 0
+
+    groups: dict[str, list[os.DirEntry]] = {}
+    for entry in os.scandir(ORIGINALS_PATH):
+        if not entry.is_file() or not entry.name.endswith((".bin", ".json")):
+            continue
+        stem = entry.name.rsplit(".", 1)[0]
+        groups.setdefault(stem, []).append(entry)
+
+    orphan_cutoff = now.timestamp() - MEDIA_PENDING_REQUEUE_SECONDS
+    paused_cutoff = now.timestamp() - TUS_UPLOAD_RETENTION_SECONDS
+    removed = 0
+    for stem, entries in groups.items():
+        if stem in known:
+            continue
+        activity = _paused_tus_upload_activity(stem)
+        cutoff = paused_cutoff if activity is not None else orphan_cutoff
+        try:
+            latest_mtime = max(entry.stat().st_mtime for entry in entries)
+        except OSError:
+            logger.exception("Could not inspect upload artifacts for %s", stem)
+            continue
+        if latest_mtime >= cutoff:
+            continue
+        for entry in entries:
+            try:
+                os.remove(entry.path)
+                removed += 1
+            except OSError:
+                logger.exception("Could not remove orphaned file %s", entry.path)
+    return removed
 
 
 @celery_app.task(name="process_media_asset")
@@ -928,19 +1004,12 @@ def sweep_stale_media():
     finally:
         db.close()
 
-    removed = 0
+    removed = _remove_stale_upload_artifacts(known, now=now)
     cutoff_ts = pending_cutoff.timestamp()
-    for directory, predicate in (
-        (ORIGINALS_PATH, lambda n: n.endswith((".bin", ".json"))),
-        (DERIVATIVES_PATH, lambda n: ".tmp" in n),
-    ):
-        if not os.path.isdir(directory):
-            continue
-        for entry in os.scandir(directory):
-            if not entry.is_file() or not predicate(entry.name):
+    if os.path.isdir(DERIVATIVES_PATH):
+        for entry in os.scandir(DERIVATIVES_PATH):
+            if not entry.is_file() or ".tmp" not in entry.name:
                 continue
-            # An id-named artifact with a live row is in use; anything else is
-            # from an upload that never completed.
             stem = entry.name.split(".", 1)[0]
             if stem in known:
                 continue
