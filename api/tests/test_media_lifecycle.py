@@ -230,6 +230,23 @@ def test_processing_claim_has_one_winner_for_concurrent_workers():
     db.commit.assert_called_once()
 
 
+def test_stale_requeue_lease_has_one_winner_for_concurrent_sweeps():
+    from app import tasks
+
+    asset_id = uuid.uuid4()
+    first = MagicMock()
+    first.scalars.return_value.all.return_value = [asset_id]
+    second = MagicMock()
+    second.scalars.return_value.all.return_value = []
+    db = MagicMock()
+    db.execute.side_effect = [first, second]
+    now = datetime.now(timezone.utc)
+
+    assert tasks._lease_stale_media_requeues(db, now=now) == [asset_id]
+    assert tasks._lease_stale_media_requeues(db, now=now) == []
+    db.commit.assert_called_once()
+
+
 def test_processing_lock_blocks_a_second_worker(monkeypatch):
     from app import tasks
 
@@ -272,10 +289,8 @@ def test_sweep_requeues_pending_and_expired_processing_assets(monkeypatch, tmp_p
 
     queued_id = uuid.uuid4()
     expired_id = uuid.uuid4()
-    queued = MagicMock(id=queued_id)
-    expired = MagicMock(id=expired_id)
     stale_result = MagicMock()
-    stale_result.scalars.return_value.all.return_value = [queued, expired]
+    stale_result.scalars.return_value.all.return_value = [queued_id, expired_id]
     known_result = MagicMock()
     known_result.all.return_value = [(queued_id,), (expired_id,)]
     db = MagicMock()

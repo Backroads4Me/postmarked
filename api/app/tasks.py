@@ -389,6 +389,37 @@ def _claim_media_asset(db, asset_id: uuid.UUID, *, now: datetime | None = None) 
     return claimed
 
 
+def _lease_stale_media_requeues(db, *, now: datetime) -> list[uuid.UUID]:
+    """Atomically reserve stale assets before publishing replacement tasks."""
+    pending_cutoff = now - timedelta(seconds=MEDIA_PENDING_REQUEUE_SECONDS)
+    processing_cutoff = now - timedelta(seconds=MEDIA_PROCESSING_LEASE_SECONDS)
+    result = db.execute(
+        update(MediaAsset)
+        .where(
+            or_(
+                and_(
+                    MediaAsset.processing_state == MediaProcessingState.PENDING,
+                    MediaAsset.updated_at < pending_cutoff,
+                ),
+                and_(
+                    MediaAsset.processing_state == MediaProcessingState.PROCESSING,
+                    MediaAsset.updated_at < processing_cutoff,
+                ),
+            )
+        )
+        .values(
+            processing_state=MediaProcessingState.PENDING,
+            error_message=None,
+            updated_at=now,
+        )
+        .returning(MediaAsset.id)
+    )
+    asset_ids = list(result.scalars().all())
+    if asset_ids:
+        db.commit()
+    return asset_ids
+
+
 def _paused_tus_upload_activity(file_id: str) -> float | None:
     """Return the latest activity time for a structurally valid paused upload."""
     try:
@@ -975,30 +1006,16 @@ def sweep_stale_media():
     """
     now = datetime.now(timezone.utc)
     pending_cutoff = now - timedelta(seconds=MEDIA_PENDING_REQUEUE_SECONDS)
-    processing_cutoff = now - timedelta(seconds=MEDIA_PROCESSING_LEASE_SECONDS)
     requeued = 0
     db = SessionLocal()
     try:
-        stale = db.execute(
-            select(MediaAsset).where(
-                or_(
-                    and_(
-                        MediaAsset.processing_state == MediaProcessingState.PENDING,
-                        MediaAsset.updated_at < pending_cutoff,
-                    ),
-                    and_(
-                        MediaAsset.processing_state == MediaProcessingState.PROCESSING,
-                        MediaAsset.updated_at < processing_cutoff,
-                    ),
-                )
-            )
-        ).scalars().all()
-        for asset in stale:
+        stale_ids = _lease_stale_media_requeues(db, now=now)
+        for asset_id in stale_ids:
             try:
-                process_media_asset.delay(str(asset.id))
+                process_media_asset.delay(str(asset_id))
                 requeued += 1
             except Exception:
-                logger.exception("Could not requeue stale asset %s", asset.id)
+                logger.exception("Could not requeue stale asset %s", asset_id)
 
         known = {str(row[0]) for row in db.execute(select(MediaAsset.id)).all()}
     finally:
