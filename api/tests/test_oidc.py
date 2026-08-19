@@ -140,18 +140,25 @@ async def test_failed_discovery_is_not_retried_on_every_request(monkeypatch):
     monkeypatch.setattr(oidc_router, "_discovery_failed_at", None)
 
     calls = []
+    offloads = []
 
     def _boom():
         calls.append(1)
         raise RuntimeError("idp down")
 
+    async def _run_inline(function):
+        offloads.append(function)
+        return function()
+
     monkeypatch.setattr(oidc_router, "get_oidc_client", _boom)
+    monkeypatch.setattr(oidc_router.asyncio, "to_thread", _run_inline)
 
     for _ in range(5):
         with pytest.raises(RuntimeError):
             await oidc_router._ensure_oidc_client()
 
     assert len(calls) == 1, f"discovery was retried {len(calls)} times"
+    assert offloads == [_boom]
 
 
 @pytest.mark.asyncio
