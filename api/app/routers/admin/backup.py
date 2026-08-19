@@ -2,6 +2,7 @@
 Admin backup endpoints — export and import a full ZIP archive for migration.
 """
 import asyncio
+import io
 import json
 import logging
 import os
@@ -84,6 +85,37 @@ def _check_archive_member(info: zipfile.ZipInfo) -> None:
             status_code=400,
             detail=f"Archive member {info.filename} has an implausible compression ratio",
         )
+
+
+def _validate_archive(zf: zipfile.ZipFile) -> set[str]:
+    """Validate every payload and enforce one archive-wide expansion budget."""
+    total = 0
+    names: set[str] = set()
+    for info in zf.infolist():
+        names.add(info.filename)
+        if info.is_dir():
+            continue
+        _check_archive_member(info)
+        total += info.file_size
+        if total > MAX_TOTAL_BYTES:
+            raise HTTPException(
+                status_code=413,
+                detail="Archive exceeds the total uncompressed restore size budget",
+            )
+    return names
+
+
+def _load_json_member(zf: zipfile.ZipFile, name: str) -> Any:
+    """Decode a validated JSON member without materializing a second byte copy."""
+    with zf.open(name) as raw:
+        with io.TextIOWrapper(raw, encoding="utf-8") as text_stream:
+            return json.load(text_stream)
+
+
+def _stream_archive_member(zf: zipfile.ZipFile, name: str, destination) -> None:
+    """Copy an archive member with a fixed-size transfer buffer."""
+    with zf.open(name) as source:
+        shutil.copyfileobj(source, destination, 1024 * 1024)
 
 
 def _restore_media_files(zf: zipfile.ZipFile, zip_names: set[str]) -> int:
@@ -382,7 +414,7 @@ async def _import_pgdump(
     """
     dump_fd, dump_path = tempfile.mkstemp(prefix="postmarked-restore-", suffix=".dump")
     with os.fdopen(dump_fd, "wb") as fh:
-        fh.write(zf.read("db.dump"))
+        _stream_archive_member(zf, "db.dump", fh)
 
     try:
         # Truncate every public table the dump can target (same exclusions as
@@ -451,12 +483,12 @@ async def import_backup(
         tmp.seek(0)
         try:
             with zipfile.ZipFile(tmp) as zf:
-                zip_names = set(zf.namelist())
+                zip_names = _validate_archive(zf)
                 if "manifest.json" not in zip_names:
                     raise HTTPException(status_code=400, detail="Archive is missing manifest.json.")
 
                 try:
-                    manifest = BackupManifest(**json.loads(zf.read("manifest.json")))
+                    manifest = BackupManifest(**_load_json_member(zf, "manifest.json"))
                 except Exception:
                     raise HTTPException(status_code=400, detail="manifest.json is malformed.")
 
@@ -473,10 +505,6 @@ async def import_backup(
                         status_code=400,
                         detail="Archive contains no database payload (db.dump or data/*.json).",
                     )
-                for name in zip_names:
-                    if not name.endswith("/"):
-                        _check_archive_member(zf.getinfo(name))
-
                 # Take a snapshot first: pg_restore --single-transaction can roll
                 # back its own load but not the TRUNCATE that precedes it, so
                 # without this a corrupt dump leaves nothing behind.
@@ -503,7 +531,7 @@ async def import_backup(
 
                 def _load(archive_name: str) -> list[dict]:
                     path = f"data/{archive_name}.json"
-                    return json.loads(zf.read(path)) if path in zip_names else []
+                    return _load_json_member(zf, path) if path in zip_names else []
 
                 def _restore_value(archive_name: str, key: str, val: Any) -> Any:
                     if archive_name == "stops" and key in {"start_date", "end_date"} and isinstance(val, str):

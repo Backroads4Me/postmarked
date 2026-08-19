@@ -85,3 +85,42 @@ def test_a_plausible_member_passes():
     info.file_size = 2 * 1024 * 1024
     info.compress_size = 1024 * 1024
     backup_mod._check_archive_member(info)
+
+
+def test_total_budget_counts_database_json_manifest_and_media(monkeypatch):
+    zf = _zip(
+        {
+            "db.dump": b"database",
+            "data/trips.json": b"legacy!!",
+            "manifest.json": b"manifest",
+            "media/derivatives/a.webp": b"media!!!",
+        }
+    )
+    monkeypatch.setattr(backup_mod, "MAX_TOTAL_BYTES", 31)
+
+    with pytest.raises(HTTPException) as exc:
+        backup_mod._validate_archive(zf)
+
+    assert exc.value.status_code == 413
+
+
+def test_database_dump_is_copied_in_bounded_chunks():
+    payload = b"x" * (2 * 1024 * 1024 + 17)
+
+    class BoundedReader(io.BytesIO):
+        def read(self, size=-1):
+            assert 0 < size <= 1024 * 1024
+            return super().read(size)
+
+    class OpenOnlyArchive:
+        def open(self, name):
+            assert name == "db.dump"
+            return BoundedReader(payload)
+
+        def read(self, _name):
+            raise AssertionError("whole-member reads are not allowed")
+
+    destination = io.BytesIO()
+    backup_mod._stream_archive_member(OpenOnlyArchive(), "db.dump", destination)
+
+    assert destination.getvalue() == payload
