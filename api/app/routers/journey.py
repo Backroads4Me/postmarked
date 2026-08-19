@@ -25,6 +25,10 @@ from app.schemas.journey import (
     RecentUpdate,
     TimelineOut,
 )
+from app.services.current_stop import (
+    is_live_current_stop as _is_live_current_stop,
+    select_live_stop as _select_live_stop,
+)
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
 from app.services.weather import REDIS_URL, WEATHER_COORDS_KEY, weather_cache_key
 
@@ -116,30 +120,6 @@ def _post_parent_filters(user):
 
 def _is_visible_stop_status(stop: Stop) -> bool:
     return stop.status == StopStatus.PUBLISHED
-
-
-def _contains_today(stop: Stop, today) -> bool:
-    start = stop.start_date.date() if stop.start_date else None
-    if not start:
-        return False
-    if not stop.end_date:
-        return start <= today
-    end = stop.end_date.date()
-    return start <= today <= end
-
-
-def _is_live_current_stop(stop: Stop, today) -> bool:
-    if _contains_today(stop, today):
-        return True
-    # Honor stale is_current only when the stop hasn't clearly ended.
-    if stop.is_current:
-        start = stop.start_date.date() if stop.start_date else None
-        if start and start > today:
-            return False
-        end = stop.end_date.date() if stop.end_date else None
-        if end is None or end >= today:
-            return True
-    return False
 
 
 async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID, tuple[float, float]]:
@@ -300,15 +280,8 @@ async def get_home(
     # Current stop: date range first, explicit is_current as an override for
     # overlapping ranges or travel reality, then nearest recent/past stop.
     today = datetime.now(timezone.utc).date()
-    date_current_stops = [s for s in stops if _contains_today(s, today)]
-    if len(date_current_stops) == 1:
-        current_stop_model = date_current_stops[0]
-    elif len(date_current_stops) > 1:
-        current_stop_model = next((s for s in date_current_stops if s.is_current), None) or max(
-            date_current_stops,
-            key=lambda s: s.start_date,
-        )
-    else:
+    current_stop_model = _select_live_stop(stops, today)
+    if not current_stop_model:
         current_stop_model = next((s for s in stops if s.is_current), None)
     if not current_stop_model and stops:
         now = datetime.now(timezone.utc)

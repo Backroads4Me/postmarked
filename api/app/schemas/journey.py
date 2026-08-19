@@ -114,6 +114,7 @@ class PublicStopDetail(PublicStopSummary):
     posts: List["PublicPostSummary"] = []
     pois: List[PublicPOISummary] = []
     media_with_gps: List[MediaGPSPoint] = []
+    is_live_current: bool = False
     prev: Optional[PublicStopSibling] = None
     next: Optional[PublicStopSibling] = None
 

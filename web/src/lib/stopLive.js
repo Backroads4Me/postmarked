@@ -33,3 +33,28 @@ export function stopIsLive(stop, today = todayUtcDate()) {
   const end = parseStopDate(stop?.end_date);
   return !end || end >= today;
 }
+
+function compareStopOrder(left, right) {
+  const leftStart = parseStopDate(left?.start_date) || '';
+  const rightStart = parseStopDate(right?.start_date) || '';
+  if (leftStart !== rightStart) return leftStart.localeCompare(rightStart);
+
+  const leftOrder = Number.isInteger(left?.sort_order) ? left.sort_order : -1;
+  const rightOrder = Number.isInteger(right?.sort_order) ? right.sort_order : -1;
+  if (leftOrder !== rightOrder) return leftOrder - rightOrder;
+
+  return String(left?.id || left?.slug || '').localeCompare(
+    String(right?.id || right?.slug || ''),
+  );
+}
+
+/** Select one live stop, preferring an explicit marker before route order. */
+export function selectLiveStop(stops, today = todayUtcDate()) {
+  const live = (stops || []).filter(stop => stopIsLive(stop, today));
+  const explicit = live.filter(stop => stop?.is_current);
+  const candidates = explicit.length > 0 ? explicit : live;
+  return candidates.reduce(
+    (selected, stop) => !selected || compareStopOrder(stop, selected) > 0 ? stop : selected,
+    null,
+  );
+}

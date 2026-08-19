@@ -1,14 +1,20 @@
 from datetime import date, datetime, timezone
 from types import SimpleNamespace
 
-from app.routers.journey import _contains_today, _is_live_current_stop
+from app.services.current_stop import (
+    contains_today as _contains_today,
+    is_live_current_stop as _is_live_current_stop,
+    select_live_stop as _select_live_stop,
+)
 
 
-def _stop(*, start, end=None, is_current=False):
+def _stop(*, start, end=None, is_current=False, stop_id="stop", sort_order=0):
     return SimpleNamespace(
+        id=stop_id,
         start_date=datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
         end_date=datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc) if end else None,
         is_current=is_current,
+        sort_order=sort_order,
     )
 
 
@@ -68,3 +74,40 @@ def test_live_on_end_date():
 
     assert _contains_today(stop, today) is True
     assert _is_live_current_stop(stop, today) is True
+
+
+def test_select_live_stop_prefers_explicit_current_overlap():
+    today = date(2026, 8, 19)
+    explicit = _stop(
+        start=date(2026, 8, 15),
+        end=date(2026, 8, 21),
+        is_current=True,
+        stop_id="explicit",
+        sort_order=1,
+    )
+    later = _stop(
+        start=date(2026, 8, 18),
+        end=date(2026, 8, 22),
+        stop_id="later",
+        sort_order=2,
+    )
+
+    assert _select_live_stop([later, explicit], today) is explicit
+
+
+def test_select_live_stop_has_a_deterministic_overlap_fallback():
+    today = date(2026, 8, 19)
+    first = _stop(
+        start=date(2026, 8, 18),
+        end=date(2026, 8, 22),
+        stop_id="first",
+        sort_order=1,
+    )
+    second = _stop(
+        start=date(2026, 8, 18),
+        end=date(2026, 8, 22),
+        stop_id="second",
+        sort_order=2,
+    )
+
+    assert _select_live_stop([second, first], today) is second

@@ -1,4 +1,5 @@
 import uuid
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
 from geoalchemy2 import Geometry
@@ -19,6 +20,7 @@ from app.schemas.journey import (
     PublicStopDetail,
     PublicStopSibling,
 )
+from app.services.current_stop import select_live_stop
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
 
 router = APIRouter(prefix="/trips", tags=["stops"])
@@ -175,14 +177,15 @@ async def get_stop(
 
     # Siblings (prev/next by sort_order within the same trip)
     siblings_query = (
-        select(Stop.slug, Stop.title, Stop.address_label, Stop.sort_order)
+        select(Stop)
         .where(Stop.trip_id == stop.trip_id)
         .order_by(Stop.sort_order.asc())
     )
     siblings_query = siblings_query.where(Stop.status == StopStatus.PUBLISHED)
     if not user:
         siblings_query = siblings_query.where(Stop.visibility == Visibility.PUBLIC)
-    sibling_rows = (await session.execute(siblings_query)).all()
+    sibling_rows = (await session.execute(siblings_query)).scalars().all()
+    live_stop = select_live_stop(sibling_rows, datetime.now(timezone.utc).date())
     prev_sib = None
     next_sib = None
     for i, row in enumerate(sibling_rows):
@@ -229,6 +232,7 @@ async def get_stop(
         posts=posts_out,
         pois=pois_out,
         media_with_gps=media_gps_out,
+        is_live_current=bool(live_stop and live_stop.id == stop.id),
         prev=prev_sib,
         next=next_sib,
     )

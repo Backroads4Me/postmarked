@@ -2,7 +2,6 @@
 import Layout from '../../../../layouts/Layout.astro';
 import { apiUrl } from '../../../../lib/api.js';
 import { formatDateRange } from '../../../../lib/dates.js';
-import { stopIsLive } from '../../../../lib/stopLive.js';
 import { cityStateFromAddress } from '../../../../lib/location.js';
 import { mediaOgImage, plainText } from '../../../../lib/og.js';
 import CommentsIsland from '../../../../components/CommentsIsland.jsx';
@@ -62,7 +61,7 @@ function stopSiblingLabel(stop) {
 }
 
 const stopTitle = cityStateFromAddress(detail.address_label) || detail.place_name || detail.title;
-const stopIsLiveNow = stopIsLive(detail);
+const stopIsLiveNow = Boolean(detail.is_live_current);
 const stopDescription = plainText(
   detail.summary
   || detail.public_note
