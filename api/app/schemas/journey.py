@@ -140,6 +140,7 @@ class WeatherOut(BaseModel):
 class HomeOut(BaseModel):
     current_stop: Optional[PublicStopSummary] = None
     current_stop_is_live: bool = False
+    current_stop_kind: Optional[Literal["live", "previous", "upcoming"]] = None
     next_stop: Optional[PublicStopSummary] = None
     previous_stop: Optional[PublicStopSummary] = None
     recent_stops: List[PublicStopSummary] = []

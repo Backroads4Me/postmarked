@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from app.services.current_stop import (
     contains_today as _contains_today,
     is_live_current_stop as _is_live_current_stop,
+    select_home_stop,
     select_live_stop as _select_live_stop,
 )
 
@@ -111,3 +112,50 @@ def test_select_live_stop_has_a_deterministic_overlap_fallback():
     )
 
     assert _select_live_stop([second, first], today) is second
+
+
+def test_home_selects_an_active_stop_as_live():
+    today = date(2026, 8, 19)
+    active = _stop(start=date(2026, 8, 18), end=date(2026, 8, 20))
+
+    assert select_home_stop([active], today) == (active, "live")
+
+
+def test_home_selects_the_latest_completed_stop_as_previous():
+    today = date(2026, 8, 19)
+    earlier = _stop(
+        start=date(2026, 8, 10),
+        end=date(2026, 8, 12),
+        stop_id="earlier",
+        sort_order=1,
+    )
+    latest = _stop(
+        start=date(2026, 8, 14),
+        end=date(2026, 8, 17),
+        stop_id="latest",
+        sort_order=2,
+    )
+
+    assert select_home_stop([latest, earlier], today) == (latest, "previous")
+
+
+def test_home_has_no_featured_stop_for_an_empty_itinerary():
+    assert select_home_stop([], date(2026, 8, 19)) == (None, None)
+
+
+def test_home_selects_the_first_all_future_stop_as_upcoming():
+    today = date(2026, 8, 19)
+    first = _stop(
+        start=date(2026, 8, 22),
+        end=date(2026, 8, 24),
+        stop_id="first",
+        sort_order=1,
+    )
+    later = _stop(
+        start=date(2026, 8, 25),
+        end=date(2026, 8, 27),
+        stop_id="later",
+        sort_order=2,
+    )
+
+    assert select_home_stop([later, first], today) == (first, "upcoming")

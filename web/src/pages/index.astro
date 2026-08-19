@@ -5,8 +5,8 @@ import LocationUpdateGroup from '../components/ui/LocationUpdateGroup.astro';
 import EmptyState from '../components/ui/EmptyState.astro';
 import { apiUrl } from '../lib/api.js';
 import { formatDate } from '../lib/dates.js';
+import { homeStopLabel, resolveHomeStopState } from '../lib/homeStopState.js';
 import { loadSiteText, sectionText } from '../lib/siteText.js';
-import { stopIsLive } from '../lib/stopLive.js';
 
 // Kick off the independent site-text fetch up front so it runs concurrently
 // with the home-data fetch instead of serially after it.
@@ -31,9 +31,7 @@ try {
 }
 
 const current = homeData?.current_stop;
-const currentStopIsLive = typeof homeData?.current_stop_is_live === 'boolean'
-  ? homeData.current_stop_is_live
-  : (current ? stopIsLive(current) : false);
+const currentStopState = resolveHomeStopState(homeData);
 const activeTrip = homeData?.active_trip_segment;
 const nextStop = homeData?.next_stop;
 const previousStop = homeData?.previous_stop;
@@ -163,8 +161,8 @@ function formatStopDate(dateStr) {
           departureDate={current.end_date}
           nights={current.nights}
           note={current.public_note}
-          label={currentStopIsLive ? currentText.label : 'Last Stop'}
-          isLive={currentStopIsLive}
+          label={homeStopLabel(currentStopState, currentText.label)}
+          stopState={currentStopState}
           prevStop={prevStopMention}
           nextStop={nextStopMention}
           weather={weather}

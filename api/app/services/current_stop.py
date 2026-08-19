@@ -1,8 +1,9 @@
 from datetime import date
-from typing import Iterable, TypeVar
+from typing import Iterable, Literal, TypeVar
 
 
 StopT = TypeVar("StopT")
+HomeStopKind = Literal["live", "previous", "upcoming"]
 
 
 def contains_today(stop, today: date) -> bool:
@@ -40,3 +41,30 @@ def select_live_stop(stops: Iterable[StopT], today: date) -> StopT | None:
     explicit = [stop for stop in live if stop.is_current]
     candidates = explicit or live
     return max(candidates, key=_selection_key, default=None)
+
+
+def select_home_stop(
+    stops: Iterable[StopT], today: date
+) -> tuple[StopT | None, HomeStopKind | None]:
+    """Select the home card's live, previous, or upcoming stop."""
+    candidates = list(stops)
+    live = select_live_stop(candidates, today)
+    if live:
+        return live, "live"
+
+    previous = [
+        stop
+        for stop in candidates
+        if stop.start_date
+        and stop.start_date.date() <= today
+        and not is_live_current_stop(stop, today)
+    ]
+    if previous:
+        return max(previous, key=_selection_key), "previous"
+
+    upcoming = [
+        stop for stop in candidates if stop.start_date and stop.start_date.date() > today
+    ]
+    if upcoming:
+        return min(upcoming, key=_selection_key), "upcoming"
+    return None, None

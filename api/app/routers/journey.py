@@ -25,10 +25,7 @@ from app.schemas.journey import (
     RecentUpdate,
     TimelineOut,
 )
-from app.services.current_stop import (
-    is_live_current_stop as _is_live_current_stop,
-    select_live_stop as _select_live_stop,
-)
+from app.services.current_stop import select_home_stop
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
 from app.services.weather import REDIS_URL, WEATHER_COORDS_KEY, weather_cache_key
 
@@ -277,20 +274,28 @@ async def get_home(
     stops = list((await session.execute(stops_query)).scalars().all())
     coords = await _coordinates_for_stops(session, stops)
 
-    # Current stop: date range first, explicit is_current as an override for
-    # overlapping ranges or travel reality, then nearest recent/past stop.
     today = datetime.now(timezone.utc).date()
-    current_stop_model = _select_live_stop(stops, today)
-    if not current_stop_model:
-        current_stop_model = next((s for s in stops if s.is_current), None)
-    if not current_stop_model and stops:
-        now = datetime.now(timezone.utc)
-        current_stop_model = next((s for s in reversed(stops) if s.start_date <= now), stops[-1])
+    current_stop_model, current_stop_kind = select_home_stop(stops, today)
 
     current_stop = _stop_out(current_stop_model, coords, user)
-    current_sort_order = current_stop.sort_order if current_stop else -1
-    next_stop_model = next((s for s in stops if s.sort_order > current_sort_order), None)
-    previous_stop_model = next((s for s in reversed(stops) if s.sort_order < current_sort_order), None)
+    next_stop_model = None
+    previous_stop_model = None
+    if current_stop_model:
+        route_stops = sorted(
+            [stop for stop in stops if stop.trip_id == current_stop_model.trip_id],
+            key=lambda stop: (
+                stop.sort_order if stop.sort_order is not None else 999999,
+                stop.start_date,
+                str(stop.id),
+            ),
+        )
+        current_index = next(
+            index for index, stop in enumerate(route_stops) if stop.id == current_stop_model.id
+        )
+        if current_index > 0:
+            previous_stop_model = route_stops[current_index - 1]
+        if current_index + 1 < len(route_stops):
+            next_stop_model = route_stops[current_index + 1]
 
     posts_query = (
         select(Post)
@@ -337,14 +342,15 @@ async def get_home(
     recent_stop_models = sorted(past_stops, key=lambda stop: stop.start_date, reverse=True)[:5]
     has_more = has_more_posts or len(past_stops) > 5
 
-    weather = await _cached_weather_and_publish_coords(current_stop)
-    current_stop_is_live = (
-        _is_live_current_stop(current_stop_model, today) if current_stop_model else False
+    current_stop_is_live = current_stop_kind == "live"
+    weather = (
+        await _cached_weather_and_publish_coords(current_stop) if current_stop_is_live else None
     )
 
     return HomeOut(
         current_stop=current_stop,
         current_stop_is_live=current_stop_is_live,
+        current_stop_kind=current_stop_kind,
         next_stop=_stop_out(next_stop_model, coords, user),
         previous_stop=_stop_out(previous_stop_model, coords, user),
         recent_stops=[stop_out for s in recent_stop_models if (stop_out := _stop_out(s, coords, user))],

@@ -1,9 +1,10 @@
 ---
 /**
- * CurrentLocationCard — Hero card showing where the RV is right now.
+ * CurrentLocationCard — Hero card for a live, previous, or upcoming route stop.
  */
 import Postmark from './Postmark.astro';
 import { formatDate as fmtDate } from '../../lib/dates.js';
+import { homeStopPresentation } from '../../lib/homeStopState.js';
 
 interface StopMention {
   cityState: string;
@@ -35,7 +36,7 @@ interface Props {
   nights?: number;
   note?: string;
   label?: string;
-  isLive?: boolean;
+  stopState?: 'live' | 'previous' | 'upcoming';
   departureDate?: string;
   prevStop?: StopMention;
   nextStop?: StopMention;
@@ -53,7 +54,7 @@ const {
   nights,
   note,
   label = 'Currently At',
-  isLive = false,
+  stopState = 'previous',
   departureDate,
   prevStop,
   nextStop,
@@ -115,15 +116,19 @@ const primaryTitle = cityState?.label || stopTitle;
 const secondaryTitle = cityState ? stopTitle : placeName && placeName !== stopTitle ? placeName : '';
 const postmarkCity = cityState?.city || stopTitle;
 const postmarkState = cityState?.state || '';
-const postmarkLandmark = isLive ? (postmarkState || 'On the Road') : 'Last Stop';
-const postmarkDateSource = isLive ? arrivalDate : (departureDate || arrivalDate);
+const presentation = homeStopPresentation(stopState, label)!;
+const isLive = presentation.isLive;
+const postmarkLandmark = presentation.landmark || postmarkState || 'On the Road';
+const postmarkDateSource = presentation.useDepartureDate
+  ? (departureDate || arrivalDate)
+  : arrivalDate;
 ---
 
 <div class="current-airmail-frame" id="current-location">
   <article class="current-airmail-card">
     <div class="current-grid">
       <div class="current-copy">
-        <div class:list={['current-status', { 'current-status--past': !isLive }]}>
+        <div class={`current-status current-status--${stopState}`}>
           {isLive && <span class="pulse-dot"></span>}
           {label && <span class="eyebrow">{label}</span>}
         </div>
@@ -138,14 +143,16 @@ const postmarkDateSource = isLive ? arrivalDate : (departureDate || arrivalDate)
           <p class="current-place">{secondaryTitle}</p>
         )}
 
-        <p class="current-weather-line">
-          {weather ? `${weather.current.label} · ${weather.current.temp}${weatherTempSuffix(weather.unit)} in ${postmarkCity}` : `Weather updating in ${postmarkCity}`}
-        </p>
+        {isLive && (
+          <p class="current-weather-line">
+            {weather ? `${weather.current.label} · ${weather.current.temp}${weatherTempSuffix(weather.unit)} in ${postmarkCity}` : `Weather updating in ${postmarkCity}`}
+          </p>
+        )}
 
         <div class="current-meta">
           {arrivalDate && (
             <div>
-              <span>Arrived</span>
+              <span>{presentation.arrivalLabel}</span>
               <strong>{formatDate(arrivalDate)}</strong>
             </div>
           )}
@@ -162,7 +169,7 @@ const postmarkDateSource = isLive ? arrivalDate : (departureDate || arrivalDate)
         )}
       </div>
 
-      <div class:list={['current-postmark', { 'current-postmark--past': !isLive }]} aria-label={`${primaryTitle} postmark`}>
+      <div class={`current-postmark current-postmark--${stopState}`} aria-label={`${primaryTitle} postmark`}>
         <Postmark
           city={postmarkCity}
           state={postmarkState}
@@ -255,11 +262,13 @@ const postmarkDateSource = isLive ? arrivalDate : (departureDate || arrivalDate)
     margin-bottom: 14px;
   }
 
-  .current-status--past .eyebrow {
+  .current-status--previous .eyebrow,
+  .current-status--upcoming .eyebrow {
     color: color-mix(in srgb, var(--muted) 82%, var(--paper) 18%);
   }
 
-  .current-postmark--past {
+  .current-postmark--previous,
+  .current-postmark--upcoming {
     opacity: 0.72;
   }
 
