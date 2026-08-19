@@ -35,27 +35,53 @@ interface Props {
   nights?: number;
   note?: string;
   label?: string;
+  isLive?: boolean;
+  departureDate?: string;
   prevStop?: StopMention;
   nextStop?: StopMention;
   weather?: Weather | null;
 }
 
-const { stopTitle, stopSlug, tripTitle, tripSlug, placeName, summary, arrivalDate, nights, note, label = 'Currently At', prevStop, nextStop, weather } = Astro.props;
+const {
+  stopTitle,
+  stopSlug,
+  tripTitle,
+  tripSlug,
+  placeName,
+  summary,
+  arrivalDate,
+  nights,
+  note,
+  label = 'Currently At',
+  isLive = false,
+  departureDate,
+  prevStop,
+  nextStop,
+  weather,
+} = Astro.props;
 
 function formatDate(dateStr?: string) {
   if (!dateStr) return '';
   return fmtDate(dateStr, { weekday: 'short', month: 'short', day: 'numeric' }) || dateStr;
 }
 
+function dateOnlyStampSource(dateStr?: string) {
+  if (!dateStr) return undefined;
+  const match = dateStr.match(/^(\d{4}-\d{2}-\d{2})/);
+  return match ? match[1] : dateStr;
+}
+
 function stampDate(dateStr?: string) {
-  if (!dateStr) return 'ON ROAD';
-  return fmtDate(dateStr, { month: 'short', day: 'numeric' }) || dateStr;
+  const normalized = dateOnlyStampSource(dateStr);
+  if (!normalized) return 'ON ROAD';
+  return fmtDate(normalized, { month: 'short', day: 'numeric' }) || normalized;
 }
 
 function stampYear(dateStr?: string) {
-  if (!dateStr) return '';
+  const normalized = dateOnlyStampSource(dateStr);
+  if (!normalized) return '';
   try {
-    return String(new Date(dateStr).getFullYear());
+    return normalized.slice(0, 4);
   } catch {
     return '';
   }
@@ -89,14 +115,16 @@ const primaryTitle = cityState?.label || stopTitle;
 const secondaryTitle = cityState ? stopTitle : placeName && placeName !== stopTitle ? placeName : '';
 const postmarkCity = cityState?.city || stopTitle;
 const postmarkState = cityState?.state || '';
+const postmarkLandmark = isLive ? (postmarkState || 'On the Road') : 'Last Stop';
+const postmarkDateSource = isLive ? arrivalDate : (departureDate || arrivalDate);
 ---
 
 <div class="current-airmail-frame" id="current-location">
   <article class="current-airmail-card">
     <div class="current-grid">
       <div class="current-copy">
-        <div class="current-status">
-          <span class="pulse-dot"></span>
+        <div class:list={['current-status', { 'current-status--past': !isLive }]}>
+          {isLive && <span class="pulse-dot"></span>}
           {label && <span class="eyebrow">{label}</span>}
         </div>
 
@@ -134,13 +162,13 @@ const postmarkState = cityState?.state || '';
         )}
       </div>
 
-      <div class="current-postmark" aria-label={`${primaryTitle} postmark`}>
+      <div class:list={['current-postmark', { 'current-postmark--past': !isLive }]} aria-label={`${primaryTitle} postmark`}>
         <Postmark
           city={postmarkCity}
           state={postmarkState}
-          date={stampDate(arrivalDate)}
-          year={stampYear(arrivalDate)}
-          landmark={postmarkState || 'On the Road'}
+          date={stampDate(postmarkDateSource)}
+          year={stampYear(postmarkDateSource)}
+          landmark={postmarkLandmark}
           size={126}
           rotate={-8}
         />
@@ -225,6 +253,14 @@ const postmarkState = cityState?.state || '';
     align-items: center;
     gap: 12px;
     margin-bottom: 14px;
+  }
+
+  .current-status--past .eyebrow {
+    color: color-mix(in srgb, var(--muted) 82%, var(--paper) 18%);
+  }
+
+  .current-postmark--past {
+    opacity: 0.72;
   }
 
   .current-title {
