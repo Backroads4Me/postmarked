@@ -7,7 +7,7 @@ need their boundaries pinned.
 import os
 import uuid
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, call, patch
 
 import pytest
 from fastapi import HTTPException
@@ -121,3 +121,79 @@ def test_sweep_leaves_recent_orphans_alone(tmp_path, monkeypatch):
     tasks.sweep_stale_media()
 
     assert os.path.exists(in_flight)
+
+
+def test_processing_claim_has_one_winner_for_concurrent_workers():
+    from app import tasks
+
+    asset_id = uuid.uuid4()
+    first = MagicMock()
+    first.scalar_one_or_none.return_value = asset_id
+    second = MagicMock()
+    second.scalar_one_or_none.return_value = None
+    db = MagicMock()
+    db.execute.side_effect = [first, second]
+    now = datetime.now(timezone.utc)
+
+    assert tasks._claim_media_asset(db, asset_id, now=now) is True
+    assert tasks._claim_media_asset(db, asset_id, now=now) is False
+    db.commit.assert_called_once()
+
+
+def test_processing_lock_blocks_a_second_worker(monkeypatch):
+    from app import tasks
+
+    asset_id = uuid.uuid4()
+    db = MagicMock()
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: db)
+    monkeypatch.setattr(tasks, "_acquire_media_lock", lambda _db, _asset_id: False)
+    claim = MagicMock()
+    monkeypatch.setattr(tasks, "_claim_media_asset", claim)
+
+    assert tasks.process_media_asset(str(asset_id)) == "Asset is already processing"
+    claim.assert_not_called()
+    db.get.assert_not_called()
+    db.close.assert_called_once()
+
+
+def test_completed_asset_is_not_reclaimed(monkeypatch):
+    from app import tasks
+
+    asset_id = uuid.uuid4()
+    db = MagicMock()
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: db)
+    monkeypatch.setattr(tasks, "_acquire_media_lock", lambda _db, _asset_id: True)
+    monkeypatch.setattr(tasks, "_claim_media_asset", lambda _db, _asset_id: False)
+    release = MagicMock()
+    monkeypatch.setattr(tasks, "_release_media_lock", release)
+
+    assert tasks.process_media_asset(str(asset_id)) == "Asset is not pending or recoverable"
+    db.get.assert_not_called()
+    release.assert_called_once_with(db, asset_id)
+
+
+def test_sweep_requeues_pending_and_expired_processing_assets(monkeypatch, tmp_path):
+    from app import tasks
+
+    monkeypatch.setattr(tasks, "ORIGINALS_PATH", str(tmp_path / "originals"))
+    monkeypatch.setattr(tasks, "DERIVATIVES_PATH", str(tmp_path / "derivatives"))
+    os.makedirs(tasks.ORIGINALS_PATH)
+    os.makedirs(tasks.DERIVATIVES_PATH)
+
+    queued_id = uuid.uuid4()
+    expired_id = uuid.uuid4()
+    queued = MagicMock(id=queued_id)
+    expired = MagicMock(id=expired_id)
+    stale_result = MagicMock()
+    stale_result.scalars.return_value.all.return_value = [queued, expired]
+    known_result = MagicMock()
+    known_result.all.return_value = [(queued_id,), (expired_id,)]
+    db = MagicMock()
+    db.execute.side_effect = [stale_result, known_result]
+    monkeypatch.setattr(tasks, "SessionLocal", lambda: db)
+
+    with patch.object(tasks.process_media_asset, "delay") as delay:
+        result = tasks.sweep_stale_media()
+
+    assert result == "Requeued 2 pending assets, removed 0 orphaned files"
+    assert delay.call_args_list == [call(str(queued_id)), call(str(expired_id))]

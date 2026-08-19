@@ -14,7 +14,7 @@ import blurhash
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
-from sqlalchemy import create_engine, select
+from sqlalchemy import and_, create_engine, or_, select, text, update
 from sqlalchemy.orm import sessionmaker
 
 from app.models.content import MediaAsset, Post, SiteTextSection, Stop
@@ -31,6 +31,10 @@ logger = logging.getLogger(__name__)
 # and the nightly backup.
 FFPROBE_TIMEOUT_SECONDS = int(os.getenv("FFPROBE_TIMEOUT_SECONDS", "60"))
 FFMPEG_TIMEOUT_SECONDS = int(os.getenv("FFMPEG_TIMEOUT_SECONDS", "3600"))
+MEDIA_PENDING_REQUEUE_SECONDS = int(os.getenv("MEDIA_PENDING_REQUEUE_SECONDS", "3600"))
+# Longer than the global Celery hard limit so an active task is never treated
+# as abandoned while it can still be running normally.
+MEDIA_PROCESSING_LEASE_SECONDS = int(os.getenv("MEDIA_PROCESSING_LEASE_SECONDS", "7200"))
 
 # Pillow warns but does not raise between 89M and 178M pixels. A 12000x12000 PNG
 # is ~150 KB on the wire and ~430 MB decoded, and the task holds several copies,
@@ -334,14 +338,71 @@ def _immutable_derivative(
     return final_path, f"/media/{asset_id}/{filename}"
 
 
+def _media_lock_key(asset_id: uuid.UUID) -> int:
+    """Map an asset UUID to PostgreSQL's signed 64-bit advisory-lock key."""
+    return int.from_bytes(asset_id.bytes[:8], byteorder="big", signed=True)
+
+
+def _acquire_media_lock(db, asset_id: uuid.UUID) -> bool:
+    result = db.execute(
+        text("SELECT pg_try_advisory_lock(:lock_key)"),
+        {"lock_key": _media_lock_key(asset_id)},
+    )
+    return bool(result.scalar_one())
+
+
+def _release_media_lock(db, asset_id: uuid.UUID) -> None:
+    db.execute(
+        text("SELECT pg_advisory_unlock(:lock_key)"),
+        {"lock_key": _media_lock_key(asset_id)},
+    )
+
+
+def _claim_media_asset(db, asset_id: uuid.UUID, *, now: datetime | None = None) -> bool:
+    """Atomically claim pending work or a processing lease that has expired."""
+    claimed_at = now or datetime.now(timezone.utc)
+    expired_before = claimed_at - timedelta(seconds=MEDIA_PROCESSING_LEASE_SECONDS)
+    result = db.execute(
+        update(MediaAsset)
+        .where(
+            MediaAsset.id == asset_id,
+            or_(
+                MediaAsset.processing_state == MediaProcessingState.PENDING,
+                and_(
+                    MediaAsset.processing_state == MediaProcessingState.PROCESSING,
+                    MediaAsset.updated_at < expired_before,
+                ),
+            ),
+        )
+        .values(
+            processing_state=MediaProcessingState.PROCESSING,
+            error_message=None,
+            updated_at=claimed_at,
+        )
+        .returning(MediaAsset.id)
+    )
+    claimed = result.scalar_one_or_none() is not None
+    if claimed:
+        db.commit()
+    return claimed
+
+
 @celery_app.task(name="process_media_asset")
 def process_media_asset(asset_id: str):
     """
     Background worker that hashes, thumbnails, and generates blurhash arrays.
     """
+    parsed_asset_id = uuid.UUID(asset_id)
     db = SessionLocal()
+    lock_acquired = False
     try:
-        asset = db.get(MediaAsset, uuid.UUID(asset_id))
+        lock_acquired = _acquire_media_lock(db, parsed_asset_id)
+        if not lock_acquired:
+            return "Asset is already processing"
+        if not _claim_media_asset(db, parsed_asset_id):
+            return "Asset is not pending or recoverable"
+
+        asset = db.get(MediaAsset, parsed_asset_id)
         if not asset:
             return "Asset not found"
 
@@ -489,6 +550,11 @@ def process_media_asset(asset_id: str):
         db.commit()
         delete_original_after_success(asset)
     finally:
+        if lock_acquired:
+            try:
+                _release_media_lock(db, parsed_asset_id)
+            except Exception:
+                logger.exception("Could not release processing lock for asset %s", parsed_asset_id)
         db.close()
 
 
@@ -831,14 +897,24 @@ def sweep_stale_media():
     worker killed mid-task, and tus uploads or derivative temp files abandoned
     with no row referencing them.
     """
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=1)
+    now = datetime.now(timezone.utc)
+    pending_cutoff = now - timedelta(seconds=MEDIA_PENDING_REQUEUE_SECONDS)
+    processing_cutoff = now - timedelta(seconds=MEDIA_PROCESSING_LEASE_SECONDS)
     requeued = 0
     db = SessionLocal()
     try:
         stale = db.execute(
             select(MediaAsset).where(
-                MediaAsset.processing_state == MediaProcessingState.PENDING,
-                MediaAsset.created_at < cutoff,
+                or_(
+                    and_(
+                        MediaAsset.processing_state == MediaProcessingState.PENDING,
+                        MediaAsset.updated_at < pending_cutoff,
+                    ),
+                    and_(
+                        MediaAsset.processing_state == MediaProcessingState.PROCESSING,
+                        MediaAsset.updated_at < processing_cutoff,
+                    ),
+                )
             )
         ).scalars().all()
         for asset in stale:
@@ -853,7 +929,7 @@ def sweep_stale_media():
         db.close()
 
     removed = 0
-    cutoff_ts = cutoff.timestamp()
+    cutoff_ts = pending_cutoff.timestamp()
     for directory, predicate in (
         (ORIGINALS_PATH, lambda n: n.endswith((".bin", ".json"))),
         (DERIVATIVES_PATH, lambda n: ".tmp" in n),
@@ -876,4 +952,3 @@ def sweep_stale_media():
                 logger.exception("Could not remove orphaned file %s", entry.path)
 
     return f"Requeued {requeued} pending assets, removed {removed} orphaned files"
-
