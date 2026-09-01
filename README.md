@@ -1,272 +1,82 @@
 # Postmarked
 
-Postmarked is a self-hosted digital postcard app. Replace the social media feed with a private, lightweight way to share travel photos, videos, and updates with family and friends. It works for road trips, long weekends, international travel, full-time travel, or any journey worth remembering.
+**Replace the social media feed with private, self-hosted digital postcards for
+the people you actually want to keep in the loop.**
 
-Postmarked is intentionally simple: run it, sign in, create a trip, post updates along the way, and let people follow along.
+[Website](https://postmarked.io/) · [Install](#install) ·
+[Operations guide](docs/operations.md) ·
+[Configuration guide](docs/configuration.md) ·
+[Report a problem](https://github.com/Backroads4Me/postmarked/issues/new) ·
+[Contribute](#contributing)
 
-## Features
+Postmarked is a lightweight travel journal for sharing photos, videos, stops,
+and updates with family and friends. It works for road trips, long weekends,
+international travel, full-time travel, and any journey worth remembering.
 
-- Trip pages, timeline, posts, photos, and videos.
-- Public/private visibility controls.
-- Subscriber email notifications for new posts.
-- Admin UI for trips, stops, posts, media, users, site text, and settings.
-- Customizable home page and section text via admin.
-- Current-stop weather on the home page, in Fahrenheit or Celsius.
-- Backup and instance migration.
-- RV Trip Wizard `.xlsx` import for RV travelers.
-- Optional privacy policy and terms pages via Markdown files.
-- Docker deployment.
+![Postmarked home page showing the latest trip and travel updates](screenshots/home.png)
+
+## Why Postmarked?
+
+- **Your trip, not an algorithm.** Visitors follow a chronological story
+  instead of a social feed designed to hold their attention.
+- **Public or private sharing.** Choose who can see each trip and let
+  subscribers receive email notifications when you post.
+- **Simple publishing.** Sign in, create a trip, add stops and updates, and let
+  people follow along.
+- **Self-hosted and portable.** Run Postmarked with Docker, keep control of the
+  data, and use the built-in export, restore, and migration tools.
+
+Postmarked also includes photo and video galleries, current-stop weather,
+customizable site text, user approval controls, optional single sign-on, and
+RV Trip Wizard import.
 
 ## Screenshots
 
-![Postmarked home page](screenshots/home.png)
-
-[Trip page](screenshots/trip.png) · [Gallery](screenshots/gallery.png) · [Post editor](screenshots/post-editor.png)
+[Trip page](screenshots/trip.png) · [Gallery](screenshots/gallery.png) ·
+[Post editor](screenshots/post-editor.png)
 
 ## Install
 
-Download the two files you need:
+Postmarked requires Docker with Compose. Download the Compose file and example
+environment:
 
 ```bash
 curl -fLO https://raw.githubusercontent.com/Backroads4Me/postmarked/main/compose.yaml
 curl -fLo .env https://raw.githubusercontent.com/Backroads4Me/postmarked/main/.env.example
 ```
 
-Edit `.env` and set production values for:
-
-- `SECRET_KEY`
-- `APP_BASE_URL`
-- `ADMIN_EMAIL`
-- `ADMIN_PASSWORD`
-- `POSTGRES_PASSWORD`
-
-Then start the stack:
+Edit `.env` and set production values for `SECRET_KEY`, `APP_BASE_URL`,
+`ADMIN_EMAIL`, `ADMIN_PASSWORD`, and `POSTGRES_PASSWORD`. Then start the stack:
 
 ```bash
 docker compose up -d
 ```
 
-Open the admin UI:
+Open `http://localhost:4321/admin` and sign in with the admin email and password
+from `.env`.
 
-```text
-http://localhost:4321/admin
-```
+## Documentation
 
-Sign in with `ADMIN_EMAIL` and `ADMIN_PASSWORD` from `.env`.
+- The [operations guide](docs/operations.md) covers storage, backups, restore,
+  upgrades, and Cloudflare cache rules.
+- The [configuration guide](docs/configuration.md) covers RV Trip Wizard
+  import, OpenID Connect, Google sign-in, and policy pages.
+- [`.env.example`](.env.example) documents the available deployment settings.
 
-## Storage
+## Contributing
 
-```env
-MEDIA_DIR=./data
-MAX_UPLOAD_FILE_MIB=500
-```
-
-`MAX_UPLOAD_FILE_MIB` is the per-file media upload limit, measured in MiB.
-The default is 500 MiB, which supports typical phone photos and short videos
-while still bounding disk and processing cost. Raise it for longer or 4K video
-uploads.
-
-| Subdirectory  | Contents                                                  | Back up?           |
-| ------------- | --------------------------------------------------------- | ------------------ |
-| `derivatives` | Processed media served to the site                        | **Yes**            |
-| `backups`     | Scheduled/on-demand `pg_dump` database dumps              | **Yes**            |
-| `originals`   | Source uploads (empty unless `MEDIA_KEEP_ORIGINALS=true`) | Optional           |
-| `db_data`     | **Live** PostgreSQL data directory                        | **No** — see below |
-
-For disaster recovery, copy `derivatives` and `backups` (and `originals` if you
-keep them). **Do not** file-copy the live `db_data` directory — it is mid-write
-and would produce a corrupt snapshot; the database is captured consistently by
-the `pg_dump` files in `backups` instead.
-
-<details>
-<summary><strong>Serving Behind Cloudflare</strong></summary>
-
-If you proxy Postmarked through Cloudflare, add these three **Cache Rules**
-(Caching → Cache Rules → Create rule). For each one, click **Edit expression**
-and paste the expression below verbatim, then set the listed cache options.
-Keep them in this order.
-
-**1. MP4** — bypass the edge cache so iOS/Safari range requests reach the origin
-(otherwise videos fail to play on iPhone while working on desktop).
-
-```
-(http.request.uri.path strict wildcard r"/media/*/*.mp4")
-```
-
-- Cache eligibility: **Bypass cache**
-
-**2. Images** — cache processed image derivatives at the edge (Postmarked serves
-them with one-year `immutable` headers).
-
-```
-(http.request.uri.path strict wildcard r"/media/*/*.webp") or (http.request.uri.path strict wildcard r"/media/*/*.avif") or (http.request.uri.path strict wildcard r"/media/*/*.jpg")
-```
-
-- Cache eligibility: **Eligible for cache**
-- Edge TTL: **Respect origin TTL**
-- Browser TTL: **Respect origin TTL**
-
-**3. Cache home + timeline** — edge-cache the two server-rendered pages for
-anonymous visitors so concurrent traffic is absorbed by the CDN instead of
-re-rendering at the origin. Authenticated admins (who carry the
-`postmarked_session` cookie) bypass the cache and always hit the origin.
-
-```
-(http.request.uri.path eq "/" or http.request.uri.path eq "/timeline") and not http.cookie contains "postmarked_session"
-```
-
-- Cache eligibility: **Eligible for cache**
-- Edge TTL: **Respect origin TTL**
-- Browser TTL: **Respect origin TTL**
-
-Rule 3 relies on the `Cache-Control: public, max-age=30, stale-while-revalidate=300`
-header Postmarked sends for these pages, so **Respect origin TTL** gives a 30s
-freshness window with background revalidation — new posts appear within ~30s.
-If your zone serves more than one hostname and you want the rule scoped to one,
-prepend `http.host eq "yourdomain.tld" and ` to the expression.
-
-After adding the rules, purge any already-cached MP4s (Caching → Purge) so
-stale responses are evicted.
-
-See Cloudflare's guide: <https://developers.cloudflare.com/cache/troubleshooting/mp4-videos-on-ios-and-safari/>
-
-Verify each rule with `curl -sI https://yourdomain.tld/ | grep -i cf-cache-status`
-(run twice — the second request should report `HIT`).
-
-</details>
-
-## Backup And Restore
-
-In the admin UI, use Backup to export or restore an instance. This is a
-**convenience tool** designed to backup small sites or to migrate a dev site to prod, not a true disaster-recovery system for a mature site (see below).
-
-- **Export** downloads a single ZIP containing all data and processed media derivatives. Original uploads are intentionally not included; derivatives are sufficient to serve the site.
-- **Restore** uploads a ZIP and **replaces** the current instance with its
-  contents. It replaces all data and media. Restore is destructive and has no preview step.
-- **Media size grows quickly.** The export ZIP embeds **ALL** processed media
-  derivatives, so it becomes impractically large as content accumulates. Export/Import
-  is best for initial setup, moving from dev to production, or restoring a small early
-  instance — not as a routine backup strategy for a mature library.
-
-### Disaster Recovery Backup
-
-For routine **disaster recovery**, the app writes a database dump to `${MEDIA_DIR}/backups` automatically:
-
-- A daily snapshot runs at `BACKUP_HOUR`:`BACKUP_MINUTE`
-  (server timezone), keeping the most recent `BACKUP_RETENTION` dumps.
-- The admin Backup page has a **Snapshot Database Now** button to trigger one
-  on demand.
-- These dumps are **DB-only**; pair them with a file-level copy of `derivatives`
-  (e.g. `rsync`/`restic`/`borg` to external storage) for a complete recovery
-  set.
-
-## Upgrades
-
-Pull the new images and recreate the stack:
-
-```bash
-docker compose pull && docker compose up -d
-```
-
-<details>
-<summary><strong>Database Collation And Index Integrity</strong></summary>
-
-Postgres sorts text using the system collation library, and its indexes are
-stored in that order. When a new database image ships a different glibc, the
-order can change and existing indexes go stale — a lookup walks to the wrong
-page and returns no rows. Nothing errors. The visible symptom is a published
-post that 404s on its own URL while still appearing in trip and stop listings,
-which looks like a stuck privacy setting.
-
-Postmarked checks for this on every start and rebuilds affected indexes before
-the app serves traffic, so a normal upgrade needs no action. Set
-`REINDEX_ON_COLLATION_CHANGE=false` to opt out on a large database where you
-would rather schedule the rebuild; the startup log then prints the SQL to run.
-
-To inspect the indexes directly — useful if content is missing and you want to
-confirm the cause:
-
-```bash
-./scripts/check-collation.sh
-```
-
-Add `--repair` to rebuild anything it flags.
-
-</details>
-
-## RV Trip Wizard Import
-
-In the admin UI, use the Import page to upload an RV Trip Wizard `.xlsx` export. Review the preview diff, then apply it.
-
-Imported stops are created as private drafts.
-
-<details>
-<summary><strong>OIDC / SSO Login</strong></summary>
-
-Postmarked supports optional generic OpenID Connect login alongside email/password authentication.
-
-1. Create an OAuth/OIDC client in your identity provider (Keycloak, Authentik, Azure AD, etc.).
-2. Set the redirect URI to `{APP_BASE_URL}/api/auth/oidc/callback` (exact match required).
-3. Enable the `openid` and `email` scopes (`profile` is recommended for display names).
-4. Add the OIDC variables to `.env` (see `.env.example`) and set `OIDC_ENABLED=true`.
-5. Restart the stack.
-
-Signed-in users can connect and disconnect an SSO identity from their account page. That is the recommended way to link an existing password account, because ownership is proved by the session rather than by an email address.
-
-`OIDC_ASSOCIATE_BY_EMAIL` links automatically instead, on first SSO sign-in, for any local account with a matching address. It defaults to `false` and should stay there unless registration is closed and your IdP verifies email addresses — Postmarked does not verify them itself, so an address can be claimed by someone who does not own it. If the provider explicitly reports an address as unverified, Postmarked refuses to link regardless.
-
-`OIDC_PROVIDER_NAME` is the label shown on login/register buttons and is safe to reword at any time. `OIDC_PROVIDER_KEY` is the stable identifier stored in `oauth_account.oauth_name`. Changing it after accounts are linked orphans those links, so set it once and leave it alone.
-
-Postmarked issues its own seven-day session cookie after a successful SSO login and does not re-check the provider afterwards. Disabling a user at the identity provider prevents future logins but does not end sessions already in progress; deactivate the user in the admin UI to cut off access immediately.
-
-### Sign in with Google
-
-Google is a standard OpenID Connect provider, so it works through the same settings with no Google-specific configuration.
-
-1. In the [Google Cloud Console](https://console.cloud.google.com/), create a project and open **APIs & Services → Credentials**.
-2. Configure the **OAuth consent screen**. Choose **External**, and supply your privacy policy and terms URLs — Postmarked serves these at `/privacy` and `/terms`.
-3. Create an **OAuth client ID** of type **Web application**.
-4. Add `{APP_BASE_URL}/api/auth/oidc/callback` as an authorized redirect URI (exact match required).
-5. Set `OIDC_DISCOVERY_URL=https://accounts.google.com/.well-known/openid-configuration`, along with the client ID and secret, in `.env`.
-6. Publish the consent screen. While it is in **Testing**, only accounts listed as test users can sign in, capped at 100.
-7. Restart the stack.
-
-Keeping the default `openid email profile` scopes stays within Google's non-sensitive scope tier, which does not require a verification review.
-
-Existing subscribers move to Google sign-in from their own account page: sign in with the password as usual, then use **Connect** under Single sign-on. Linking adds a sign-in method rather than replacing one, so the password keeps working, and disconnecting later asks for it to confirm there is still a way back in.
-
-Prefer this over `OIDC_ASSOCIATE_BY_EMAIL`. Postmarked has no email verification of its own, so anyone can register an account claiming an address they do not own; linking by email would then attach the real owner's Google identity to that account. Linking from the account page proves ownership with the session instead of trusting the address.
-
-Note that SSO signups follow the same approval rules as password signups. If `require_user_approval` is enabled, someone signing in with Google still lands in the pending queue rather than reaching the site.
-
-</details>
-
-<details>
-<summary><strong>Privacy Policy &amp; Terms of Service Pages</strong></summary>
-
-Postmarked ships built-in privacy and terms pages at `/privacy` and `/terms`. By default they show generic placeholder content. To customize them, place `privacy.md` and/or `terms.md` in your `MEDIA_DIR` on the host. They are picked up automatically — no extra configuration needed.
-
-See `privacy.md.example` and `terms.md.example` in the repo root for templates.
-
-To include a support contact email in the default built-in pages:
-
-```env
-SUPPORT_EMAIL=support@example.com
-```
-
-If unset, the contact section reads "contact the site administrator."
-
-</details>
+Bug reports, feature ideas, and pull requests are welcome. Use
+[GitHub Issues](https://github.com/Backroads4Me/postmarked/issues) to describe a
+problem or proposed behavior before starting a substantial change.
 
 ## License
 
-[AGPL v3](LICENSE)
+Postmarked is licensed under the [GNU Affero General Public License v3](LICENSE).
 
-## Support
+## Support the project
 
-Postmarked is free and open source.
-
-If it helped you share your travels, please star the repository so other self-hosters can find it.
+Postmarked is free and open source. If it helps you share your travels,
+starring the repository helps other self-hosters find it.
 
 [![Star Repository](https://img.shields.io/badge/%E2%AD%90%20Star%20this%20Repo-GitHub-lightgrey?logo=github&logoColor=black)](https://github.com/Backroads4Me/postmarked)
 [![GitHub Sponsors](https://img.shields.io/badge/Sponsor-GitHub-EA4AAA?logo=github-sponsors&logoColor=white)](https://github.com/sponsors/Backroads4Me)
