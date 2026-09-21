@@ -1,0 +1,62 @@
+---
+/**
+ * AuthToggle - equal-weight switch between the register and login pages.
+ * Each half is a plain link so both pages keep their own URL.
+ */
+interface Props {
+  active: 'register' | 'login';
+  registerHref: string;
+  loginHref: string;
+}
+
+const { active, registerHref, loginHref } = Astro.props;
+const options = [
+  { key: 'register', label: 'Create account', href: registerHref },
+  { key: 'login', label: 'Sign in', href: loginHref },
+];
+---
+
+<nav aria-label="Account" class="auth-toggle">
+  {options.map((option) => (
+    <a
+      href={option.href}
+      class:list={['auth-toggle-option', { active: option.key === active }]}
+      aria-current={option.key === active ? 'page' : undefined}
+    >
+      {option.label}
+    </a>
+  ))}
+</nav>
+
+<style>
+  .auth-toggle {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 2rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+  .auth-toggle-option {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0 8px;
+    white-space: nowrap;
+    border-radius: 999px;
+    font-size: var(--fs-sm);
+    font-weight: 500;
+    color: var(--muted);
+    transition: color 0.15s, background-color 0.15s;
+  }
+  .auth-toggle-option:hover {
+    color: var(--paper);
+  }
+  .auth-toggle-option.active {
+    background: var(--ember-glow);
+    color: var(--ember);
+    font-weight: 600;
+  }
+</style>

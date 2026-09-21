@@ -24,6 +24,11 @@ try {
   }
 } catch {}
 
+const onAuthPage = pathname.startsWith('/auth/');
+const loginHref = onAuthPage || pathname === '/'
+  ? '/auth/login'
+  : `/auth/login?next=${encodeURIComponent(pathname)}`;
+
 const navItems = [
   {
     href: '/',
@@ -73,7 +78,16 @@ function isActive(href: string) {
       <span class="text-ember font-semibold text-2xl font-display">Postmarked</span>
     </a>
     <div class="flex items-center gap-1">
-      {navItems.map(item => (
+      {navItems.map(item => (<>
+        {!isLoggedIn && item.href === '/auth/register' && (
+          <a
+            href={loginHref}
+            class:list={['nav-link', { active: isActive('/auth/login') }]}
+            style="flex-direction: row; padding: 8px 12px; font-size: var(--fs-xs);"
+          >
+            Sign in
+          </a>
+        )}
         <a
           href={item.href}
           class:list={['nav-link', { active: isActive(item.href) }]}
@@ -82,7 +96,7 @@ function isActive(href: string) {
           <span class="nav-symbol" set:html={item.icon}></span>
           <span>{item.label}</span>
         </a>
-      ))}
+      </>))}
       <SearchIsland client:load />
       <ThemeToggle class="theme-toggle--desktop" />
     </div>

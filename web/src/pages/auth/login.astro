@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import AuthToggle from '../../components/ui/AuthToggle.astro';
 import { apiUrl } from '../../lib/api.js';
 
 const nextPath = Astro.url.searchParams.get('next') || '/';
@@ -23,11 +24,13 @@ const errorMessages: Record<string, string> = {
 const errorMessage = errorCode ? errorMessages[errorCode] || errorMessages.oauth_failed : null;
 const safeNext = nextPath.startsWith('/') && !nextPath.startsWith('//') && nextPath[1] !== '\\' ? nextPath : '/';
 const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(safeNext)}`;
+const registerHref = safeNext === '/?subscribe=1' ? '/auth/register?subscribe=1' : '/auth/register';
 ---
 
 <Layout title="Login">
   <div class="frame min-h-screen flex items-center justify-center py-8">
     <div class="w-full max-w-sm bg-surface p-8 rounded-lg border border-line shadow-1">
+      <AuthToggle active="login" registerHref={registerHref} loginHref={Astro.url.pathname + Astro.url.search} />
       <div class="mb-8 text-center">
         <h1 class="display text-3xl mb-2">Welcome Back</h1>
         <p class="text-sm text-muted">Sign in to your account</p>
@@ -70,8 +73,6 @@ const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(safeNext)}`;
       </form>
 
       <div class="mt-6 text-center">
-        <a href="/auth/register" class="text-sm text-muted hover:text-ember transition-colors">Create an account</a>
-        <span class="text-sm text-muted px-2">·</span>
         <a href="/auth/forgot-password" class="text-sm text-muted hover:text-ember transition-colors">Forgot password?</a>
       </div>
     </div>

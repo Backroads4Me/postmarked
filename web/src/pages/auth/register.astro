@@ -1,5 +1,6 @@
 ---
 import Layout from '../../layouts/Layout.astro';
+import AuthToggle from '../../components/ui/AuthToggle.astro';
 import { apiUrl } from '../../lib/api.js';
 
 const isSubscribeIntent = Astro.url.searchParams.get('subscribe') === '1';
@@ -15,6 +16,7 @@ const oidcEnabled = config.oidc_enabled ?? false;
 const oidcProviderName = config.oidc_provider_name || 'SSO';
 const registerNext = isSubscribeIntent ? '/?subscribe=1' : '/';
 const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(registerNext)}`;
+const loginHref = isSubscribeIntent ? `/auth/login?next=${encodeURIComponent(registerNext)}` : '/auth/login';
 ---
 
 <Layout title="Register">
@@ -40,10 +42,10 @@ const ssoStartUrl = `/api/auth/oidc/start?next=${encodeURIComponent(registerNext
 
       <!-- Registration form -->
       <div id="form-panel">
+        <AuthToggle active="register" registerHref={Astro.url.pathname + Astro.url.search} loginHref={loginHref} />
         <div class="mb-8 text-center">
           <h1 class="display text-3xl mb-2">{isSubscribeIntent && email_enabled ? 'Subscribe to Updates' : 'Join Postmarked'}</h1>
-          {isSubscribeIntent && email_enabled && <p class="text-sm text-muted mb-3">Create an account and choose how you'd like to hear about updates.</p>}
-          <a href="/auth/login" class="text-sm text-muted hover:text-ember transition-colors">Already have an account? Sign in</a>
+          {isSubscribeIntent && email_enabled && <p class="text-sm text-muted">Create an account and choose how you'd like to hear about updates.</p>}
         </div>
 
         <div id="error-banner" class="alert alert-danger hidden mb-4"></div>
