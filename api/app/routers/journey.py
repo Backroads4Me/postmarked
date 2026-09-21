@@ -441,7 +441,11 @@ async def list_trip_segments(
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
 ):
-    trip_query = select(Trip).options(selectinload(Trip.cover_media)).order_by(Trip.start_date.asc())
+    trip_query = (
+        select(Trip)
+        .options(selectinload(Trip.cover_media))
+        .order_by(Trip.start_date.desc().nullslast())
+    )
     trip_query = _public_only(trip_query, Trip, user)
     trips = list((await session.execute(trip_query)).scalars().all())
 
