@@ -12,8 +12,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     import Uppy from '@uppy/core';
     import Dashboard from '@uppy/dashboard';
     import Tus from '@uppy/tus';
-    import '@uppy/core/dist/style.min.css';
-    import '@uppy/dashboard/dist/style.min.css';
+    import '@uppy/core/css/style.min.css';
+    import '@uppy/dashboard/css/style.min.css';
 
     const uppy = new Uppy({
       restrictions: {
@@ -33,8 +33,8 @@ import AdminLayout from '../../layouts/AdminLayout.astro';
     });
 
     uppy.on('complete', (result) => {
-      const succeeded = result.successful.length;
-      const failed = result.failed.length;
+      const succeeded = result.successful?.length ?? 0;
+      const failed = result.failed?.length ?? 0;
       if (failed > 0) {
         alert(`${succeeded} upload${succeeded === 1 ? '' : 's'} completed; ${failed} failed. Review the failed files and retry.`);
       } else if (succeeded > 0) {
