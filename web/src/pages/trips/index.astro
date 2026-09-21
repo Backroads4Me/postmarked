@@ -61,25 +61,30 @@ const headerText = sectionText(siteText, 'trips.header', {
           <a href={`/trips/${trip.slug}`} class="card group" id={`trip-${trip.slug}`}>
             <div class="flex flex-col md:flex-row md:items-baseline md:justify-between gap-1 md:gap-3 mb-3">
               <h2 class="display text-2xl group-hover:text-ember-2 transition-colors leading-tight">{trip.title}</h2>
-              {tripDateRange(trip) && (
-                <span class="shrink-0 display text-sm md:text-2xl text-muted">{tripDateRange(trip)}</span>
-              )}
+              <div class="flex items-center gap-2 shrink-0">
+                {!coverSrc(trip) && trip.stops_total > 0 && (
+                  <span class="badge badge-sm">{trip.stops_completed}/{trip.stops_total} stops</span>
+                )}
+                {tripDateRange(trip) && (
+                  <span class="display text-sm md:text-2xl text-muted">{tripDateRange(trip)}</span>
+                )}
+              </div>
             </div>
-            <div class="trip-cover-container relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft">
-              {coverSrc(trip) && (
+            {coverSrc(trip) && (
+              <div class="trip-cover-container relative bg-surface-2 rounded-lg overflow-hidden border border-line-soft">
                 <img
                   src={coverSrc(trip)}
                   alt={trip.cover_media?.alt_text || ''}
                   class="trip-cover-img w-full h-auto transition-transform duration-300 group-hover:scale-[1.03]"
                   loading="lazy"
                 />
-              )}
-              {trip.stops_total > 0 && (
-                <div class="absolute bottom-2 right-2">
-                  <span class="badge badge-sm">{trip.stops_completed}/{trip.stops_total} stops</span>
-                </div>
-              )}
-            </div>
+                {trip.stops_total > 0 && (
+                  <div class="absolute bottom-2 right-2">
+                    <span class="badge badge-sm">{trip.stops_completed}/{trip.stops_total} stops</span>
+                  </div>
+                )}
+              </div>
+            )}
             {trip.summary && (
               <p class="text-sm text-muted mt-3 line-clamp-2">{trip.summary}</p>
             )}
