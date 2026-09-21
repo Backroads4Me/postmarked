@@ -8,6 +8,9 @@ import node from '@astrojs/node';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
+  // Keep HTML whitespace rules: templates rely on line breaks between inline
+  // elements rendering as a space.
+  compressHTML: true,
   security: {
     checkOrigin: false
   },
@@ -21,6 +24,11 @@ export default defineConfig({
     bodySizeLimit: 5 * 1024 * 1024 * 1024,
   }),
   vite: {
+    // Pre-bundle React so the dev server never optimises it twice and serves
+    // islands two separate React copies.
+    optimizeDeps: {
+      include: ['react', 'react-dom', 'react-dom/client', 'react/jsx-runtime', 'react/jsx-dev-runtime'],
+    },
     server: {
       allowedHosts: ['werehere.app'],
       watch: {
