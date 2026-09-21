@@ -56,7 +56,13 @@ async def get_trip(
     user: User = Depends(current_admin_user),
 ):
     """Resolve one trip directly, instead of scanning the capped list."""
-    obj = await session.get(Trip, id)
+    # session.get() leaves cover_media unloaded; TripOut then triggers a lazy
+    # load during response serialization, which raises MissingGreenlet under
+    # asyncio whenever the trip actually has a cover.
+    result = await session.execute(
+        select(Trip).where(Trip.id == id).options(selectinload(Trip.cover_media))
+    )
+    obj = result.scalars().first()
     if not obj:
         raise HTTPException(status_code=404, detail="Trip not found")
     return obj

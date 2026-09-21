@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import selectinload
 from typing import List
 
 from app.db import get_async_session
@@ -107,7 +108,12 @@ async def get_stop(
     user: User = Depends(current_admin_user),
 ):
     """Resolve one stop directly, instead of scanning the capped list."""
-    obj = await session.get(Stop, id)
+    # StopOut carries cover_media, so a lazy-loaded relationship would be
+    # touched during response serialization and raise MissingGreenlet.
+    result = await session.execute(
+        select(Stop).where(Stop.id == id).options(selectinload(Stop.cover_media))
+    )
+    obj = result.scalars().first()
     if not obj:
         raise HTTPException(status_code=404, detail="Stop not found")
     return obj
@@ -160,7 +166,7 @@ async def update_stop_admin(
 
     await log_audit_event(session, user.id, "UPDATE", "Stop", stop.id, update_data)
     await session.commit()
-    await session.refresh(stop)
+    await session.refresh(stop, attribute_names=["cover_media"])
     return stop
 
 
