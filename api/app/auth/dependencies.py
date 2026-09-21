@@ -1,7 +1,8 @@
 from fastapi import Depends, HTTPException, status
-from app.models.enums import UserRole, ApprovalState
-from app.models.user import User
+
 from app.auth.auth_config import fastapi_users_app
+from app.models.enums import ApprovalState, UserRole
+from app.models.user import User
 
 # Deliberately no current_user() without active=True: it authenticates
 # accounts an admin has deactivated or rejected, and sits one character away

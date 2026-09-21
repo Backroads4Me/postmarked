@@ -41,6 +41,10 @@ dev = [
 line-length = 100
 target-version = "py312"
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI declares dependencies and parameters through default-argument calls.
+extend-immutable-calls = ["fastapi.Depends", "fastapi.File", "fastapi.Query"]
+
 [tool.ruff.lint.per-file-ignores]
 # Importing every model class is what registers it on Base.metadata, so
 # SQLAlchemy can resolve relationships and alembic autogenerate can see the
@@ -52,6 +56,8 @@ target-version = "py312"
 "app/main.py" = ["E402"]
 # register_heif_opener() must run before any code path decodes a HEIC file.
 "app/tasks.py" = ["E402"]
+# Pydantic copies field defaults per instance, so list defaults are safe.
+"app/schemas/*" = ["RUF012"]
 
 [tool.mypy]
 python_version = "3.12"

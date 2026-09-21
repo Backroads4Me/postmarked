@@ -1,14 +1,14 @@
-from typing import List
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload, with_loader_criteria
 
-from app.db import get_async_session
-from app.models.content import Trip, Stop
-from app.models.enums import StopStatus, TripStatus, Visibility
-from app.schemas.trip import TripOut, TripDetailOut
 from app.auth.auth_config import fastapi_users_app
+from app.db import get_async_session
+from app.models.content import Stop, Trip
+from app.models.enums import StopStatus, TripStatus, Visibility
+from app.schemas.trip import TripDetailOut, TripOut
 
 router = APIRouter(prefix="/trips", tags=["trips"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
@@ -22,7 +22,7 @@ def _public_trip_status_filter():
     return Trip.status == TripStatus.PUBLISHED
 
 
-@router.get("", response_model=List[TripOut])
+@router.get("", response_model=list[TripOut])
 async def list_trips(
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),

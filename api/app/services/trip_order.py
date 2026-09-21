@@ -1,11 +1,9 @@
 from collections import defaultdict
-from datetime import datetime
-from typing import Iterable, Optional, TypeVar
-
-T = TypeVar("T")
+from collections.abc import Iterable
+from datetime import UTC, datetime
 
 
-def trip_effective_start(trip, stops: Iterable) -> Optional[datetime]:
+def trip_effective_start(trip, stops: Iterable) -> datetime | None:
     """Start of the date range the trips page shows for a trip.
 
     Mirrors ``tripDateRange`` in web/src/pages/trips/index.astro: the trip's own
@@ -17,7 +15,7 @@ def trip_effective_start(trip, stops: Iterable) -> Optional[datetime]:
     return min(dates) if dates else None
 
 
-def order_trips_newest_first(trips: Iterable[T], stops: Iterable) -> list[tuple[T, list]]:
+def order_trips_newest_first[T](trips: Iterable[T], stops: Iterable) -> list[tuple[T, list]]:
     """Pair each trip with its stops, newest effective start first.
 
     Undated trips sort last; ties break on trip id so the order is stable.
@@ -29,7 +27,7 @@ def order_trips_newest_first(trips: Iterable[T], stops: Iterable) -> list[tuple[
     def key(pair):
         trip, trip_stops = pair
         start = trip_effective_start(trip, trip_stops)
-        return (start is not None, start or datetime.min, str(trip.id))
+        return (start is not None, start or datetime.min.replace(tzinfo=UTC), str(trip.id))
 
     pairs = [(trip, stops_by_trip[trip.id]) for trip in trips]
     return sorted(pairs, key=key, reverse=True)

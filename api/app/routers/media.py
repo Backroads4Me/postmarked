@@ -12,7 +12,6 @@ fetch from <img> / <video>). Cross-origin embeds are not supported in V1.
 import os
 import re
 import uuid
-from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse, RedirectResponse, Response, StreamingResponse
@@ -21,9 +20,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.auth.auth_config import fastapi_users_app
 from app.db import get_async_session
 from app.models.content import MediaAsset
-from app.services.media_storage import is_managed_media_path
 from app.models.enums import MediaKind, UserRole
-from app.services.visibility import effective_visibility, is_visible_to_user, resolve_media_parent_visibility
+from app.services.media_storage import is_managed_media_path
+from app.services.visibility import (
+    effective_visibility,
+    is_visible_to_user,
+    resolve_media_parent_visibility,
+)
 
 MEDIA_DIR = os.getenv("MEDIA_DIR", "/media")
 ORIGINALS_PATH = os.getenv("ORIGINALS_PATH", os.path.join(MEDIA_DIR, "originals"))
@@ -41,7 +44,7 @@ router = APIRouter(prefix="/media", tags=["media"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
 
 
-def _resolve_legacy_path(asset: MediaAsset, variant: str) -> Optional[tuple[str, str]]:
+def _resolve_legacy_path(asset: MediaAsset, variant: str) -> tuple[str, str] | None:
     """
     Map (asset, legacy variant name) to (filesystem_path, mime_type) or None.
     Used only for the legacy fallback when derivative_paths has no hashed entry.
@@ -76,7 +79,7 @@ def _resolve_legacy_path(asset: MediaAsset, variant: str) -> Optional[tuple[str,
     return None
 
 
-def _resolve_hashed_path(asset: MediaAsset, filename: str) -> Optional[tuple[str, str]]:
+def _resolve_hashed_path(asset: MediaAsset, filename: str) -> tuple[str, str] | None:
     """
     Map a hashed derivative filename to (filesystem_path, mime_type) or None.
     Only accepts filenames that exactly match a value in derivative_paths.
@@ -114,7 +117,7 @@ def _range_response(
     range_header: str,
     etag: str,
     cache_control: str,
-    cdn_cache_control: Optional[str] = None,
+    cdn_cache_control: str | None = None,
 ) -> Response:
     """Serve a byte range from disk. Standard `bytes=START-END` parsing."""
     file_size = os.path.getsize(path)
@@ -320,7 +323,7 @@ def _is_hashed_filename(filename: str) -> bool:
     return bool(_HASHED_FILENAME_RE.match(filename))
 
 
-def _find_hashed_url(asset: MediaAsset, variant: str) -> Optional[str]:
+def _find_hashed_url(asset: MediaAsset, variant: str) -> str | None:
     """
     Check if derivative_paths has a hashed URL for the given legacy variant name.
     Returns the hashed URL path (e.g. /media/{id}/mp4-a1b2c3d4.mp4) or None.

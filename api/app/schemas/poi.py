@@ -1,5 +1,4 @@
 import uuid
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -12,8 +11,8 @@ class POIOut(BaseResponse):
     stop_id: uuid.UUID
     label: str
     poi_type: POIType
-    notes: Optional[str] = None
-    google_maps_url: Optional[str] = None
+    notes: str | None = None
+    google_maps_url: str | None = None
     latitude: float
     longitude: float
 
@@ -21,16 +20,16 @@ class POIOut(BaseResponse):
 class POICreate(BaseModel):
     label: str = Field(min_length=1, max_length=200)
     poi_type: POIType = POIType.OTHER
-    notes: Optional[str] = Field(default=None, max_length=2000)
-    google_maps_url: Optional[str] = Field(default=None, max_length=500)
+    notes: str | None = Field(default=None, max_length=2000)
+    google_maps_url: str | None = Field(default=None, max_length=500)
     latitude: float
     longitude: float
 
 
 class POIUpdate(BaseModel):
-    label: Optional[str] = Field(default=None, min_length=1, max_length=200)
-    poi_type: Optional[POIType] = None
-    notes: Optional[str] = Field(default=None, max_length=2000)
-    google_maps_url: Optional[str] = Field(default=None, max_length=500)
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
+    label: str | None = Field(default=None, min_length=1, max_length=200)
+    poi_type: POIType | None = None
+    notes: str | None = Field(default=None, max_length=2000)
+    google_maps_url: str | None = Field(default=None, max_length=500)
+    latitude: float | None = None
+    longitude: float | None = None

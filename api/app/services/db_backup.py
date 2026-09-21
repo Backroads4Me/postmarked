@@ -8,7 +8,7 @@ data-only dump is sufficient and avoids PostGIS extension/schema drops.
 """
 import os
 import subprocess
-from datetime import datetime
+from datetime import UTC, datetime
 from urllib.parse import unquote, urlparse
 
 from app.services.media_storage import BACKUPS_PATH
@@ -51,7 +51,7 @@ def _dump_args() -> list[str]:
 def create_db_dump(dest_dir: str = BACKUPS_PATH) -> str:
     """Write a timestamped pg_dump archive into dest_dir; return its path."""
     os.makedirs(dest_dir, exist_ok=True)
-    stamp = datetime.utcnow().strftime("%Y%m%d-%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%d-%H%M%S")
     dest = os.path.join(dest_dir, f"{_DUMP_PREFIX}{stamp}{_DUMP_SUFFIX}")
     conn_args, env = pg_conn_args()
     try:
@@ -60,6 +60,7 @@ def create_db_dump(dest_dir: str = BACKUPS_PATH) -> str:
             env=env,
             capture_output=True,
             text=True,
+            check=False,
             timeout=PG_DUMP_TIMEOUT_SECONDS,
         )
     except subprocess.TimeoutExpired:

@@ -2,6 +2,7 @@ import ipaddress
 import logging
 import os
 import time
+from typing import ClassVar
 from urllib.parse import urlparse
 
 LOG_FORMAT = "%(asctime)s %(levelname)s [%(name)s] %(message)s"
@@ -25,6 +26,8 @@ class _HealthCheckFilter(logging.Filter):
 
 logging.getLogger("uvicorn.access").addFilter(_HealthCheckFilter())
 
+logger = logging.getLogger(__name__)
+
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.trustedhost import TrustedHostMiddleware
@@ -39,6 +42,7 @@ from app.routers import account, journey, media, search, site_text, social, stop
 from app.schemas.user import UserCreate, UserRead
 from app.services.mailer import is_email_configured
 from app.services.original_retention import cleanup_processed_originals
+
 
 def _env_list(var: str, default: str) -> list[str]:
     raw = os.getenv(var, default)
@@ -96,7 +100,7 @@ class SecurityHeadersMiddleware:
     'none' is an appropriate strict default.
     """
 
-    DEFAULT_HEADERS = {
+    DEFAULT_HEADERS: ClassVar[dict[str, str]] = {
         "strict-transport-security": "max-age=31536000; includeSubDomains",
         "x-content-type-options": "nosniff",
         "x-frame-options": "DENY",
@@ -159,13 +163,13 @@ class CsrfOriginMiddleware:
         blocked_detail = None
 
         if origin is not None and origin not in ALLOWED_ORIGINS:
-            logging.error("CSRF blocked: origin=%r, allowed=%s, path=%s", origin, ALLOWED_ORIGINS, path)
+            logger.error("CSRF blocked: origin=%r, allowed=%s, path=%s", origin, ALLOWED_ORIGINS, path)
             blocked_detail = f"Origin not allowed: {origin}"
         elif referer is not None:
             parsed = urlparse(referer)
             referer_origin = f"{parsed.scheme}://{parsed.netloc}"
             if referer_origin not in ALLOWED_ORIGINS:
-                logging.error("CSRF blocked: referer=%r, allowed=%s, path=%s", referer, ALLOWED_ORIGINS, path)
+                logger.error("CSRF blocked: referer=%r, allowed=%s, path=%s", referer, ALLOWED_ORIGINS, path)
                 blocked_detail = f"Referer not allowed: {referer_origin}"
 
         if blocked_detail is not None:
@@ -179,7 +183,7 @@ class CsrfOriginMiddleware:
 class RateLimitMiddleware:
     """Small in-process fixed-window limiter for public auth endpoints."""
 
-    LIMITS = {
+    LIMITS: ClassVar[dict[str, tuple[int, int]]] = {
         "/api/auth/jwt/login": (10, 60),
         "/api/auth/register": (5, 300),
         "/api/auth/forgot-password": (5, 300),
@@ -188,7 +192,9 @@ class RateLimitMiddleware:
     }
 
     # Limited paths reached by GET rather than POST.
-    GET_LIMITED_PATHS = {"/api/auth/oidc/start", "/api/auth/oidc/callback"}
+    GET_LIMITED_PATHS: ClassVar[frozenset[str]] = frozenset(
+        {"/api/auth/oidc/start", "/api/auth/oidc/callback"}
+    )
 
     def __init__(self, app):
         self.app = app
@@ -355,14 +361,32 @@ app.include_router(media.router)
 # Admin (mounted under /api/admin)
 from app.routers.admin import (
     backup as admin_backup,
+)
+from app.routers.admin import (
     imports as admin_imports,
+)
+from app.routers.admin import (
     media as admin_media,
+)
+from app.routers.admin import (
     pois as admin_pois,
+)
+from app.routers.admin import (
     posts as admin_posts,
+)
+from app.routers.admin import (
     site_config as admin_site_config,
-    stops as admin_stops,
+)
+from app.routers.admin import (
     site_text as admin_site_text,
+)
+from app.routers.admin import (
+    stops as admin_stops,
+)
+from app.routers.admin import (
     trips as admin_trips,
+)
+from app.routers.admin import (
     users as admin_users,
 )
 

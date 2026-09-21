@@ -1,21 +1,21 @@
 import uuid
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import delete, or_, select, update
-from sqlalchemy.orm import selectinload
-from typing import List
 
-from app.db import get_async_session
-from app.models.content import MediaAsset, Trip, Stop
-from app.schemas.trip import TripOut, TripCreate, TripUpdate
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import delete, or_, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.auth.dependencies import current_admin_user
+from app.db import get_async_session
+from app.models.content import MediaAsset, Stop, Trip
 from app.models.user import User
+from app.schemas.trip import TripCreate, TripOut, TripUpdate
 from app.services.audit import log_audit_event
 from app.services.media_storage import delete_media_asset_files
 
 router = APIRouter(prefix="/trips", tags=["admin-trips"])
 
-@router.get("", response_model=List[TripOut])
+@router.get("", response_model=list[TripOut])
 async def list_trips_admin(
     skip: int = 0,
     limit: int = 100,

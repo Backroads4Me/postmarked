@@ -1,18 +1,18 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, or_
-from typing import List
 
-from app.db import get_async_session
-from app.models.content import Trip, Stop
-from app.schemas.search import SearchResult
-from app.models.enums import StopStatus, TripStatus, Visibility
+from fastapi import APIRouter, Depends
+from sqlalchemy import or_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.auth.auth_config import fastapi_users_app
+from app.db import get_async_session
+from app.models.content import Stop, Trip
+from app.models.enums import StopStatus, TripStatus, Visibility
+from app.schemas.search import SearchResult
 
 router = APIRouter(prefix="/search", tags=["search"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
 
-@router.get("", response_model=List[SearchResult])
+@router.get("", response_model=list[SearchResult])
 async def global_search(
     q: str,
     session: AsyncSession = Depends(get_async_session),

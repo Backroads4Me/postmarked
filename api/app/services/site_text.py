@@ -1,7 +1,6 @@
 from app.models.content import SiteTextSection
 from app.schemas.site_text import SiteTextSectionOut
 
-
 DEFAULT_SITE_TEXT_SECTIONS = [
     {
         "page_key": "home",

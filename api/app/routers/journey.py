@@ -1,11 +1,9 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import redis.asyncio as aioredis
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, or_, select
@@ -35,7 +33,7 @@ logger = logging.getLogger(__name__)
 router = APIRouter(tags=["journey"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
 
-_redis_client: Optional[aioredis.Redis] = None
+_redis_client: aioredis.Redis | None = None
 
 
 def _apply_public_cache(response: Response, user) -> None:
@@ -57,7 +55,7 @@ def _redis() -> aioredis.Redis:
     return _redis_client
 
 
-async def _cached_weather_and_publish_coords(current_stop) -> Optional[dict]:
+async def _cached_weather_and_publish_coords(current_stop) -> dict | None:
     """Read cached weather and publish the current coords for the refresh task.
 
     Never makes an external call and never raises: if Redis is unavailable the
@@ -136,7 +134,7 @@ async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID
     return {row.id: (row.latitude, row.longitude) for row in result.all()}
 
 
-def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]], user) -> Optional[PublicStopSummary]:
+def _stop_out(stop: Stop | None, coords: dict[uuid.UUID, tuple[float, float]], user) -> PublicStopSummary | None:
     if not stop:
         return None
     if stop.status != StopStatus.PUBLISHED:
@@ -176,10 +174,10 @@ def _stop_out(stop: Optional[Stop], coords: dict[uuid.UUID, tuple[float, float]]
     )
 
 
-def _trip_summary_out(trip: Optional[Trip], stops: list[Stop], user=None) -> Optional[PublicTripSegmentSummary]:
+def _trip_summary_out(trip: Trip | None, stops: list[Stop], user=None) -> PublicTripSegmentSummary | None:
     if not trip:
         return None
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     dated_stops = [stop for stop in stops if stop.start_date]
     start_date = trip.start_date or (min((stop.start_date for stop in dated_stops), default=None))
     end_date = trip.end_date or (max(((stop.end_date or stop.start_date) for stop in dated_stops), default=None))
@@ -275,7 +273,7 @@ async def get_home(
     stops = list((await session.execute(stops_query)).scalars().all())
     coords = await _coordinates_for_stops(session, stops)
 
-    today = datetime.now(timezone.utc).date()
+    today = datetime.now(UTC).date()
     current_stop_model, current_stop_kind = select_home_stop(stops, today)
 
     current_stop = _stop_out(current_stop_model, coords, user)
@@ -334,7 +332,7 @@ async def get_home(
         active_trip = (await session.execute(trip_query)).scalars().first()
         active_trip_stops = [s for s in stops if active_trip and s.trip_id == active_trip.id]
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     upcoming_stop_models = sorted(
         [stop for stop in stops if stop.start_date > now],
         key=lambda stop: stop.start_date,
@@ -370,12 +368,12 @@ async def get_timeline(
     user=Depends(current_user_optional),
     limit: int = Query(default=30, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
-    trip_slug: Optional[str] = None,
+    trip_slug: str | None = None,
     include_future_stops: bool = Query(default=False),
 ):
     _apply_public_cache(response, user)
     fetch_window = limit + offset + 1
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     stops_query = (
         select(Stop)
@@ -472,7 +470,7 @@ async def get_trip_segment(
         raise HTTPException(status_code=404, detail="Trip segment not found")
 
     stops = sorted(
-        list(trip.stops),
+        trip.stops,
         key=lambda stop: (
             stop.start_date,
             stop.sort_order if stop.sort_order is not None else 999999,

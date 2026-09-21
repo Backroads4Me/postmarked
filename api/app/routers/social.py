@@ -5,7 +5,6 @@ All read and write paths enforce min(self, parent) visibility on the target.
 A target the caller cannot see returns 404 (not 403) to avoid leaking existence.
 """
 import uuid
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import func, select
@@ -18,12 +17,12 @@ from app.db import get_async_session
 from app.models.system import Comment, Like
 from app.models.user import User
 from app.schemas.social import COMMENT_BODY_MAX_LEN, CommentCreate, CommentOut, LikeToggle
-from app.tasks import dispatch_comment_notification, dispatch_like_notification
 from app.services.visibility import (
     ALLOWED_TARGET_KINDS,
     is_visible_to_user,
     load_target_with_visibility,
 )
+from app.tasks import dispatch_comment_notification, dispatch_like_notification
 
 router = APIRouter(prefix="/social", tags=["social"])
 current_user_optional = fastapi_users_app.current_user(optional=True, active=True)
@@ -54,7 +53,7 @@ def _sanitize_body(body: str) -> str:
     return body.strip()
 
 
-@router.get("/comments/{target_kind}/{target_id}", response_model=List[CommentOut])
+@router.get("/comments/{target_kind}/{target_id}", response_model=list[CommentOut])
 async def list_comments(
     target_kind: str,
     target_id: uuid.UUID,

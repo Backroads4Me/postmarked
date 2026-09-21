@@ -1,29 +1,31 @@
 """
 Admin import endpoints for RV Trip Wizard Excel import.
 """
-import os
-import uuid
 import hashlib
-import tempfile
+import os
 import re
-from datetime import date, datetime, time, timezone
-from typing import List
+import tempfile
+import uuid
+from datetime import UTC, date, datetime, time
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from geoalchemy2 import Geometry
 from sqlalchemy import cast, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db import get_async_session
 from app.auth.dependencies import current_admin_user
+from app.db import get_async_session
+from app.imports.matching import diff_import
+from app.imports.rv_trip_wizard import parse_excel
 from app.models.content import ImportRun, Stop, Trip
 from app.models.enums import StopStatus, TripStatus, Visibility
 from app.models.user import User
-from app.imports.rv_trip_wizard import parse_excel
-from app.imports.matching import diff_import
 from app.schemas.imports import (
-    ImportPreviewResponse, ImportDiffItem, ImportRunOut,
-    ImportApplyRequest, ImportApplyResponse,
+    ImportApplyRequest,
+    ImportApplyResponse,
+    ImportDiffItem,
+    ImportPreviewResponse,
+    ImportRunOut,
 )
 from app.services.audit import log_audit_event
 from app.services.timezone import timezone_for_coords
@@ -80,14 +82,14 @@ def _date_to_datetime(value) -> datetime:
     parsed = _parse_date(value)
     if not parsed:
         raise HTTPException(status_code=422, detail="Imported stop is missing an arrival date.")
-    return datetime.combine(parsed, time.min, tzinfo=timezone.utc)
+    return datetime.combine(parsed, time.min, tzinfo=UTC)
 
 
 def _optional_date_to_datetime(value):
     parsed = _parse_date(value)
     if not parsed:
         return None
-    return datetime.combine(parsed, time.min, tzinfo=timezone.utc)
+    return datetime.combine(parsed, time.min, tzinfo=UTC)
 
 
 def _stop_private_details(payload: dict) -> dict:
@@ -422,7 +424,7 @@ async def apply_import(
     )
 
 
-@router.get("", response_model=List[ImportRunOut])
+@router.get("", response_model=list[ImportRunOut])
 async def list_imports(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),

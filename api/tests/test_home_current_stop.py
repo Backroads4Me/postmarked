@@ -1,10 +1,16 @@
-from datetime import date, datetime, timezone
+from datetime import UTC, date, datetime
 from types import SimpleNamespace
 
 from app.services.current_stop import (
     contains_today as _contains_today,
+)
+from app.services.current_stop import (
     is_live_current_stop as _is_live_current_stop,
+)
+from app.services.current_stop import (
     select_home_stop,
+)
+from app.services.current_stop import (
     select_live_stop as _select_live_stop,
 )
 
@@ -12,8 +18,8 @@ from app.services.current_stop import (
 def _stop(*, start, end=None, is_current=False, stop_id="stop", sort_order=0):
     return SimpleNamespace(
         id=stop_id,
-        start_date=datetime.combine(start, datetime.min.time(), tzinfo=timezone.utc),
-        end_date=datetime.combine(end, datetime.min.time(), tzinfo=timezone.utc) if end else None,
+        start_date=datetime.combine(start, datetime.min.time(), tzinfo=UTC),
+        end_date=datetime.combine(end, datetime.min.time(), tzinfo=UTC) if end else None,
         is_current=is_current,
         sort_order=sort_order,
     )

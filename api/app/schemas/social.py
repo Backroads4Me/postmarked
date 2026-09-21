@@ -1,6 +1,5 @@
-from datetime import datetime
-from typing import Optional
 import uuid
+from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -37,7 +36,7 @@ class CommentOut(BaseModel):
     # Plain text only: clients/renderers must escape this value before HTML output.
     body: str
     author_id: uuid.UUID
-    author_display_name: Optional[str] = None
+    author_display_name: str | None = None
     created_at: datetime
     updated_at: datetime
 

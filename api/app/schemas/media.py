@@ -1,37 +1,37 @@
 import uuid
-from typing import Optional
 from datetime import datetime
 
-from app.schemas.common import BaseResponse
 from app.models.enums import MediaKind, MediaProcessingState, Visibility
+from app.schemas.common import BaseResponse
+
 
 class MediaAssetBase(BaseResponse):
     id: uuid.UUID
     kind: MediaKind
     processing_state: MediaProcessingState
-    error_message: Optional[str] = None
+    error_message: str | None = None
 
-    width: Optional[int] = None
-    height: Optional[int] = None
-    aspect_ratio: Optional[float] = None
-    duration_seconds: Optional[float] = None
-    dominant_color: Optional[str] = None
-    blurhash: Optional[str] = None
+    width: int | None = None
+    height: int | None = None
+    aspect_ratio: float | None = None
+    duration_seconds: float | None = None
+    dominant_color: str | None = None
+    blurhash: str | None = None
 
-    caption: Optional[str] = None
-    alt_text: Optional[str] = None
+    caption: str | None = None
+    alt_text: str | None = None
     visibility: Visibility
 
-    derivative_paths: Optional[dict] = dict()
+    derivative_paths: dict | None = {}
     featured: bool
     sort_order: int
 
-    original_filename: Optional[str] = None
+    original_filename: str | None = None
     created_at: datetime
 
-    stop_id: Optional[uuid.UUID] = None
-    post_id: Optional[uuid.UUID] = None
-    trip_id: Optional[uuid.UUID] = None
+    stop_id: uuid.UUID | None = None
+    post_id: uuid.UUID | None = None
+    trip_id: uuid.UUID | None = None
 
 class MediaAssetOut(MediaAssetBase):
     pass

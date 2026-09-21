@@ -1,12 +1,9 @@
 import uuid
-from typing import Optional
 
 from fastapi_users import schemas
 from pydantic import field_validator
 
-from app.models.enums import ApprovalState, UserRole
-from app.models.enums import NotificationFrequency
-
+from app.models.enums import ApprovalState, NotificationFrequency, UserRole
 
 PUBLIC_NOTIFICATION_FREQUENCIES = {
     NotificationFrequency.ALL_UPDATES,
@@ -15,16 +12,16 @@ PUBLIC_NOTIFICATION_FREQUENCIES = {
 
 
 class UserRead(schemas.BaseUser[uuid.UUID]):
-    display_name: Optional[str] = None
-    avatar_path: Optional[str] = None
+    display_name: str | None = None
+    avatar_path: str | None = None
     role: UserRole
     approval_state: ApprovalState
 
 
 class UserCreate(schemas.BaseUserCreate):
-    display_name: Optional[str] = None
+    display_name: str | None = None
     email_opted_in: bool = False
-    notification_frequency: Optional[NotificationFrequency] = NotificationFrequency.ALL_UPDATES
+    notification_frequency: NotificationFrequency | None = NotificationFrequency.ALL_UPDATES
 
     @field_validator("notification_frequency")
     @classmethod
@@ -47,5 +44,5 @@ class UserCreate(schemas.BaseUserCreate):
 
 
 class UserUpdate(schemas.BaseUserUpdate):
-    display_name: Optional[str] = None
-    avatar_path: Optional[str] = None
+    display_name: str | None = None
+    avatar_path: str | None = None

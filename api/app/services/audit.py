@@ -1,7 +1,9 @@
 import uuid
 from datetime import date, datetime
 from enum import Enum
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.system import AuditLog
 
 
@@ -25,7 +27,7 @@ async def log_audit_event(
     action: str,
     entity_type: str,
     entity_id: uuid.UUID,
-    details: dict = None
+    details: dict | None = None
 ):
     audit = AuditLog(
         actor_id=user_id,

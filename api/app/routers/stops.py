@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from geoalchemy2 import Geometry
@@ -185,7 +185,7 @@ async def get_stop(
     if not user:
         siblings_query = siblings_query.where(Stop.visibility == Visibility.PUBLIC)
     sibling_rows = (await session.execute(siblings_query)).scalars().all()
-    live_stop = select_live_stop(sibling_rows, datetime.now(timezone.utc).date())
+    live_stop = select_live_stop(sibling_rows, datetime.now(UTC).date())
     prev_sib = None
     next_sib = None
     for i, row in enumerate(sibling_rows):

@@ -10,25 +10,26 @@ import shutil
 import tempfile
 import uuid
 import zipfile
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from enum import Enum
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
-from starlette.background import BackgroundTask
 from geoalchemy2 import WKTElement
 from geoalchemy2.types import Geography, Geometry
-from sqlalchemy import func, inspect as sa_inspect, text, update
+from sqlalchemy import func, text, update
+from sqlalchemy import inspect as sa_inspect
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette.background import BackgroundTask
 
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.user import User
+from app.routers.admin.media import ALLOWED_UPLOAD_MIME_TYPES
 from app.schemas.backup import BackupManifest, ImportResult
 from app.services.audit import log_audit_event
 from app.services.db_backup import create_db_dump, pg_conn_args
-from app.routers.admin.media import ALLOWED_UPLOAD_MIME_TYPES
 from app.services.media_storage import DERIVATIVES_PATH, ORIGINALS_PATH
 
 logger = logging.getLogger(__name__)
@@ -107,9 +108,8 @@ def _validate_archive(zf: zipfile.ZipFile) -> set[str]:
 
 def _load_json_member(zf: zipfile.ZipFile, name: str) -> Any:
     """Decode a validated JSON member without materializing a second byte copy."""
-    with zf.open(name) as raw:
-        with io.TextIOWrapper(raw, encoding="utf-8") as text_stream:
-            return json.load(text_stream)
+    with zf.open(name) as raw, io.TextIOWrapper(raw, encoding="utf-8") as text_stream:
+        return json.load(text_stream)
 
 
 def _stream_archive_member(zf: zipfile.ZipFile, name: str, destination) -> None:
@@ -250,7 +250,7 @@ _RESTORE_COUNT_TABLES = (
 )
 
 # Reverse-dependency order for TRUNCATE — CASCADE handles FK edges.
-_TRUNCATE_TABLES = ", ".join([
+_TRUNCATE_ORDER = (
     "audit_log",
     "notification_log",
     '"like"',
@@ -266,7 +266,8 @@ _TRUNCATE_TABLES = ", ".join([
     '"user"',
     "pre_approved_email",
     "site_config",
-])
+)
+_TRUNCATE_TABLES = ", ".join(_TRUNCATE_ORDER)
 
 
 @router.get("/export")
@@ -282,13 +283,14 @@ async def export_backup(
     `alembic upgrade head`, so a data-only dump is sufficient for migration.
     """
     from sqlalchemy import select
-    from app.models.content import MediaAsset, PointOfInterest, Post, Stop, SiteTextSection, Trip
-    from app.models.system import Comment, Like, PreApprovedEmail, SiteConfig
-    from app.models.user import NotificationPreference, User as UserModel
 
-    tmp = tempfile.NamedTemporaryFile(prefix="postmarked-backup-", suffix=".zip", delete=False)
-    tmp_path = tmp.name
-    tmp.close()
+    from app.models.content import MediaAsset, PointOfInterest, Post, SiteTextSection, Stop, Trip
+    from app.models.system import Comment, Like, PreApprovedEmail, SiteConfig
+    from app.models.user import NotificationPreference
+    from app.models.user import User as UserModel
+
+    tmp_fd, tmp_path = tempfile.mkstemp(prefix="postmarked-backup-", suffix=".zip")
+    os.close(tmp_fd)
     dump_fd, dump_path = tempfile.mkstemp(prefix="postmarked-db-", suffix=".dump")
     os.close(dump_fd)
     entity_counts: dict[str, int] = {}
@@ -370,13 +372,13 @@ async def export_backup(
                 "manifest.json",
                 BackupManifest(
                     app_version=_read_app_version(),
-                    created_at=datetime.utcnow(),
+                    created_at=datetime.now(UTC),
                     entity_counts=entity_counts,
                     format="pgdump",
                 ).model_dump_json(indent=2),
             )
 
-        date_str = datetime.utcnow().strftime("%Y-%m-%d")
+        date_str = datetime.now(UTC).strftime("%Y-%m-%d")
         filename = f"postmarked-backup-{date_str}.zip"
 
         await log_audit_event(session, user.id, "EXPORT_BACKUP", "backup", uuid.uuid4(), entity_counts)
@@ -489,7 +491,9 @@ async def import_backup(
 
                 try:
                     manifest = BackupManifest(**_load_json_member(zf, "manifest.json"))
-                except Exception:
+                # Any failure to read, decode, or validate the manifest means the
+                # archive is unusable, whatever the underlying error type.
+                except Exception:  # noqa: BLE001
                     raise HTTPException(status_code=400, detail="manifest.json is malformed.")
 
                 # Nothing below this point is reversible, so establish that the
@@ -569,9 +573,17 @@ async def import_backup(
                     await session.flush()
                     entity_counts[archive_name] = len(rows)
 
-                from app.models.content import MediaAsset, PointOfInterest, Post, Stop, SiteTextSection, Trip
+                from app.models.content import (
+                    MediaAsset,
+                    PointOfInterest,
+                    Post,
+                    SiteTextSection,
+                    Stop,
+                    Trip,
+                )
                 from app.models.system import Comment, Like, PreApprovedEmail, SiteConfig
-                from app.models.user import NotificationPreference, User as UserModel
+                from app.models.user import NotificationPreference
+                from app.models.user import User as UserModel
 
                 # Stash circular cover FKs; insert trips/stops without them first.
                 trip_rows = _load("trips")

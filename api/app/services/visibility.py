@@ -10,7 +10,6 @@ Rule: a public photo on a private stop is private. Deny returns 404
 from __future__ import annotations
 
 import uuid
-from typing import Optional, Tuple
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,9 +59,7 @@ def is_visible_to_user(entity_visibility, parent_visibility, user) -> bool:
     eff = effective_visibility(entity_visibility, parent_visibility)
     if eff == Visibility.PUBLIC.value:
         return True
-    if not user:
-        return False
-    return True
+    return bool(user)
 
 
 def is_ready_media_visible_to_user(asset, user) -> bool:
@@ -147,7 +144,7 @@ async def load_target_with_visibility(
     session: AsyncSession,
     target_kind: str,
     target_id: uuid.UUID,
-) -> Optional[Tuple[object, str]]:
+) -> tuple[object, str] | None:
     """
     Load a Comment/Like target by (kind, id) and return (target, effective_visibility_value).
     Returns None if the target does not exist or is not published in its parent chain.

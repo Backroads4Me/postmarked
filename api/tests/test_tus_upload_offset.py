@@ -92,7 +92,7 @@ async def test_resume_overwrites_a_stale_tail_instead_of_appending(upload):
 
 @pytest.mark.asyncio
 async def test_offset_beyond_what_is_on_disk_is_refused(upload):
-    file_id, info, binp = upload
+    file_id, info, _binp = upload
     info.write_text(json.dumps({"offset": 90, "upload_length": 100}))
     from fastapi import HTTPException
 

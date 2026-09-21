@@ -1,26 +1,26 @@
-import os
-import uuid
-import json
-import logging
+import asyncio
 import base64
 import hashlib
-from fastapi import APIRouter, Depends, Query, Request, Response, Header, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Optional, List
-
-from pydantic import BaseModel
+import json
+import logging
+import os
+import uuid
 from datetime import date as date_type
-from sqlalchemy import cast, func, select, Date
-from sqlalchemy.exc import IntegrityError
 
-from app.db import get_async_session
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request, Response, status
+from pydantic import BaseModel
+from sqlalchemy import Date, cast, func, select
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.auth.dependencies import current_admin_user
+from app.db import get_async_session
 from app.models.content import MediaAsset, Stop, Trip
 from app.models.enums import MediaKind, MediaProcessingState, Visibility
-from app.tasks import process_media_asset
 from app.schemas.media import MediaAssetOut
 from app.services.media_storage import delete_media_asset_files, is_managed_media_path
 from app.services.visibility import child_visibility_for_parent
+from app.tasks import process_media_asset
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +42,9 @@ def _unassigned_media_filter():
     )
 
 
-@router.get("", response_model=List[MediaAssetOut])
+@router.get("", response_model=list[MediaAssetOut])
 async def list_media_admin(
-    date: Optional[date_type] = Query(None),
+    date: date_type | None = Query(None),
     unassigned: bool = Query(False),
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_admin_user),
@@ -58,7 +58,7 @@ async def list_media_admin(
     return result.scalars().all()
 
 
-@router.get("/dates", response_model=List[str])
+@router.get("/dates", response_model=list[str])
 async def list_media_dates_admin(
     unassigned: bool = Query(False),
     session: AsyncSession = Depends(get_async_session),
@@ -72,7 +72,7 @@ async def list_media_dates_admin(
     return [row.isoformat() for row in result.scalars().all()]
 
 
-@router.get("/orphans", response_model=List[MediaAssetOut])
+@router.get("/orphans", response_model=list[MediaAssetOut])
 async def list_media_orphans_admin(
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_admin_user),
@@ -87,14 +87,14 @@ async def list_media_orphans_admin(
 
 
 class AssignMediaRequest(BaseModel):
-    media_ids: List[uuid.UUID]
+    media_ids: list[uuid.UUID]
     stop_id: uuid.UUID
-    visibility: Optional[Visibility] = None  # explicit override; default = inherit from trip
+    visibility: Visibility | None = None  # explicit override; default = inherit from trip
 
 
 class UpdateMediaRequest(BaseModel):
-    caption: Optional[str] = None
-    alt_text: Optional[str] = None
+    caption: str | None = None
+    alt_text: str | None = None
 
 
 @router.post("/assign", response_model=dict)
@@ -159,8 +159,9 @@ def get_metadata(req: Request) -> dict:
             if len(parts) == 2:
                 try:
                     metadata[parts[0]] = base64.b64decode(parts[1]).decode("utf-8")
-                except Exception:
-                    pass
+                except ValueError:
+                    # Malformed base64 or UTF-8: skip this pair, keep the rest.
+                    continue
     return metadata
 
 
@@ -212,9 +213,7 @@ async def create_upload(
         "offset": 0,
         "metadata": metadata,
     }
-    with open(os.path.join(ORIGINALS_PATH, f"{file_id}.json"), "w") as f:
-        json.dump(state, f)
-    open(os.path.join(ORIGINALS_PATH, f"{file_id}.bin"), "wb").close()
+    await asyncio.to_thread(_create_upload_files, str(file_id), state)
 
     headers = {
         "Tus-Resumable": TUS_VERSION,
@@ -231,8 +230,7 @@ async def head_upload(file_id: uuid.UUID, user=Depends(current_admin_user)):
     if not os.path.exists(info_path):
         raise HTTPException(status_code=404, detail="Upload not found")
 
-    with open(info_path, "r") as f:
-        state = json.load(f)
+    state = await asyncio.to_thread(_read_state, info_path)
 
     return Response(
         status_code=status.HTTP_200_OK,
@@ -244,6 +242,43 @@ async def head_upload(file_id: uuid.UUID, user=Depends(current_admin_user)):
             "Access-Control-Expose-Headers": "Tus-Resumable, Upload-Offset, Upload-Length",
         },
     )
+
+
+# Upload files are read and written in a worker thread so large chunks and
+# whole-file hashing never block the event loop.
+
+
+def _create_upload_files(file_id: str, state: dict) -> None:
+    _write_state(os.path.join(ORIGINALS_PATH, f"{file_id}.json"), state)
+    open(os.path.join(ORIGINALS_PATH, f"{file_id}.bin"), "wb").close()
+
+
+def _read_state(info_path: str) -> dict:
+    with open(info_path) as f:
+        return json.load(f)
+
+
+def _write_state(info_path: str, state: dict) -> None:
+    with open(info_path, "w") as f:
+        json.dump(state, f)
+
+
+def _open_for_resume(bin_path: str, on_disk: int, upload_offset: int):
+    # Write at the offset the client resumed from and drop anything a previous
+    # attempt left beyond it; appending would duplicate ranges and let the
+    # declared length be exceeded indefinitely.
+    f = open(bin_path, "r+b" if on_disk else "wb")  # noqa: SIM115 - closed by the caller
+    f.seek(upload_offset)
+    f.truncate()
+    return f
+
+
+def _sha256_file(path: str) -> str:
+    digest = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(64 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _cleanup_temp(file_id: str) -> None:
@@ -273,8 +308,7 @@ async def patch_upload(
     if not os.path.exists(info_path):
         raise HTTPException(status_code=404, detail="Upload not found")
 
-    with open(info_path, "r") as f:
-        state = json.load(f)
+    state = await asyncio.to_thread(_read_state, info_path)
 
     if state["offset"] != upload_offset:
         raise HTTPException(status_code=409, detail="Conflict in offset")
@@ -287,25 +321,22 @@ async def patch_upload(
 
     written = upload_offset
     try:
-        with open(bin_path, "r+b" if on_disk else "wb") as f:
-            # Write at the offset the client resumed from and drop anything a
-            # previous attempt left beyond it; appending would duplicate ranges
-            # and let the declared length be exceeded indefinitely.
-            f.seek(upload_offset)
-            f.truncate()
+        f = await asyncio.to_thread(_open_for_resume, bin_path, on_disk, upload_offset)
+        try:
             async for chunk in request.stream():
                 if written + len(chunk) > state["upload_length"]:
                     raise HTTPException(
                         status_code=413, detail="Upload exceeds declared length"
                     )
-                f.write(chunk)
+                await asyncio.to_thread(f.write, chunk)
                 written += len(chunk)
+        finally:
+            await asyncio.to_thread(f.close)
     finally:
         # Record what actually landed, on the failure path too, so the sidecar
         # and the file agree and the client can resume from the truth.
         state["offset"] = written
-        with open(info_path, "w") as f:
-            json.dump(state, f)
+        await asyncio.to_thread(_write_state, info_path, state)
 
     response_headers = {
         "Tus-Resumable": TUS_VERSION,
@@ -315,11 +346,7 @@ async def patch_upload(
     if state["offset"] >= state["upload_length"]:
         # T-007: dedup on SHA-256 before insert. If the file is already known,
         # discard the freshly uploaded bytes and return the existing asset id.
-        with open(bin_path, "rb") as uploaded:
-            digest = hashlib.sha256()
-            for chunk in iter(lambda: uploaded.read(64 * 1024), b""):
-                digest.update(chunk)
-            original_sha256 = digest.hexdigest()
+        original_sha256 = await asyncio.to_thread(_sha256_file, bin_path)
 
         existing_q = select(MediaAsset).where(MediaAsset.original_sha256 == original_sha256)
         existing = (await session.execute(existing_q)).scalar_one_or_none()

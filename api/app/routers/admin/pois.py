@@ -1,5 +1,4 @@
 import uuid
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from geoalchemy2 import Geometry
@@ -34,7 +33,7 @@ async def _poi_out(poi: PointOfInterest, session: AsyncSession) -> POIOut:
     )
 
 
-@router.get("/stops/{stop_id}/pois", response_model=List[POIOut])
+@router.get("/stops/{stop_id}/pois", response_model=list[POIOut])
 async def list_pois(
     stop_id: uuid.UUID,
     session: AsyncSession = Depends(get_async_session),

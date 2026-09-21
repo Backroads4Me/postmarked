@@ -6,15 +6,15 @@ from app.routers.admin.users import _summary_from
 
 
 def _user(**overrides):
-    base = dict(
-        id=uuid.uuid4(),
-        email="subscriber@example.com",
-        display_name="Subscriber",
-        approval_state=ApprovalState.APPROVED,
-        is_active=True,
-        role=UserRole.USER,
-        oauth_accounts=[],
-    )
+    base = {
+        "id": uuid.uuid4(),
+        "email": "subscriber@example.com",
+        "display_name": "Subscriber",
+        "approval_state": ApprovalState.APPROVED,
+        "is_active": True,
+        "role": UserRole.USER,
+        "oauth_accounts": [],
+    }
     base.update(overrides)
     return SimpleNamespace(**base)
 

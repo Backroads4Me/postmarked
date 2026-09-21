@@ -1,8 +1,7 @@
+from collections.abc import Iterable
 from datetime import date
-from typing import Iterable, Literal, TypeVar
+from typing import Literal
 
-
-StopT = TypeVar("StopT")
 HomeStopKind = Literal["live", "previous", "upcoming"]
 
 
@@ -35,7 +34,7 @@ def _selection_key(stop) -> tuple[date, int, str]:
     return start, sort_order, identity
 
 
-def select_live_stop(stops: Iterable[StopT], today: date) -> StopT | None:
+def select_live_stop[StopT](stops: Iterable[StopT], today: date) -> StopT | None:
     """Select one live stop, preferring an explicit marker before route order."""
     live = [stop for stop in stops if is_live_current_stop(stop, today)]
     explicit = [stop for stop in live if stop.is_current]
@@ -43,7 +42,7 @@ def select_live_stop(stops: Iterable[StopT], today: date) -> StopT | None:
     return max(candidates, key=_selection_key, default=None)
 
 
-def select_home_stop(
+def select_home_stop[StopT](
     stops: Iterable[StopT], today: date
 ) -> tuple[StopT | None, HomeStopKind | None]:
     """Select the home card's live, previous, or upcoming stop."""

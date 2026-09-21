@@ -119,7 +119,7 @@ def test_safe_next_path(raw, expected):
 
 @pytest.mark.asyncio
 async def test_ensure_oidc_client_skips_when_disabled(monkeypatch):
-    import app.auth.oidc_router as oidc_router
+    from app.auth import oidc_router
 
     monkeypatch.setattr(oidc_router, "_settings", MagicMock(enabled=False))
     monkeypatch.setattr(oidc_router, "_oidc_client", None)
@@ -132,7 +132,7 @@ async def test_ensure_oidc_client_skips_when_disabled(monkeypatch):
 @pytest.mark.asyncio
 async def test_failed_discovery_is_not_retried_on_every_request(monkeypatch):
     """A dead IdP must cost one fetch per interval, not one per request."""
-    import app.auth.oidc_router as oidc_router
+    from app.auth import oidc_router
 
     monkeypatch.setattr(oidc_router, "_settings", MagicMock(enabled=True))
     monkeypatch.setattr(oidc_router, "_oidc_client", None)
@@ -341,10 +341,10 @@ async def test_oidc_callback_pending_user_redirects_without_session(monkeypatch)
     """Inactive SSO users must not receive postmarked_session."""
     from fastapi import FastAPI
     from fastapi.responses import RedirectResponse
+    from fastapi_users.router.oauth import CSRF_TOKEN_COOKIE_NAME, CSRF_TOKEN_KEY
     from httpx import ASGITransport, AsyncClient
 
-    import app.auth.oidc_router as oidc_router
-    from fastapi_users.router.oauth import CSRF_TOKEN_COOKIE_NAME, CSRF_TOKEN_KEY
+    from app.auth import oidc_router
 
     inactive = MagicMock()
     inactive.is_active = False

@@ -1,9 +1,8 @@
+import logging
 import os
 import uuid
-import logging
 from html import escape
 from urllib.parse import quote
-from typing import Optional
 
 from fastapi import Depends, Request
 from fastapi_users import BaseUserManager, FastAPIUsers, UUIDIDMixin
@@ -14,7 +13,6 @@ from fastapi_users.authentication import (
 )
 from fastapi_users.exceptions import UserNotExists
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -28,7 +26,7 @@ from app.services.mailer import enqueue_admin_emails, send_email
 
 logger = logging.getLogger(__name__)
 
-from app.config import APP_ENV, SECRET  # noqa: E402
+from app.config import APP_ENV, SECRET
 
 # Cookie security flags. Secure=True requires HTTPS; in local dev we serve HTTP so we relax it.
 _COOKIE_SECURE = APP_ENV != "dev"
@@ -93,7 +91,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
-    async def create(self, user_create, safe: bool = False, request: Optional[Request] = None):
+    async def create(self, user_create, safe: bool = False, request: Request | None = None):
         email_opted_in = bool(getattr(user_create, "email_opted_in", False))
         frequency = getattr(user_create, "notification_frequency", None) or NotificationFrequency.ALL_UPDATES
 
@@ -171,7 +169,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
             await session.refresh(user)
         return user
 
-    async def on_after_register(self, user: User, request: Optional[Request] = None):
+    async def on_after_register(self, user: User, request: Request | None = None):
         logger.info("User %s has registered.", user.id)
         base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
         approval_url = f"{base_url}/admin/users"
@@ -210,7 +208,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         enqueue_admin_emails([a.email for a in admins], subject, text, html)
 
     async def on_after_forgot_password(
-        self, user: User, token: str, request: Optional[Request] = None
+        self, user: User, token: str, request: Request | None = None
     ):
         logger.info("Password reset requested for user %s.", user.id)
         base_url = os.getenv("APP_BASE_URL", "http://localhost:4321").rstrip("/")
@@ -231,7 +229,7 @@ class UserManager(UUIDIDMixin, BaseUserManager[User, uuid.UUID]):
         )
 
     async def on_after_request_verify(
-        self, user: User, token: str, request: Optional[Request] = None
+        self, user: User, token: str, request: Request | None = None
     ):
         logger.info("Verification requested for user %s.", user.id)
 

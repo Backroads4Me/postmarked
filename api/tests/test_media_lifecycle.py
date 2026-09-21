@@ -6,7 +6,7 @@ need their boundaries pinned.
 
 import os
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from unittest.mock import MagicMock, call, patch
 
 import pytest
@@ -80,7 +80,7 @@ def test_sweep_keeps_artifacts_belonging_to_a_known_asset(tmp_path, monkeypatch)
     os.makedirs(tasks.DERIVATIVES_PATH)
 
     live_id = uuid.uuid4()
-    old = (datetime.now(timezone.utc) - timedelta(days=2)).timestamp()
+    old = (datetime.now(UTC) - timedelta(days=2)).timestamp()
 
     live = os.path.join(tasks.ORIGINALS_PATH, f"{live_id}.bin")
     live_info = os.path.join(tasks.ORIGINALS_PATH, f"{live_id}.json")
@@ -130,7 +130,7 @@ def _write_tus_upload(directory, file_id, state, content, age):
     binary = directory / f"{file_id}.bin"
     info.write_text(state)
     binary.write_bytes(content)
-    modified = (datetime.now(timezone.utc) - age).timestamp()
+    modified = (datetime.now(UTC) - age).timestamp()
     os.utime(info, (modified, modified))
     os.utime(binary, (modified, modified))
     return info, binary
@@ -223,7 +223,7 @@ def test_processing_claim_has_one_winner_for_concurrent_workers():
     second.scalar_one_or_none.return_value = None
     db = MagicMock()
     db.execute.side_effect = [first, second]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     assert tasks._claim_media_asset(db, asset_id, now=now) is True
     assert tasks._claim_media_asset(db, asset_id, now=now) is False
@@ -240,7 +240,7 @@ def test_stale_requeue_lease_has_one_winner_for_concurrent_sweeps():
     second.scalars.return_value.all.return_value = []
     db = MagicMock()
     db.execute.side_effect = [first, second]
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     assert tasks._lease_stale_media_requeues(db, now=now) == [asset_id]
     assert tasks._lease_stale_media_requeues(db, now=now) == []

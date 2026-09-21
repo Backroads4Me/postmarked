@@ -1,17 +1,17 @@
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from typing import List
 
+from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
 from app.models.content import Stop, Trip
 from app.models.enums import Visibility
-from app.schemas.stop import StopOut, StopBulkUpdate, StopCreate, StopUpdate
-from app.auth.dependencies import current_admin_user
 from app.models.user import User
+from app.schemas.stop import StopBulkUpdate, StopCreate, StopOut, StopUpdate
 from app.services.audit import log_audit_event
 from app.services.timezone import timezone_for_coords
 from app.services.visibility import assert_child_visibility_allowed, child_visibility_for_parent
@@ -19,7 +19,7 @@ from app.services.visibility import assert_child_visibility_allowed, child_visib
 router = APIRouter(prefix="/stops", tags=["admin-stops"])
 
 
-@router.get("", response_model=List[StopOut])
+@router.get("", response_model=list[StopOut])
 async def list_stops_admin(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user)

@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import Any, Literal, Optional
+from typing import Any, Literal
 
 import httpx
 
@@ -77,7 +77,7 @@ def _fahrenheit_to_unit(temp_f: Any, unit: str, default: int = 0) -> int:
     return _round(fahrenheit, default)
 
 
-def _fetch_open_meteo(lat: float, lon: float) -> Optional[dict]:
+def _fetch_open_meteo(lat: float, lon: float) -> dict | None:
     unit = weather_temperature_unit()
     url = (
         "https://api.open-meteo.com/v1/forecast"
@@ -122,7 +122,7 @@ def _fetch_open_meteo(lat: float, lon: float) -> Optional[dict]:
     }
 
 
-def _fetch_nws(lat: float, lon: float) -> Optional[dict]:
+def _fetch_nws(lat: float, lon: float) -> dict | None:
     headers = {"User-Agent": _NWS_USER_AGENT}
     unit = weather_temperature_unit()
     try:
@@ -176,7 +176,7 @@ def _fetch_nws(lat: float, lon: float) -> Optional[dict]:
     }
 
 
-def _weekday(date_str: Optional[str]) -> str:
+def _weekday(date_str: str | None) -> str:
     from datetime import datetime
 
     if not date_str:
@@ -187,18 +187,18 @@ def _weekday(date_str: Optional[str]) -> str:
         return ""
 
 
-def _weekday_iso(iso_str: Optional[str]) -> str:
+def _weekday_iso(iso_str: str | None) -> str:
     from datetime import datetime
 
     if not iso_str:
         return ""
     try:
-        return datetime.fromisoformat(iso_str.replace("Z", "+00:00")).strftime("%a")
+        return datetime.fromisoformat(iso_str).strftime("%a")
     except ValueError:
         return ""
 
 
-def fetch_weather(lat: float, lon: float) -> Optional[dict]:
+def fetch_weather(lat: float, lon: float) -> dict | None:
     """Fetch weather for a coordinate, Open-Meteo first with NWS as fallback."""
     result = _fetch_open_meteo(lat, lon) or _fetch_nws(lat, lon)
     if result:

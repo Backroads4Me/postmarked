@@ -1,5 +1,4 @@
 import uuid
-from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
@@ -19,7 +18,7 @@ router = APIRouter(prefix="/users", tags=["admin-users"])
 class UserSummary(BaseModel):
     id: uuid.UUID
     email: str
-    display_name: Optional[str]
+    display_name: str | None
     approval_state: ApprovalState
     is_active: bool
     role: str
@@ -35,10 +34,10 @@ class NotificationPreferenceUpdate(BaseModel):
 
 class AdminProfileUpdate(BaseModel):
     email: EmailStr
-    display_name: Optional[str] = Field(default=None, max_length=200)
+    display_name: str | None = Field(default=None, max_length=200)
 
 
-def _summary_from(user: User, preference: Optional[NotificationPreference]) -> UserSummary:
+def _summary_from(user: User, preference: NotificationPreference | None) -> UserSummary:
     """Build a summary from an already-loaded preference, which may not exist yet."""
     return UserSummary(
         id=user.id,
@@ -60,9 +59,9 @@ async def _summary(session: AsyncSession, user: User) -> UserSummary:
     return _summary_from(user, preference)
 
 
-@router.get("", response_model=List[UserSummary])
+@router.get("", response_model=list[UserSummary])
 async def list_users(
-    status: Optional[str] = None,
+    status: str | None = None,
     session: AsyncSession = Depends(get_async_session),
     _admin=Depends(current_admin_user),
 ):

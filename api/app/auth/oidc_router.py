@@ -1,9 +1,9 @@
 import asyncio
+import logging
 import os
 import secrets
 import time
 import uuid
-import logging
 from urllib.parse import urlencode
 
 import jwt
@@ -30,8 +30,8 @@ from app.auth.auth_config import (
     fastapi_users_app,
     get_user_manager,
 )
-from app.config import APP_ENV
 from app.auth.oidc import OIDC_CALLBACK_URL, get_oidc_client, load_oidc_settings
+from app.config import APP_ENV
 from app.models.user import User
 
 logger = logging.getLogger(__name__)

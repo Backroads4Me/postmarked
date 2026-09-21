@@ -1,11 +1,11 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 
 from app.services.trip_order import order_trips_newest_first
 
 
 def _dt(year, month, day):
-    return datetime(year, month, day, tzinfo=timezone.utc)
+    return datetime(year, month, day, tzinfo=UTC)
 
 
 def _trip(trip_id, start=None, end=None):
@@ -60,6 +60,6 @@ def test_each_trip_is_paired_with_only_its_stops():
     trips = [_trip("t1"), _trip("t2")]
     s1, s2 = _stop("t1", _dt(2026, 1, 1)), _stop("t2", _dt(2026, 2, 1))
 
-    pairs = dict((trip.id, stops) for trip, stops in order_trips_newest_first(trips, [s1, s2]))
+    pairs = {trip.id: stops for trip, stops in order_trips_newest_first(trips, [s1, s2])}
 
     assert pairs == {"t1": [s1], "t2": [s2]}

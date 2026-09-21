@@ -1,5 +1,6 @@
 import enum
 
+
 class Visibility(str, enum.Enum):
     PUBLIC = "public"
     PRIVATE = "private"

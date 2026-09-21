@@ -1,5 +1,4 @@
 import uuid
-from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, EmailStr
@@ -29,7 +28,7 @@ class PreApprovedEmailOut(BaseModel):
 
 
 class PreApprovedEmailsIn(BaseModel):
-    emails: List[EmailStr]
+    emails: list[EmailStr]
 
 
 async def _get_or_create_site_config(session: AsyncSession) -> SiteConfig:
@@ -65,7 +64,7 @@ async def update_site_config(
     return config
 
 
-@router.get("/pre-approved-emails", response_model=List[PreApprovedEmailOut])
+@router.get("/pre-approved-emails", response_model=list[PreApprovedEmailOut])
 async def list_pre_approved_emails(
     session: AsyncSession = Depends(get_async_session),
     _admin=Depends(current_admin_user),
@@ -74,7 +73,7 @@ async def list_pre_approved_emails(
     return rows
 
 
-@router.post("/pre-approved-emails", response_model=List[PreApprovedEmailOut])
+@router.post("/pre-approved-emails", response_model=list[PreApprovedEmailOut])
 async def add_pre_approved_emails(
     payload: PreApprovedEmailsIn,
     session: AsyncSession = Depends(get_async_session),

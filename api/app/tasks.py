@@ -1,24 +1,34 @@
 import hashlib
-import os
-import uuid
-import logging
 import json
+import logging
+import os
 import re
+import subprocess
+import uuid
+from datetime import UTC, datetime, timedelta
 from html import escape
+
+import blurhash
 from celery import Celery
 from celery.schedules import crontab
-import subprocess
-from datetime import datetime, timedelta, timezone
 from PIL import Image
-import blurhash
 from pillow_heif import register_heif_opener
 
 register_heif_opener()
 from sqlalchemy import and_, create_engine, or_, select, text, update
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import selectinload, sessionmaker
 
 from app.models.content import MediaAsset, Post, SiteTextSection, Stop
-from app.models.enums import ApprovalState, MediaKind, MediaProcessingState, NotificationFrequency, PostStatus, StopStatus, UserRole, Visibility
+from app.models.enums import (
+    ApprovalState,
+    MediaKind,
+    MediaProcessingState,
+    NotificationFrequency,
+    PostStatus,
+    StopStatus,
+    UserRole,
+    Visibility,
+)
 from app.models.system import NotificationLog
 from app.models.user import NotificationPreference, User
 from app.services.mailer import send_email
@@ -134,7 +144,7 @@ def _record_notification(db, user_id, kind: str, payload: dict, sent: bool, erro
             user_id=user_id,
             kind=kind,
             payload=payload,
-            sent_at=datetime.now(timezone.utc) if sent else None,
+            sent_at=datetime.now(UTC) if sent else None,
             delivery_status="sent" if sent else "skipped",
             error_message=error_message,
         )
@@ -227,7 +237,8 @@ def _dms_to_decimal(dms, ref) -> float | None:
         if ref in ("S", "W"):
             decimal = -decimal
         return decimal
-    except Exception:
+    except (TypeError, ValueError, IndexError, ZeroDivisionError):
+        # Malformed or truncated GPS tags: treat the location as unknown.
         return None
 
 
@@ -362,7 +373,7 @@ def _release_media_lock(db, asset_id: uuid.UUID) -> None:
 
 def _claim_media_asset(db, asset_id: uuid.UUID, *, now: datetime | None = None) -> bool:
     """Atomically claim pending work or a processing lease that has expired."""
-    claimed_at = now or datetime.now(timezone.utc)
+    claimed_at = now or datetime.now(UTC)
     expired_before = claimed_at - timedelta(seconds=MEDIA_PROCESSING_LEASE_SECONDS)
     result = db.execute(
         update(MediaAsset)
@@ -547,13 +558,10 @@ def process_media_asset(asset_id: str):
 
                         gps_info = exif.get_ifd(0x8825)  # GPSInfo IFD
                         if gps_info:
-                            try:
-                                lat = _dms_to_decimal(gps_info.get(2), gps_info.get(1))
-                                lon = _dms_to_decimal(gps_info.get(4), gps_info.get(3))
-                                if lat is not None and lon is not None:
-                                    asset.gps_location = f"POINT({lon} {lat})"
-                            except Exception:
-                                pass
+                            lat = _dms_to_decimal(gps_info.get(2), gps_info.get(1))
+                            lon = _dms_to_decimal(gps_info.get(4), gps_info.get(3))
+                            if lat is not None and lon is not None:
+                                asset.gps_location = f"POINT({lon} {lat})"
 
                     asset.width = img.width
                     asset.height = img.height
@@ -693,8 +701,7 @@ def dispatch_post_notification(post_id: str):
             logger.warning("[notify] Post %s not found or not published — skipping", post_id)
             return "Post is not published"
 
-        post.trip
-        post.stop
+        db.refresh(post, attribute_names=["trip", "stop"])
         subject, text, html = _post_email_bodies(post, db)
         recipients = _approved_notification_users(db, NotificationFrequency.ALL_UPDATES)
         logger.info("[notify] Found %d approved ALL_UPDATES subscriber(s) for post %s", len(recipients), post_id)
@@ -935,7 +942,7 @@ def refresh_weather():
 def dispatch_weekly_digest():
     db = SessionLocal()
     try:
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         since = now - timedelta(days=7)
         posts = (
             db.execute(
@@ -945,6 +952,7 @@ def dispatch_weekly_digest():
                     Post.posted_at >= since,
                     Post.posted_at < now,
                 )
+                .options(selectinload(Post.trip), selectinload(Post.stop))
                 .order_by(Post.posted_at.asc())
             )
             .scalars()
@@ -953,10 +961,6 @@ def dispatch_weekly_digest():
         if not posts:
             logger.info("[digest] No public posts found for weekly digest window")
             return "No posts"
-
-        for post in posts:
-            post.trip
-            post.stop
 
         kind = f"weekly_digest:{since.date().isoformat()}:{now.date().isoformat()}"
         sent_count = 0
@@ -1004,7 +1008,7 @@ def sweep_stale_media():
     worker killed mid-task, and tus uploads or derivative temp files abandoned
     with no row referencing them.
     """
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     pending_cutoff = now - timedelta(seconds=MEDIA_PENDING_REQUEUE_SECONDS)
     requeued = 0
     db = SessionLocal()

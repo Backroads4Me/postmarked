@@ -8,11 +8,10 @@ Reads the 'Trip Summary' sheet and extracts:
 - Stop rows (row 5+, until empty rows)
 """
 import hashlib
-import re
 import math
+import re
+from dataclasses import asdict, dataclass, field
 from datetime import date, datetime
-from typing import Optional
-from dataclasses import dataclass, field, asdict
 
 import openpyxl
 
@@ -23,32 +22,32 @@ class ParsedStop:
     sequence: int = 0
     row_number: int = 0
     name: str = ""
-    arrival_date: Optional[date] = None
-    departure_date: Optional[date] = None
-    nights: Optional[int] = None
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    address: Optional[str] = None
-    url: Optional[str] = None
-    phone: Optional[str] = None
-    email: Optional[str] = None
-    features_raw: Optional[str] = None
+    arrival_date: date | None = None
+    departure_date: date | None = None
+    nights: int | None = None
+    latitude: float | None = None
+    longitude: float | None = None
+    address: str | None = None
+    url: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    features_raw: str | None = None
     features: list = field(default_factory=list)
-    comments: Optional[str] = None
-    reservation: Optional[str] = None
-    miles_from_previous: Optional[float] = None
-    total_miles: Optional[float] = None
-    estimated_travel_time: Optional[str] = None
-    camping_cost: Optional[float] = None
-    meals_cost: Optional[float] = None
-    misc_cost: Optional[float] = None
-    fuel_cost: Optional[float] = None
-    stop_total_cost: Optional[float] = None
-    starting_fuel: Optional[float] = None
-    fuel_used: Optional[float] = None
-    arrival_fuel: Optional[float] = None
-    fuel_added: Optional[float] = None
-    departure_fuel: Optional[float] = None
+    comments: str | None = None
+    reservation: str | None = None
+    miles_from_previous: float | None = None
+    total_miles: float | None = None
+    estimated_travel_time: str | None = None
+    camping_cost: float | None = None
+    meals_cost: float | None = None
+    misc_cost: float | None = None
+    fuel_cost: float | None = None
+    stop_total_cost: float | None = None
+    starting_fuel: float | None = None
+    fuel_used: float | None = None
+    arrival_fuel: float | None = None
+    fuel_added: float | None = None
+    departure_fuel: float | None = None
     fingerprint: str = ""
     raw: dict = field(default_factory=dict)
 
@@ -60,8 +59,8 @@ class ParsedStop:
 class ParsedTrip:
     """Result of parsing an RV Trip Wizard Excel file."""
     title: str = ""
-    start_date: Optional[str] = None
-    notes: Optional[str] = None
+    start_date: str | None = None
+    notes: str | None = None
     stops: list = field(default_factory=list)
     warnings: list = field(default_factory=list)
 
@@ -104,7 +103,7 @@ def normalize_name(name: str) -> str:
     return re.sub(r'\s+', ' ', name.strip().lower())
 
 
-def parse_date_value(val) -> Optional[date]:
+def parse_date_value(val) -> date | None:
     """Parse various date formats from Excel cells."""
     if val is None:
         return None
@@ -118,13 +117,13 @@ def parse_date_value(val) -> Optional[date]:
     # Try common formats
     for fmt in ("%m/%d/%y", "%m/%d/%Y", "%Y-%m-%d", "%B %d, %Y"):
         try:
-            return datetime.strptime(s, fmt).date()
+            return datetime.strptime(s, fmt).date()  # noqa: DTZ007 - only the date is kept
         except ValueError:
             continue
     return None
 
 
-def parse_float(val) -> Optional[float]:
+def parse_float(val) -> float | None:
     """Parse a float value, returning None for empty/invalid."""
     if val is None:
         return None
@@ -139,17 +138,17 @@ def parse_float(val) -> Optional[float]:
     return f if f != 0 else 0.0
 
 
-def parse_latitude(val) -> Optional[float]:
+def parse_latitude(val) -> float | None:
     f = parse_float(val)
     return f if f is not None and -90 <= f <= 90 else None
 
 
-def parse_longitude(val) -> Optional[float]:
+def parse_longitude(val) -> float | None:
     f = parse_float(val)
     return f if f is not None and -180 <= f <= 180 else None
 
 
-def parse_int(val) -> Optional[int]:
+def parse_int(val) -> int | None:
     """Parse an int value."""
     if val is None:
         return None
@@ -175,7 +174,7 @@ def compute_fingerprint(stop: ParsedStop) -> str:
     return hashlib.sha256(key.encode()).hexdigest()[:16]
 
 
-def parse_features(raw: Optional[str]) -> list[str]:
+def parse_features(raw: str | None) -> list[str]:
     """Parse comma-separated features into a normalized list."""
     if not raw:
         return []

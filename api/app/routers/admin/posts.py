@@ -3,15 +3,14 @@ Admin posts and current-stop management.
 """
 import re
 import uuid
-from datetime import datetime, timezone
-from typing import List
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import func, or_, select, update
-from sqlalchemy.orm import selectinload
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.auth.dependencies import current_admin_user
 from app.db import get_async_session
@@ -27,7 +26,7 @@ router = APIRouter(tags=["admin-posts"])
 
 # ── Posts ────────────────────────────────────────────────────────────────
 
-@router.get("/posts", response_model=List[PostOut])
+@router.get("/posts", response_model=list[PostOut])
 async def list_posts(
     skip: int = 0,
     limit: int = 100,
@@ -93,6 +92,7 @@ def _should_notify(post: Post) -> bool:
 
 def _queue_post_notification(post_id: uuid.UUID) -> None:
     import logging
+
     from app.tasks import dispatch_post_notification
 
     logger = logging.getLogger(__name__)
@@ -104,13 +104,13 @@ def _queue_post_notification(post_id: uuid.UUID) -> None:
 
 
 class AttachPostMediaRequest(BaseModel):
-    media_ids: List[uuid.UUID]
+    media_ids: list[uuid.UUID]
 
 
 async def _attach_media_to_post(
     session: AsyncSession,
     post: Post,
-    media_ids: List[uuid.UUID],
+    media_ids: list[uuid.UUID],
     visibility: Visibility,
 ) -> int:
     assets = []
@@ -144,7 +144,7 @@ async def create_post(
     session: AsyncSession = Depends(get_async_session),
     user: User = Depends(current_admin_user),
 ):
-    posted_at = post_in.posted_at or datetime.now(timezone.utc)
+    posted_at = post_in.posted_at or datetime.now(UTC)
     visibility = Visibility(post_in.visibility)
     slug = await _unique_post_slug(session, post_in.title)
 
@@ -224,7 +224,7 @@ async def update_post(
     if "visibility" in update_data:
         update_data["visibility"] = Visibility(update_data["visibility"])
     if "status" in update_data and update_data["status"] == PostStatus.PUBLISHED:
-        post.posted_at = post.posted_at or datetime.now(timezone.utc)
+        post.posted_at = post.posted_at or datetime.now(UTC)
     for key, value in update_data.items():
         setattr(post, key, value)
 
@@ -276,7 +276,7 @@ async def attach_post_media(
 
 
 class ReorderPostMediaRequest(BaseModel):
-    media_ids: List[uuid.UUID]
+    media_ids: list[uuid.UUID]
 
 
 @router.put("/posts/{post_id}/media/order")
@@ -380,7 +380,7 @@ async def get_current_stop(
     )
     stop = result.scalars().first()
     if not stop:
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(UTC).date()
         result = await session.execute(
             select(Stop)
             .join(Trip, Stop.trip_id == Trip.id)

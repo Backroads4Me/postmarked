@@ -1,4 +1,3 @@
-from typing import Optional
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
@@ -7,7 +6,7 @@ from app.models.enums import ApprovalState, NotificationFrequency, UserRole
 
 class AccountOut(BaseModel):
     email: EmailStr
-    display_name: Optional[str] = None
+    display_name: str | None = None
     role: UserRole
     approval_state: ApprovalState
     email_opted_in: bool = False
@@ -17,8 +16,8 @@ class AccountOut(BaseModel):
 
 class ProfileUpdate(BaseModel):
     email: EmailStr
-    display_name: Optional[str] = Field(default=None, max_length=200)
-    current_password: Optional[str] = None
+    display_name: str | None = Field(default=None, max_length=200)
+    current_password: str | None = None
 
 
 class PasswordUpdate(BaseModel):

@@ -1,18 +1,20 @@
-from datetime import datetime
 import uuid
-from typing import Optional
+from datetime import datetime
+
 from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTableUUID
-from sqlalchemy import String, Boolean, DateTime, ForeignKey, Enum as SqlaEnum
-from sqlalchemy.sql import func
+from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Enum as SqlaEnum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.sql import func
 
 from app.models.base import Base
-from app.models.enums import UserRole, ApprovalState, NotificationFrequency
+from app.models.enums import ApprovalState, NotificationFrequency, UserRole
 from app.models.oauth_account import OAuthAccount
 
+
 class User(SQLAlchemyBaseUserTableUUID, Base):
-    display_name: Mapped[Optional[str]] = mapped_column(String, nullable=True)
-    avatar_path: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    display_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    avatar_path: Mapped[str | None] = mapped_column(String, nullable=True)
     role: Mapped[UserRole] = mapped_column(SqlaEnum(UserRole, name="userrole"), default=UserRole.USER)
     approval_state: Mapped[ApprovalState] = mapped_column(SqlaEnum(ApprovalState, name="approvalstate"), default=ApprovalState.PENDING)
 

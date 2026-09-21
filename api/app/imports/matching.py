@@ -5,7 +5,7 @@ Compares incoming parsed stops against existing normal stops
 to produce a preview diff before applying changes.
 """
 import math
-from typing import Optional
+
 from app.imports.rv_trip_wizard import ParsedStop, normalize_name
 
 
@@ -35,7 +35,7 @@ def name_similarity(a: str, b: str) -> float:
     return overlap / max(len(wa), len(wb))
 
 
-def find_exact_match(incoming: ParsedStop, existing: list) -> Optional[dict]:
+def find_exact_match(incoming: ParsedStop, existing: list) -> dict | None:
     """Find an exact fingerprint match in existing stops."""
     for ex in existing:
         if ex.get("source_fingerprint") == incoming.fingerprint:
@@ -43,7 +43,7 @@ def find_exact_match(incoming: ParsedStop, existing: list) -> Optional[dict]:
     return None
 
 
-def find_fuzzy_match(incoming: ParsedStop, existing: list, threshold_meters: float = 150.0) -> Optional[dict]:
+def find_fuzzy_match(incoming: ParsedStop, existing: list, threshold_meters: float = 150.0) -> dict | None:
     """
     Find a fuzzy match using:
     - Coordinates within threshold_meters
