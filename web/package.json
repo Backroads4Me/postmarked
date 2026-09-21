@@ -10,7 +10,8 @@
     "test": "node --test",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "audit:whitespace": "node scripts/whitespace-audit.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.6",
