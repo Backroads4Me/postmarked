@@ -26,6 +26,7 @@ from app.schemas.journey import (
     TimelineOut,
 )
 from app.services.current_stop import select_home_stop
+from app.services.trip_order import order_trips_newest_first
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
 from app.services.weather import REDIS_URL, WEATHER_COORDS_KEY, weather_cache_key
 
@@ -441,11 +442,7 @@ async def list_trip_segments(
     session: AsyncSession = Depends(get_async_session),
     user=Depends(current_user_optional),
 ):
-    trip_query = (
-        select(Trip)
-        .options(selectinload(Trip.cover_media))
-        .order_by(Trip.start_date.desc().nullslast())
-    )
+    trip_query = select(Trip).options(selectinload(Trip.cover_media))
     trip_query = _public_only(trip_query, Trip, user)
     trips = list((await session.execute(trip_query)).scalars().all())
 
@@ -456,7 +453,7 @@ async def list_trip_segments(
         stop_query = stop_query.where(Trip.visibility == Visibility.PUBLIC)
     stops = list((await session.execute(stop_query)).scalars().all())
 
-    return [_trip_summary_out(trip, [s for s in stops if s.trip_id == trip.id], user) for trip in trips]
+    return [_trip_summary_out(trip, trip_stops, user) for trip, trip_stops in order_trips_newest_first(trips, stops)]
 
 
 @router.get("/trip-segments/{slug}", response_model=PublicTripSegmentDetail)
