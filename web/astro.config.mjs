@@ -8,9 +8,6 @@ import node from '@astrojs/node';
 // https://astro.build/config
 export default defineConfig({
   output: 'server',
-  // Keep HTML whitespace rules: templates rely on line breaks between inline
-  // elements rendering as a space.
-  compressHTML: true,
   security: {
     checkOrigin: false
   },

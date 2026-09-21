@@ -134,8 +134,8 @@ const linkSucceeded = Astro.url.searchParams.get('linked') === '1';
           <h2 class="display text-2xl mb-4">Password</h2>
           {oauth_linked && (
             <p class="text-sm text-muted mb-4">
-              To set a local password for email sign-in, use
-              <a href="/auth/forgot-password" class="underline">forgot password</a>
+              To set a local password for email sign-in, use{' '}
+              <a href="/auth/forgot-password" class="underline">forgot password</a>{' '}
               with your account email. If you already have a password, update it below.
             </p>
           )}
