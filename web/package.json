@@ -15,14 +15,14 @@
   },
   "dependencies": {
     "@astrojs/node": "^11.1.6",
-    "@astrojs/react": "^6.0.6",
+    "@astrojs/react": "^7.0.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@uppy/core": "^6.0.1",
-    "@uppy/dashboard": "^6.0.0",
+    "@uppy/core": "^6.2.0",
+    "@uppy/dashboard": "^6.0.1",
     "@uppy/tus": "^6.0.0",
-    "astro": "^7.3.3",
+    "astro": "^7.3.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2"
