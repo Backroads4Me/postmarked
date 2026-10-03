@@ -32,9 +32,16 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v7
 
+      # A build from any branch other than main is a beta, so the version baked
+      # into the image names the commit it came from.
       - name: Read version
         id: version
-        run: echo "version=$(cat VERSION | tr -d '[:space:]')" >> $GITHUB_OUTPUT
+        run: |
+          version="$(tr -d '[:space:]' < VERSION)"
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            version="${version}+beta.${GITHUB_SHA::7}"
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - name: Set lowercase owner
         run: echo "OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
@@ -112,16 +119,29 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      # Only main publishes the release version and latest. Any other branch
+      # publishes sha-<commit>, which never moves, and beta, which follows the
+      # most recent beta build.
+      - name: Compute tags
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.OWNER }}/${{ matrix.image }}
+          flavor: latest=false
+          tags: |
+            type=raw,value=${{ steps.version.outputs.version }},enable=${{ github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=sha,prefix=sha-,format=short,enable=${{ github.ref != 'refs/heads/main' }}
+            type=raw,value=beta,enable=${{ github.ref != 'refs/heads/main' }}
+
       - name: Create and push manifest list
         working-directory: /tmp/digests
         run: |
           image="${REGISTRY}/${OWNER}/${{ matrix.image }}"
           docker buildx imagetools create \
-            --tag "${image}:${{ steps.version.outputs.version }}" \
-            --tag "${image}:latest" \
+            $(jq -cr '.tags | map("--tag " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
             $(printf "${image}@sha256:%s " *)
 
       - name: Inspect image
         run: |
-          docker buildx imagetools inspect \
-            "${REGISTRY}/${OWNER}/${{ matrix.image }}:${{ steps.version.outputs.version }}"
+          docker buildx imagetools inspect "$(jq -r '.tags[0]' <<< "$DOCKER_METADATA_OUTPUT_JSON")"
