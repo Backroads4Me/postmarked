@@ -30,7 +30,7 @@ jobs:
       REGISTRY: ghcr.io
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Read version
         id: version
@@ -68,7 +68,7 @@ jobs:
           touch "/tmp/digests/${digest#sha256:}"
 
       - name: Upload digest
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: digests-${{ matrix.image.name }}-${{ matrix.platform.slug }}
           path: /tmp/digests/*
@@ -86,7 +86,7 @@ jobs:
       REGISTRY: ghcr.io
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       - name: Read version
         id: version
@@ -96,7 +96,7 @@ jobs:
         run: echo "OWNER=$(echo ${{ github.repository_owner }} | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
 
       - name: Download digests
-        uses: actions/download-artifact@v4.3.0
+        uses: actions/download-artifact@v8
         with:
           path: /tmp/digests
           pattern: digests-${{ matrix.image }}-*
