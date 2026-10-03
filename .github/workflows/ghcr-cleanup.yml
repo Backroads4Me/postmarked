@@ -1,4 +1,4 @@
-name: Clean Up Beta Images
+name: Clean Up Old Images
 
 permissions:
   packages: write
@@ -10,13 +10,13 @@ on:
 
 jobs:
   cleanup:
-    name: Delete old beta images
+    name: Delete old images
     runs-on: ubuntu-24.04
     steps:
       # Deletes sha-* beta images older than 30 days and untagged leftovers.
       # The action keeps the per-platform images that tagged multi-arch
       # manifests point to, so release tags and latest stay intact.
-      - name: Clean up GHCR
+      - name: Delete old beta images
         uses: dataaxiom/ghcr-cleanup-action@v1
         with:
           packages: postmarked-api,postmarked-web,postmarked-postgis
@@ -24,4 +24,16 @@ jobs:
           older-than: 30 days
           exclude-tags: latest,beta
           delete-untagged: true
+          dry-run: true
+
+      # Keeps the ten newest release versions for rollback and deletes older
+      # ones. latest and beta are never deleted.
+      - name: Prune old releases
+        uses: dataaxiom/ghcr-cleanup-action@v1
+        with:
+          packages: postmarked-api,postmarked-web,postmarked-postgis
+          delete-tags: '^\d+\.\d+(\.\d+)?$'
+          use-regex: true
+          keep-n-tagged: 10
+          exclude-tags: latest,beta
           dry-run: true
