@@ -119,7 +119,9 @@ def _is_visible_stop_status(stop: Stop) -> bool:
     return stop.status == StopStatus.PUBLISHED
 
 
-async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID, tuple[float, float]]:
+async def _coordinates_for_stops(
+    session: AsyncSession, stops
+) -> dict[uuid.UUID, tuple[float | None, float | None]]:
     stop_ids = [stop.id for stop in stops]
     if not stop_ids:
         return {}
