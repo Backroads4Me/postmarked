@@ -20,6 +20,7 @@ from app.schemas.journey import (
     PublicStopDetail,
     PublicStopSibling,
 )
+from app.services.coordinates import usable_coordinates
 from app.services.current_stop import select_live_stop
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
 
@@ -91,7 +92,7 @@ async def get_stop(
         select(func.ST_Y(point), func.ST_X(point)).where(Stop.id == stop.id)
     )
     coord = coord_row.first()
-    latitude, longitude = (coord[0], coord[1]) if coord else (None, None)
+    latitude, longitude = usable_coordinates(coord[0], coord[1]) if coord else (None, None)
 
     # Own media (assets directly attached to this stop). Post media also carries
     # stop_id for scoping, but it should render only through its published post.

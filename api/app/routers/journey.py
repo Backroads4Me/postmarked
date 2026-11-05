@@ -23,6 +23,7 @@ from app.schemas.journey import (
     RecentUpdate,
     TimelineOut,
 )
+from app.services.coordinates import usable_coordinates
 from app.services.current_stop import select_home_stop
 from app.services.trip_order import order_trips_newest_first
 from app.services.visibility import visible_ready_cover_media, visible_ready_media
@@ -118,7 +119,9 @@ def _is_visible_stop_status(stop: Stop) -> bool:
     return stop.status == StopStatus.PUBLISHED
 
 
-async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID, tuple[float, float]]:
+async def _coordinates_for_stops(
+    session: AsyncSession, stops
+) -> dict[uuid.UUID, tuple[float | None, float | None]]:
     stop_ids = [stop.id for stop in stops]
     if not stop_ids:
         return {}
@@ -131,7 +134,7 @@ async def _coordinates_for_stops(session: AsyncSession, stops) -> dict[uuid.UUID
             func.ST_X(point).label("longitude"),
         ).where(Stop.id.in_(stop_ids))
     )
-    return {row.id: (row.latitude, row.longitude) for row in result.all()}
+    return {row.id: usable_coordinates(row.latitude, row.longitude) for row in result.all()}
 
 
 def _stop_out(stop: Stop | None, coords: dict[uuid.UUID, tuple[float, float]], user) -> PublicStopSummary | None:
