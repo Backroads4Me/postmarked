@@ -10,18 +10,19 @@
     "test": "node --test",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "audit:whitespace": "node scripts/whitespace-audit.mjs"
   },
   "dependencies": {
-    "@astrojs/node": "^10.0.6",
-    "@astrojs/react": "^5.0.3",
+    "@astrojs/node": "^11.1.6",
+    "@astrojs/react": "^7.0.0",
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@uppy/core": "^3.13.1",
-    "@uppy/dashboard": "^3.9.1",
-    "@uppy/tus": "^3.5.5",
-    "astro": "^6.1.4",
+    "@uppy/core": "^6.2.0",
+    "@uppy/dashboard": "^6.0.1",
+    "@uppy/tus": "^6.0.0",
+    "astro": "^7.3.5",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2"

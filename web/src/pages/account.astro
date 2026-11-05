@@ -109,8 +109,9 @@ const linkSucceeded = Astro.url.searchParams.get('linked') === '1';
                     <span class="text-paper">Email updates</span>
                   </label>
                 )}
+              </div>
 
-                <div class="grid gap-3">
+              <div class="grid gap-3">
                 <p class="label">Frequency</p>
                 <label class="flex items-start gap-3 text-sm text-muted cursor-pointer">
                   <input type="radio" name="notify_frequency" value="all_updates" class="mt-0.5 shrink-0"
@@ -133,8 +134,8 @@ const linkSucceeded = Astro.url.searchParams.get('linked') === '1';
           <h2 class="display text-2xl mb-4">Password</h2>
           {oauth_linked && (
             <p class="text-sm text-muted mb-4">
-              To set a local password for email sign-in, use
-              <a href="/auth/forgot-password" class="underline">forgot password</a>
+              To set a local password for email sign-in, use{' '}
+              <a href="/auth/forgot-password" class="underline">forgot password</a>{' '}
               with your account email. If you already have a password, update it below.
             </p>
           )}

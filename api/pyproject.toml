@@ -17,8 +17,11 @@ dependencies = [
     "fastapi-users[sqlalchemy,oauth]>=13.0.0",
     "argon2-cffi>=23.1.0",
     "python-multipart>=0.0.9",
-    "pillow>=10.3.0",
+    "pillow>=13.0.0",
     "pillow-heif>=0.16.0",
+    # fastapi-users brings in pyjwt; this floor keeps the lock off releases
+    # with published advisories.
+    "pyjwt>=2.15.0",
     "watchdog>=4.0.0",
     "blurhash-python>=1.2.2",
     "openpyxl>=3.1.5",
