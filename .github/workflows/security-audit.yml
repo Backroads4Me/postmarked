@@ -1,0 +1,55 @@
+name: Security audit
+
+permissions:
+  contents: read
+
+on:
+  schedule:
+    - cron: "0 9 * * 1"
+  pull_request:
+    paths:
+      - api/uv.lock
+      - web/package-lock.json
+  workflow_dispatch:
+
+concurrency:
+  group: security-audit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: API dependency audit
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ./api
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v6
+
+      - name: Export locked requirements
+        run: uv export --frozen --no-emit-project -o "$RUNNER_TEMP/requirements.txt"
+
+      - name: Run pip-audit
+        run: uvx pip-audit -r "$RUNNER_TEMP/requirements.txt" --progress-spinner off
+
+  web:
+    name: Web dependency audit
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: ./web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high
