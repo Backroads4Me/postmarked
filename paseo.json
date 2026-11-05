@@ -1,0 +1,36 @@
+{
+  "worktree": {
+    "setup": [
+      "(cd api && uv sync --frozen --extra dev)",
+      "(cd web && npm ci)"
+    ]
+  },
+  "scripts": {
+    "test-api": {
+      "command": "(cd api && uv run --frozen pytest tests -q)"
+    },
+    "test-web": {
+      "command": "(cd web && npm test)"
+    },
+    "lint": {
+      "command": "(cd api && uv run --frozen ruff check app tests)"
+    },
+    "build": {
+      "command": "(cd web && npm run build)"
+    },
+    "migrate": {
+      "command": "env_file=\"${PASEO_SOURCE_CHECKOUT_PATH:-.}/.env.paseo\"; if [ -f \"$env_file\" ]; then set -a; . \"$env_file\"; set +a; fi; export MEDIA_DIR=\"${MEDIA_DIR:-${PASEO_WORKTREE_PATH:-$PWD}/media}\"; export DATABASE_URL=\"${DATABASE_URL:?not set - create $env_file pointing at a scratch database}\"; cd api && uv run --frozen alembic upgrade head"
+    },
+    "seed": {
+      "command": "env_file=\"${PASEO_SOURCE_CHECKOUT_PATH:-.}/.env.paseo\"; if [ -f \"$env_file\" ]; then set -a; . \"$env_file\"; set +a; fi; export MEDIA_DIR=\"${MEDIA_DIR:-${PASEO_WORKTREE_PATH:-$PWD}/media}\"; export DATABASE_URL=\"${DATABASE_URL:?not set - create $env_file pointing at a scratch database}\"; export ADMIN_EMAIL=\"${ADMIN_EMAIL:-admin@example.com}\"; export ADMIN_PASSWORD=\"${ADMIN_PASSWORD:?not set - add it to $env_file}\"; export ADMIN_DISPLAY_NAME=\"${ADMIN_DISPLAY_NAME:-Admin}\"; cd api && PYTHONPATH=\"$PWD\" uv run --frozen python scripts/seed.py"
+    },
+    "api": {
+      "command": "env_file=\"${PASEO_SOURCE_CHECKOUT_PATH:-.}/.env.paseo\"; if [ -f \"$env_file\" ]; then set -a; . \"$env_file\"; set +a; fi; export MEDIA_DIR=\"${MEDIA_DIR:-${PASEO_WORKTREE_PATH:-$PWD}/media}\"; export APP_BASE_URL=\"${APP_BASE_URL:-${PASEO_SERVICE_WEB_URL:-http://localhost:4321}}\"; export DATABASE_URL=\"${DATABASE_URL:?not set - create $env_file pointing at a scratch database}\"; export REDIS_URL=\"${REDIS_URL:?not set - add it to $env_file}\"; cd api && exec uv run --frozen uvicorn app.main:app --host 127.0.0.1 --port \"$PASEO_PORT\" --reload",
+      "type": "service"
+    },
+    "web": {
+      "command": "env_file=\"${PASEO_SOURCE_CHECKOUT_PATH:-.}/.env.paseo\"; if [ -f \"$env_file\" ]; then set -a; . \"$env_file\"; set +a; fi; api_port=\"${PASEO_SERVICE_API_PORT:-8000}\"; export API_BASE_URL=\"${API_BASE_URL:-http://127.0.0.1:$api_port}\"; export ASTRO_DEV_BACKGROUND=0; (exec 3<>/dev/tcp/127.0.0.1/\"$api_port\") 2>/dev/null || echo \"[paseo] WARNING: nothing is listening on api port $api_port - start it with: paseo script start api\"; cd web && exec ./node_modules/.bin/astro dev --port \"$PASEO_PORT\" --ignore-lock",
+      "type": "service"
+    }
+  }
+}
