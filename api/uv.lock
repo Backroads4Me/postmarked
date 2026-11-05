@@ -1899,7 +1899,7 @@ requires-dist = [
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.9.0" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pillow", specifier = ">=13.0.0" },
-    { name = "pillow-heif", specifier = ">=0.16.0" },
+    { name = "pillow-heif", specifier = ">=1.8.1" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1.18" },
     { name = "pydantic", specifier = ">=2.7.0" },
     { name = "pydantic-settings", specifier = ">=2.2.1" },

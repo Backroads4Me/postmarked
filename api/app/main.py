@@ -94,10 +94,10 @@ class SecurityHeadersMiddleware:
     """
     Security headers for API JSON and media-byte responses.
 
-    Astro frontend is served separately from FastAPI, so its HTML pages should
-    get CSP/HSTS from the Astro deployment reverse proxy. The CSP we set here
-    applies only to /api/* and /media/* responses, non-HTML, so default-src
-    'none' is an appropriate strict default.
+    The Astro app serves the HTML pages and sets their headers in
+    web/src/middleware.js; the CSP set here applies only to /api/* and
+    /media/* responses, non-HTML, so default-src 'none' is an appropriate
+    strict default.
     """
 
     DEFAULT_HEADERS: ClassVar[dict[str, str]] = {

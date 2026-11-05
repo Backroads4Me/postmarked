@@ -18,7 +18,8 @@ dependencies = [
     "argon2-cffi>=23.1.0",
     "python-multipart>=0.0.9",
     "pillow>=13.0.0",
-    "pillow-heif>=0.16.0",
+    # 1.8.1 is the first release pairing with the pillow 13 series.
+    "pillow-heif>=1.8.1",
     # fastapi-users brings in pyjwt; this floor keeps the lock off releases
     # with published advisories.
     "pyjwt>=2.15.0",
