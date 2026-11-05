@@ -24,7 +24,9 @@ RUN groupadd -r appuser && useradd -r -g appuser -u 1000 appuser
 WORKDIR /app
 ENV PYTHONPATH=/app
 
-RUN pip install uv
+# Pinned so the build tool itself is reproducible and auditable; 0.12.x
+# carried published advisories. Bump alongside dependency updates.
+RUN pip install uv==0.13.7
 
 COPY pyproject.toml uv.lock ./
 # Install production dependencies pinned by uv.lock (excludes [dev] extras)

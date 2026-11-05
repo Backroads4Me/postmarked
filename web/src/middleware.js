@@ -1,6 +1,27 @@
 import { defineMiddleware } from 'astro:middleware';
 import { apiUrl } from './lib/api.js';
 
+// The API sets security headers on its own /api/* and /media/* responses
+// (SecurityHeadersMiddleware in api/app/main.py). This app serves the HTML
+// pages itself, so they get their headers here. CSP is limited to
+// frame-ancestors: React islands, Google Maps, and Tailwind's injected
+// inline styles all need wider sources than a default-src policy allows.
+const PAGE_SECURITY_HEADERS = {
+  'strict-transport-security': 'max-age=31536000; includeSubDomains',
+  'x-content-type-options': 'nosniff',
+  'x-frame-options': 'DENY',
+  'referrer-policy': 'strict-origin-when-cross-origin',
+  'permissions-policy': 'geolocation=(), microphone=(), camera=(), interest-cohort=()',
+  'content-security-policy': "frame-ancestors 'none'",
+};
+
+function withSecurityHeaders(response) {
+  for (const [name, value] of Object.entries(PAGE_SECURITY_HEADERS)) {
+    if (!response.headers.has(name)) response.headers.set(name, value);
+  }
+  return response;
+}
+
 export const onRequest = defineMiddleware(async (context, next) => {
   const { pathname } = context.url;
 
@@ -9,7 +30,7 @@ export const onRequest = defineMiddleware(async (context, next) => {
   }
 
   if (!pathname.startsWith('/admin')) {
-    return next();
+    return withSecurityHeaders(await next());
   }
 
   const cookie = context.request.headers.get('cookie') || '';
@@ -21,22 +42,22 @@ export const onRequest = defineMiddleware(async (context, next) => {
       headers: cookie ? { cookie } : {},
     });
     if (res.status === 401 || res.status === 403) {
-      return context.redirect(loginUrl.pathname + loginUrl.search, 302);
+      return withSecurityHeaders(context.redirect(loginUrl.pathname + loginUrl.search, 302));
     }
     if (!res.ok) {
-      return context.redirect(loginUrl.pathname + loginUrl.search, 302);
+      return withSecurityHeaders(context.redirect(loginUrl.pathname + loginUrl.search, 302));
     }
 
     const user = await res.json();
     if (user?.role !== 'admin') {
-      return context.redirect('/', 302);
+      return withSecurityHeaders(context.redirect('/', 302));
     }
   } catch (e) {
     console.error('Admin middleware auth check failed', e);
-    return context.redirect(loginUrl.pathname + loginUrl.search, 302);
+    return withSecurityHeaders(context.redirect(loginUrl.pathname + loginUrl.search, 302));
   }
 
-  return next();
+  return withSecurityHeaders(await next());
 });
 
 async function proxyApiRequest(context) {
