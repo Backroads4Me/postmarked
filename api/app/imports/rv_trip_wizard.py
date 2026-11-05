@@ -15,6 +15,8 @@ from datetime import date, datetime
 
 import openpyxl
 
+from app.services.coordinates import MISSING_COORDINATE
+
 
 @dataclass
 class ParsedStop:
@@ -140,12 +142,16 @@ def parse_float(val) -> float | None:
 
 def parse_latitude(val) -> float | None:
     f = parse_float(val)
-    return f if f is not None and -90 <= f <= 90 else None
+    if f is None or f == MISSING_COORDINATE:
+        return None
+    return f if -90 <= f <= 90 else None
 
 
 def parse_longitude(val) -> float | None:
     f = parse_float(val)
-    return f if f is not None and -180 <= f <= 180 else None
+    if f is None or f == MISSING_COORDINATE:
+        return None
+    return f if -180 <= f <= 180 else None
 
 
 def parse_int(val) -> int | None:
@@ -289,6 +295,16 @@ def parse_excel(file_path: str) -> ParsedTrip:
         )
         stop.features = parse_features(stop.features_raw)
         stop.fingerprint = compute_fingerprint(stop)
+        if stop.latitude is None or stop.longitude is None:
+            # A coordinate is useful only as a pair; a lone half is a
+            # placeholder artifact, not a location.
+            stop.latitude = None
+            stop.longitude = None
+            result.warnings.append(
+                f"Stop '{stop.name}' (row {row_num}) has no usable coordinates "
+                "(blank, unparseable, or RV Trip Wizard's -1 placeholder); "
+                "applying it will be rejected until the spreadsheet provides them."
+            )
         result.stops.append(stop)
 
     return result
