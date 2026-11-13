@@ -22,7 +22,7 @@
     "@uppy/core": "^6.2.0",
     "@uppy/dashboard": "^6.0.1",
     "@uppy/tus": "^6.0.0",
-    "astro": "^7.3.5",
+    "astro": "^7.4.4",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "tailwindcss": "^4.2.2"
