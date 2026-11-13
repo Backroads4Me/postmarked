@@ -19,7 +19,7 @@
     "@tailwindcss/vite": "^4.2.2",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@uppy/core": "^6.2.0",
+    "@uppy/core": "^6.3.0",
     "@uppy/dashboard": "^6.0.1",
     "@uppy/tus": "^6.0.0",
     "astro": "^7.3.5",
