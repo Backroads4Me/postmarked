@@ -32,7 +32,7 @@ jobs:
         uses: dataaxiom/ghcr-cleanup-action@v1
         with:
           packages: postmarked-api,postmarked-web,postmarked-postgis
-          delete-tags: '^\d+\.\d+(\.\d+)?$'
+          delete-tags: '^\d+\.\d+\.\d+$|^\d+\.\d+$'
           use-regex: true
           keep-n-tagged: 10
           exclude-tags: latest,beta
